@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eski xabarlarni skanerlash - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+    .group-checkbox {
+      padding: 10px;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    .group-checkbox:hover {
+      background: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history/results">
+                <i class="bi bi-archive"></i> Arxiv natijalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">Eski xabarlarni skanerlash</h1>
+        </div>
+
+        <% if (error) { %>
+          <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle"></i> <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <% if (result) { %>
+          <div class="alert alert-success">
+            <h5><i class="bi bi-check-circle"></i> Skanerlash tugadi!</h5>
+            <hr>
+            <% if (result.totalGroups) { %>
+              <p><strong>Guruhlar soni:</strong> <%= result.totalGroups %></p>
+            <% } else { %>
+              <p><strong>Guruh:</strong> <%= result.groupName %></p>
+              <p><strong>Tekshirilgan xabarlar:</strong> <%= result.totalMessages %></p>
+              <p><strong>Telefon topilgan xabarlar:</strong> <%= result.messagesWithPhones %></p>
+            <% } %>
+            <p><strong>Topilgan raqamlar:</strong> <%= result.fileInfo.totalPhones %></p>
+            <p><strong>Unikal raqamlar:</strong> <%= result.fileInfo.uniquePhones %></p>
+            <hr>
+            <p class="mb-0">
+              <i class="bi bi-file-earmark-text"></i> Natijalar saqlandi:<br>
+              <code>exports/<%= result.fileInfo.jsonFile %></code><br>
+              <code>exports/<%= result.fileInfo.txtFile %></code>
+            </p>
+          </div>
+        <% } %>
+
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i>
+          Bu sahifa orqali siz guruhlardagi eski xabarlarni skanerlashingiz va telefon raqamlarni olishingiz mumkin.
+          Natijalar <code>exports/</code> papkasida saqlanadi.
+        </div>
+
+        <!-- Sana bo'yicha skanerlash -->
+        <div class="card mb-3">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-calendar-range"></i> Sana bo'yicha skanerlash (Tavsiya etiladi)</h5>
+          </div>
+          <div class="card-body">
+            <form id="scrapeDateForm">
+              <div class="row">
+                <div class="col-md-12 mb-3">
+                  <label class="form-label">
+                    <i class="bi bi-collection"></i> Guruhlarni tanlang
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="toggleAllGroups()">
+                      <i class="bi bi-check-all"></i> Hammasini tanlash
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllGroups()">
+                      <i class="bi bi-x"></i> Tozalash
+                    </button>
+                  </label>
+                  <div class="row">
+                    <% if (groups && groups.length > 0) { %>
+                      <% groups.forEach(group => { %>
+                        <div class="col-md-4 col-lg-3">
+                          <div class="group-checkbox">
+                            <div class="form-check">
+                              <input class="form-check-input group-check" type="checkbox" name="group_ids[]" value="<%= group.id %>" id="group_<%= group.id %>">
+                              <label class="form-check-label" for="group_<%= group.id %>">
+                                <small><%= group.name %></small>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      <% }) %>
+                    <% } else { %>
+                      <div class="col-12">
+                        <div class="alert alert-warning">Guruhlar yo'q - avval /groups dan qo'shing</div>
+                      </div>
+                    <% } %>
+                  </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Boshlang'ich sana</label>
+                  <input type="date" name="start_date" class="form-control" required>
+                  <small class="text-muted">Qaysi sanadan boshlab</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Tugash sana (ixtiyoriy)</label>
+                  <input type="date" name="end_date" class="form-control">
+                  <small class="text-muted">Bo'sh qoldirilsa - bugungi kun</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Fayl nomi (ixtiyoriy)</label>
+                  <input type="text" name="export_name" class="form-control" placeholder="Logistika_2025" maxlength="50">
+                  <small class="text-muted">Arxivni ajratish uchun</small>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-play-fill"></i> Skanerlashni boshlash
+              </button>
+            </form>
+
+            <!-- Progress display -->
+            <div id="progressContainer" style="display: none;" class="mt-4">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">
+                  <span id="statusText">Skanerlash davom etmoqda...</span>
+                </h6>
+                <div>
+                  <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="pauseScraping()">
+                    <i class="bi bi-pause-fill"></i> Pauza
+                  </button>
+                  <button id="resumeBtn" class="btn btn-sm btn-success" onclick="resumeScraping()" style="display: none;">
+                    <i class="bi bi-play-fill"></i> Davom ettirish
+                  </button>
+                  <button id="stopBtn" class="btn btn-sm btn-danger" onclick="stopScraping()">
+                    <i class="bi bi-stop-fill"></i> To'xtatish
+                  </button>
+                </div>
+              </div>
+              <div class="progress mb-2" style="height: 25px;">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">0%</div>
+              </div>
+              <div class="row text-center">
+                <div class="col-md-2">
+                  <strong id="processedCount">0</strong> xabar qayta ishlandi
+                </div>
+                <div class="col-md-2">
+                  <strong id="phonesCount">0</strong> raqam topildi
+                </div>
+                <div class="col-md-2">
+                  <strong id="uniquePhonesCount">0</strong> unikal raqam
+                </div>
+                <div class="col-md-2">
+                  <strong id="speedCount">0</strong> xabar/min
+                </div>
+                <div class="col-md-2">
+                  <strong id="elapsedTime">0 min</strong> ishladi
+                </div>
+                <div class="col-md-2">
+                  <strong id="timeLeft">-</strong> qoldi
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ko'p guruhlar -->
+        <div class="card">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-collection"></i> Bir nechta guruhni skanerlash</h5>
+          </div>
+          <div class="card-body">
+            <form method="POST" action="/history/scrape-multiple">
+              <div class="mb-3">
+                <label class="form-label">Guruhlarni tanlang (10 tagacha tavsiya etiladi)</label>
+                <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                  <% if (groups && groups.length > 0) { %>
+                    <% groups.forEach(group => { %>
+                      <div class="form-check group-checkbox">
+                        <input class="form-check-input" type="checkbox" name="group_ids" value="<%= group.id %>" id="group_<%= group.id %>">
+                        <label class="form-check-label" for="group_<%= group.id %>">
+                          <strong><%= group.name %></strong>
+                          <% if (group.keywords) { %>
+                            <br><small class="text-muted">Kalit so'zlar: <%= group.keywords %></small>
+                          <% } %>
+                        </label>
+                      </div>
+                    <% }) %>
+                  <% } else { %>
+                    <div class="alert alert-warning">
+                      Guruhlar yo'q. Avval <a href="/groups/add">guruh qo'shing</a>.
+                    </div>
+                  <% } %>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Nechta xabarni tekshirish</label>
+                <select name="message_limit" class="form-select">
+                  <option value="100">100 ta xabar</option>
+                  <option value="500">500 ta xabar</option>
+                  <option value="1000">1000 ta xabar</option>
+                  <option value="2000">2000 ta xabar</option>
+                  <option value="5000">5000 ta xabar</option>
+                </select>
+                <small class="text-muted">Diqqat: Ko'p guruh va ko'p xabar = uzoq vaqt ketadi!</small>
+              </div>
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-play-fill"></i> Barcha tanlangan guruhlarni skanerlash
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div class="alert alert-warning mt-3">
+          <i class="bi bi-exclamation-triangle"></i>
+          <strong>Diqqat:</strong> Telegram API limitlariga rioya qiling. Ko'p guruh va ko'p xabarni bir vaqtda skanerlash
+          Telegram tomonidan bloklashga olib kelishi mumkin. Tavsiya: 5-10 guruhni 100-500 xabar bilan boshlang.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let progressInterval = null;
+
+    // Checkbox boshqaruvi
+    function toggleAllGroups() {
+      const checkboxes = document.querySelectorAll('.group-check');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => cb.checked = !allChecked);
+    }
+
+    function clearAllGroups() {
+      document.querySelectorAll('.group-check').forEach(cb => cb.checked = false);
+    }
+
+    // Stop/Pause/Resume funksiyalari
+    async function stopScraping() {
+      if (!confirm('Skanerlashni to\'xtatmoqchimisiz? Jarayon bekor qilinadi.')) return;
+
+      const response = await fetch('/history/stop', { method: 'POST' });
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('statusText').textContent = '⏹️ To\'xtatilmoqda...';
+        document.getElementById('stopBtn').disabled = true;
+        document.getElementById('pauseBtn').disabled = true;
+      }
+    }
+
+    async function pauseScraping() {
+      const response = await fetch('/history/pause', { method: 'POST' });
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('pauseBtn').style.display = 'none';
+        document.getElementById('resumeBtn').style.display = 'inline-block';
+        document.getElementById('statusText').textContent = '⏸️ Pauza qilindi';
+        document.getElementById('progressBar').classList.remove('progress-bar-animated');
+      }
+    }
+
+    async function resumeScraping() {
+      const response = await fetch('/history/resume', { method: 'POST' });
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('pauseBtn').style.display = 'inline-block';
+        document.getElementById('resumeBtn').style.display = 'none';
+        document.getElementById('statusText').textContent = '▶️ Davom etmoqda...';
+        document.getElementById('progressBar').classList.add('progress-bar-animated');
+      }
+    }
+
+    // Progress ni yangilash funksiyasi
+    async function updateProgress() {
+      try {
+        const progressRes = await fetch('/history/api/progress');
+        const progress = await progressRes.json();
+
+        if (!progress.isRunning) {
+          if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+          }
+          localStorage.removeItem('history_scraping');
+          document.getElementById('progressContainer').style.display = 'none';
+          alert('Skanerlash tugadi! Natijalar exports/ papkasida.');
+          location.reload();
+          return;
+        }
+
+        // Progress display ko'rsatish
+        document.getElementById('progressContainer').style.display = 'block';
+
+        // Pause/Resume holati
+        if (progress.isPaused) {
+          document.getElementById('pauseBtn').style.display = 'none';
+          document.getElementById('resumeBtn').style.display = 'inline-block';
+          document.getElementById('statusText').textContent = '⏸️ Pauza qilindi';
+          document.getElementById('progressBar').classList.remove('progress-bar-animated');
+        } else {
+          document.getElementById('pauseBtn').style.display = 'inline-block';
+          document.getElementById('resumeBtn').style.display = 'none';
+          document.getElementById('statusText').textContent = '▶️ Skanerlash davom etmoqda...';
+          document.getElementById('progressBar').classList.add('progress-bar-animated');
+        }
+
+        // Progress bar yangilash
+        const percent = progress.totalMessages > 0
+          ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
+          : 0;
+
+        document.getElementById('progressBar').style.width = percent + '%';
+        document.getElementById('progressBar').textContent = percent + '%';
+
+        document.getElementById('processedCount').textContent = progress.processedMessages;
+        document.getElementById('phonesCount').textContent = progress.phonesFound;
+        document.getElementById('uniquePhonesCount').textContent = progress.uniquePhones || 0;
+        document.getElementById('speedCount').textContent = progress.messagesPerMinute;
+
+        // O'tgan vaqtni hisoblash
+        if (progress.startTime) {
+          const elapsedMs = Date.now() - progress.startTime;
+          const elapsedMin = Math.floor(elapsedMs / 60000);
+          const elapsedSec = Math.floor((elapsedMs % 60000) / 1000);
+
+          if (elapsedMin > 0) {
+            document.getElementById('elapsedTime').textContent = `${elapsedMin} min ${elapsedSec} s`;
+          } else {
+            document.getElementById('elapsedTime').textContent = `${elapsedSec} s`;
+          }
+        }
+
+        if (progress.estimatedTimeLeft > 0) {
+          document.getElementById('timeLeft').textContent = progress.estimatedTimeLeft + ' min';
+        } else {
+          document.getElementById('timeLeft').textContent = '-';
+        }
+      } catch (error) {
+        console.error('Progress yangilanishda xato:', error);
+      }
+    }
+
+    // Sahifa yuklanganda - DOIM tekshirish
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // API orqali tekshirish
+        const progressRes = await fetch('/history/api/progress');
+        const progress = await progressRes.json();
+
+        if (progress.isRunning) {
+          // Progress ni ko'rsatish
+          localStorage.setItem('history_scraping', 'true');
+          updateProgress();
+          progressInterval = setInterval(updateProgress, 2000);
+        } else {
+          localStorage.removeItem('history_scraping');
+        }
+      } catch (error) {
+        console.error('Progress tekshirishda xato:', error);
+      }
+    });
+
+    // Sana bo'yicha skanerlash
+    document.getElementById('scrapeDateForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const formData = new FormData(this);
+
+      // Tanlangan guruhlarni olish
+      const selectedGroups = formData.getAll('group_ids[]');
+
+      const data = {
+        group_ids: selectedGroups,
+        start_date: formData.get('start_date'),
+        end_date: formData.get('end_date'),
+        export_name: formData.get('export_name') || ''
+      };
+
+      try {
+        const response = await fetch('/history/scrape-by-date', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // localStorage ga yozish - skanerlash boshlandi
+          localStorage.setItem('history_scraping', 'true');
+
+          // Navbat xabari ko'rsatish
+          if (result.message) {
+            alert('✅ ' + result.message);
+          }
+
+          // Progress ni boshlash
+          updateProgress();
+          progressInterval = setInterval(updateProgress, 2000);
+
+        } else {
+          alert('Xato: ' + result.error);
+        }
+      } catch (error) {
+        alert('Xato: ' + error.message);
+      }
+    });
+  </script>
+</body>
+</html>

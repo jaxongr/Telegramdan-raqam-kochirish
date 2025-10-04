@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guruh qo'shish - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history/results">
+                <i class="bi bi-archive"></i> Arxiv natijalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">Guruh qo'shish</h1>
+          <a href="/groups" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Orqaga
+          </a>
+        </div>
+
+        <% if (error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+        <% } %>
+
+        <div class="row">
+          <div class="col-md-8">
+            <div class="card">
+              <div class="card-body">
+                <form method="POST" action="/groups/add">
+                  <div class="mb-3">
+                    <label class="form-label">Telegram Guruh</label>
+                    <select name="telegram_id" class="form-control" required>
+                      <option value="">Tanlang...</option>
+                      <% dialogs.forEach(dialog => { %>
+                        <option value="<%= dialog.id %>"><%= dialog.name %> (<%= dialog.id %>)</option>
+                      <% }) %>
+                    </select>
+                    <small class="text-muted">Demo rejim: 3 ta test guruh</small>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Guruh nomi</label>
+                    <input type="text" name="name" class="form-control" placeholder="Logistika Toshkent" required>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Kalit so'zlar (opsional)</label>
+                    <textarea name="keywords" class="form-control" rows="3" placeholder="yuk bor, transport kerak, mashina bor"></textarea>
+                    <small class="text-muted">Vergul bilan ajratilgan. Bo'sh qoldirsa standart kalit so'zlar ishlatiladi.</small>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">SMS shablon</label>
+                    <textarea name="sms_template" class="form-control" rows="5" placeholder="Assalomu alaykum! Sizning e'loningizni ko'rdik..."></textarea>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Qo'shish
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body">
+                <h6><i class="bi bi-info-circle"></i> Yordam</h6>
+                <p class="small mb-2"><strong>Maksimum:</strong> 5 ta guruh</p>
+                <p class="small mb-2"><strong>Kalit so'zlar:</strong> 100+ standart so'z mavjud</p>
+                <p class="small mb-0"><strong>SMS shablon:</strong> Xabar matni</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
