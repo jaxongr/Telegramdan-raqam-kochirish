@@ -172,11 +172,25 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       if (!continueScanning) break;
 
       // Xabarlarni olish (100 ta batch)
-      const messages = await telegramClient.getMessages(entity, {
-        limit: 100,
-        offsetId: offsetId,
-        offsetDate: offsetDate
-      });
+      let messages = [];
+      try {
+        messages = await telegramClient.getMessages(entity, {
+          limit: 100,
+          offsetId: offsetId,
+          offsetDate: offsetDate
+        });
+      } catch (apiError) {
+        // FLOOD_WAIT yoki boshqa API xatolari
+        if (apiError.message && apiError.message.includes('FLOOD_WAIT')) {
+          const waitSeconds = parseInt(apiError.message.match(/\d+/)?.[0] || 60);
+          logger.warn(`⏳ FLOOD_WAIT: ${waitSeconds} soniya kutish kerak`);
+          await sleep(waitSeconds * 1000);
+          continue; // Qaytadan urinish
+        } else {
+          logger.error('❌ API xatosi:', apiError.message);
+          throw apiError; // Boshqa xatolar uchun throw
+        }
+      }
 
       if (messages.length === 0) {
         logger.info('📭 Xabarlar tugadi yoki oxiriga yetildi');

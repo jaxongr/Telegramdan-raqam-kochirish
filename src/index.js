@@ -68,6 +68,12 @@ async function main() {
         // Monitoring'ni boshlash
         await telegramClient.startMonitoring();
         console.log('✓ Monitoring boshlandi\n');
+
+        // Avtomatik resume - agar to'xtatilgan skanerlash bo'lsa davom ettirish
+        const { checkAndResumeScans } = require('./services/autoResume');
+        setTimeout(() => {
+          checkAndResumeScans().catch(err => logger.error('Auto-resume xatosi:', err));
+        }, 5000); // 5 soniyadan keyin tekshirish
       } else {
         console.error('❌ Telegram client xatosi:', result.error);
         process.exit(1);
