@@ -22,11 +22,15 @@ async function sendSMS(toPhone, groupId, messageText) {
 
     // Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
     const lastSMS = await getLastSMSTime(toPhone);
+    logger.info(`🔍 Cooldown check: ${toPhone} - Last SMS: ${lastSMS || 'none'}`);
+
     if (lastSMS) {
       const hoursSinceLastSMS = (Date.now() - new Date(lastSMS).getTime()) / (1000 * 60 * 60);
+      logger.info(`⏱ Hours since last SMS: ${hoursSinceLastSMS.toFixed(2)} / ${SMS_COOLDOWN_HOURS}`);
+
       if (hoursSinceLastSMS < SMS_COOLDOWN_HOURS) {
         const remainingMinutes = Math.ceil((SMS_COOLDOWN_HOURS - hoursSinceLastSMS) * 60);
-        logger.info(`${toPhone} uchun cooldown: ${remainingMinutes} daqiqa qoldi`);
+        logger.warn(`⏸ ${toPhone} uchun cooldown: ${remainingMinutes} daqiqa qoldi`);
         return { success: false, error: 'cooldown_active', remainingMinutes };
       }
     }
