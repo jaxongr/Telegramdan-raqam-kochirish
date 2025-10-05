@@ -148,7 +148,7 @@ router.get('/results', async (req, res) => {
     if (fs.existsSync(exportDir)) {
       const files = fs.readdirSync(exportDir);
 
-      // Faqat JSON fayllarni olish - kichik fayllarni o'qish, kattalarini emas
+      // Faqat JSON fayllarni olish - metadata ni tez o'qish
       exportFiles = files
         .filter(file => file.endsWith('.json') && file.startsWith('history_scrape_'))
         .map(file => {
@@ -162,16 +162,26 @@ router.get('/results', async (req, res) => {
           let totalPhones = 0;
           let uniquePhones = 0;
 
-          // Faqat 2MB dan kichik fayllarni o'qish (sekinlik oldini olish)
-          if (stats.size < 2 * 1024 * 1024) {
-            try {
-              const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          try {
+            // Faylning faqat boshini o'qish - totalPhones va uniquePhones metadata
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+
+            // JSON faylning boshidan metadata qidirish (regex bilan tez)
+            const totalMatch = fileContent.match(/"totalPhones"\s*:\s*(\d+)/);
+            const uniqueMatch = fileContent.match(/"uniquePhones"\s*:\s*(\d+)/);
+
+            if (totalMatch) totalPhones = parseInt(totalMatch[1]);
+            if (uniqueMatch) uniquePhones = parseInt(uniqueMatch[1]);
+
+            // Agar metadata bo'lmasa, to'liq parse qilish (faqat kichik fayllar uchun)
+            if (!totalMatch && stats.size < 5 * 1024 * 1024) {
+              const content = JSON.parse(fileContent);
               const phones = content.phones || [];
               totalPhones = phones.length;
               uniquePhones = [...new Set(phones.map(p => p.phone))].length;
-            } catch (e) {
-              console.error('File read error:', file, e.message);
             }
+          } catch (e) {
+            console.error('File read error:', file, e.message);
           }
 
           return {
