@@ -13,20 +13,15 @@ let currentPhoneIndex = 0; // Round-robin uchun
  * SMS yuborish (round-robin bilan)
  */
 async function sendSMS(toPhone, groupId, messageText) {
-  console.log(`\n🚀 sendSMS called: toPhone=${toPhone}, groupId=${groupId}, message=${messageText}`);
-
   try {
     // Input validation
     if (!toPhone || !messageText) {
-      console.log('❌ Input validation failed');
       logger.error('SMS yuborish: telefon yoki xabar bo\'sh');
       return { success: false, error: 'invalid_input' };
     }
 
-    console.log('✅ Input validation passed, checking cooldown...');
     // Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
     const lastSMS = await getLastSMSTime(toPhone);
-    console.log(`🔍 Cooldown check: ${toPhone} - Last SMS: ${lastSMS || 'none'}`);
     logger.info(`🔍 Cooldown check: ${toPhone} - Last SMS: ${lastSMS || 'none'}`);
 
     if (lastSMS) {
