@@ -283,10 +283,14 @@ async function getLastSMSTime(toPhone) {
       [toPhone, 'success']
     );
 
+    logger.info(`📊 getLastSMSTime query result for ${toPhone}: ${JSON.stringify(logs)}`);
+
     if (logs && logs.length > 0) {
+      logger.info(`✅ Found last SMS: ${logs[0].sent_at}`);
       return logs[0].sent_at;
     }
 
+    logger.info(`❌ No SMS found for ${toPhone}`);
     return null;
   } catch (error) {
     logger.error('Oxirgi SMS vaqtini olishda xato:', error);
