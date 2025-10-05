@@ -18,11 +18,11 @@ async function checkAndResumeScans() {
     const resumeFiles = files.filter(f => f.startsWith('resume_') && f.endsWith('.json'));
 
     if (resumeFiles.length === 0) {
-      logger.info('📂 Resume fayllar topilmadi');
+      console.log('📂 Resume fayllar topilmadi');
       return;
     }
 
-    logger.info(`📂 ${resumeFiles.length} ta resume fayl topildi`);
+    console.log(`\n📂 ${resumeFiles.length} ta resume fayl topildi`);
 
     // Fayllarni timestamp bo'yicha sortlash (eng yangi birinchi)
     const sortedFiles = resumeFiles.map(file => {
@@ -36,7 +36,7 @@ async function checkAndResumeScans() {
       };
     }).sort((a, b) => b.timestamp - a.timestamp); // Eng yangi birinchi
 
-    logger.info(`🔄 Eng yangi resume: ${sortedFiles[0]?.file}`);
+    console.log(`🔄 Eng yangi resume: ${sortedFiles[0]?.file}`);
 
     // Faqat ENG YANGI resume faylni qayta ishlash, eski fayllarni o'chirish
     for (let i = 0; i < sortedFiles.length; i++) {
@@ -47,14 +47,14 @@ async function checkAndResumeScans() {
         const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
 
         if (hoursSince > 24) {
-          logger.info(`🗑 Eski resume fayl o'chirildi: ${file} (${hoursSince.toFixed(1)} soat oldin)`);
+          console.log(`🗑 Eski resume fayl o'chirildi: ${file} (${hoursSince.toFixed(1)} soat oldin)`);
           fs.unlinkSync(filePath);
           continue;
         }
 
         // Agar bu birinchi (eng yangi) fayl emas bo'lsa, o'chirib yuborish
         if (i > 0) {
-          logger.info(`🗑 Eski resume fayl o'chirildi (yangi bor): ${file}`);
+          console.log(`🗑 Eski resume fayl o'chirildi (yangi bor): ${file}`);
           fs.unlinkSync(filePath);
           continue;
         }
@@ -63,9 +63,9 @@ async function checkAndResumeScans() {
         const originalFilename = resumeData.filename || `history_scrape_resumed_${resumeData.groupName}_${Date.now()}.json`;
 
         const phonesCount = resumeData.phonesFoundCount || (resumeData.phonesFound ? resumeData.phonesFound.length : 0);
-        logger.info(`▶️ Davom ettirish: ${resumeData.groupName}`);
-        logger.info(`   📊 ${resumeData.processedMessages} xabar | ${phonesCount} raqam topildi`);
-        logger.info(`   📝 Fayl: ${originalFilename}`);
+        console.log(`\n▶️ Davom ettirish: ${resumeData.groupName}`);
+        console.log(`   📊 ${resumeData.processedMessages} xabar | ${phonesCount} raqam topildi`);
+        console.log(`   📝 Fayl: ${originalFilename}`);
 
         // Navbatga qo'shish
         const task = {
