@@ -31,6 +31,11 @@
         </a>
       </li>
       <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'messages' ? 'active' : '' %>" href="/messages">
+          <i class="bi bi-send"></i> Habar Yuborish
+        </a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link <%= currentPage === 'history' ? 'active' : '' %>" href="/history">
           <i class="bi bi-clock-history"></i> Eski xabarlar
         </a>
@@ -66,6 +71,11 @@
       <li class="nav-item">
         <a class="nav-link" href="/broadcast/groups">
           <i class="bi bi-chat-dots"></i> Guruhlar Ro'yxati
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'files' ? 'active' : '' %>" href="/files">
+          <i class="bi bi-folder"></i> Fayllar
         </a>
       </li>
     </ul>
