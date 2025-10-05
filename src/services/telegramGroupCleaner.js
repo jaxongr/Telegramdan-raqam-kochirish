@@ -4,8 +4,8 @@ const { getClient } = require('./multiAccountManager');
 const { Api } = require('telegram');
 
 /**
- * TELEGRAM'DAN GURUHLARNI UNIKALLASHTIRUV
- * Har bir guruhni faqat bitta akkauntda qoldirish
+ * TELEGRAM'DAN GURUHLARNI UNIKALLASHTIRUV VA TENG TAQSIMLASH
+ * Har bir guruhni faqat bitta akkauntda qoldirish va teng taqsimlash
  */
 async function cleanDuplicateGroupsFromTelegram() {
   const accounts = getActiveAccounts();
@@ -17,11 +17,18 @@ async function cleanDuplicateGroupsFromTelegram() {
 
   logger.info(`🧹 Telegram'dan dublikat guruhlar tozalanmoqda...`);
   logger.info(`   Akkauntlar: ${accounts.length} ta`);
+  logger.info(`   📊 Strategiya: Teng taqsimlash (round-robin)`);
 
   // Barcha guruhlarni tracking qilish
-  const seenGroups = new Map(); // telegram_id -> account_id (birinchi topgan)
+  const seenGroups = new Map(); // telegram_id -> account_id (qaysi akkauntda qoldirilgan)
+  const accountGroupCounts = new Map(); // account_id -> guruhlar soni
+
+  // Har bir akkaunt uchun hisoblagich
+  accounts.forEach(acc => accountGroupCounts.set(acc.id, 0));
+
   let totalLeft = 0;
   let totalKept = 0;
+  let currentAccountIndex = 0; // Round-robin uchun
 
   for (const account of accounts) {
     try {
@@ -44,9 +51,9 @@ async function cleanDuplicateGroupsFromTelegram() {
 
           // Agar bu guruh allaqachon boshqa akkauntda ko'rilgan bo'lsa?
           if (seenGroups.has(telegramId)) {
-            // Bu guruhdan chiqamiz (leave)
-            const firstAccount = seenGroups.get(telegramId);
-            logger.info(`  ❌ LEAVE: ${title} (birinchi: Account ${firstAccount})`);
+            // Bu guruhdan chiqamiz (leave) - dublikat
+            const assignedAccount = seenGroups.get(telegramId);
+            logger.info(`  ❌ LEAVE: ${title} (saqlanadi: Account ${assignedAccount})`);
 
             try {
               // Kanaldan yoki guruhdan chiqish
@@ -76,11 +83,57 @@ async function cleanDuplicateGroupsFromTelegram() {
             }
 
           } else {
-            // Birinchi marta ko'ryapmiz - bu akkauntda qoldiramiz
-            seenGroups.set(telegramId, account.id);
-            logger.info(`  ✓ KEEP: ${title}`);
-            accountKept++;
-            totalKept++;
+            // Yangi guruh - qaysi akkauntda qoldirish kerakligini round-robin bilan aniqlash
+
+            // Eng kam guruhga ega akkauntni topish
+            let targetAccount = accounts[0];
+            let minCount = accountGroupCounts.get(targetAccount.id);
+
+            for (const acc of accounts) {
+              const count = accountGroupCounts.get(acc.id);
+              if (count < minCount) {
+                minCount = count;
+                targetAccount = acc;
+              }
+            }
+
+            // Agar bu guruh hozirgi akkauntda bo'lsa - qoldiramiz
+            if (targetAccount.id === account.id) {
+              seenGroups.set(telegramId, account.id);
+              accountGroupCounts.set(account.id, accountGroupCounts.get(account.id) + 1);
+              logger.info(`  ✓ KEEP: ${title} (${accountGroupCounts.get(account.id)} guruh)`);
+              accountKept++;
+              totalKept++;
+            } else {
+              // Boshqa akkauntda qoldirilishi kerak - bu yerdan chiqamiz
+              seenGroups.set(telegramId, targetAccount.id);
+              accountGroupCounts.set(targetAccount.id, accountGroupCounts.get(targetAccount.id) + 1);
+              logger.info(`  ❌ LEAVE: ${title} (saqlanadi: Account ${targetAccount.id})`);
+
+              try {
+                if (entity.className === 'Channel') {
+                  await client.invoke(
+                    new Api.channels.LeaveChannel({
+                      channel: entity
+                    })
+                  );
+                } else {
+                  await client.invoke(
+                    new Api.messages.DeleteChatUser({
+                      chatId: entity.id,
+                      userId: 'me'
+                    })
+                  );
+                }
+
+                accountLeft++;
+                totalLeft++;
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+              } catch (leaveError) {
+                logger.error(`     Guruhdan chiqishda xato: ${leaveError.message}`);
+              }
+            }
           }
         }
       }
@@ -106,9 +159,20 @@ async function cleanDuplicateGroupsFromTelegram() {
   logger.info(`   Unikal guruhlar (saqlangan): ${totalKept}`);
   logger.info(`   Guruhlardan chiqildi: ${totalLeft}`);
 
+  // Har bir akkauntdagi guruhlar soni
+  logger.info(`\n📊 Akkauntlar bo'yicha taqsimot:`);
+  for (const account of accounts) {
+    const count = accountGroupCounts.get(account.id);
+    logger.info(`   ${account.phone}: ${count} guruh`);
+  }
+
   return {
     uniqueGroups: totalKept,
-    leftGroups: totalLeft
+    leftGroups: totalLeft,
+    distribution: Array.from(accountGroupCounts.entries()).map(([id, count]) => ({
+      accountId: id,
+      groupCount: count
+    }))
   };
 }
 
