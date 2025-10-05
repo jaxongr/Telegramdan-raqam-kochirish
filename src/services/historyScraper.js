@@ -88,11 +88,19 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       throw new Error('Guruh topilmadi!');
     }
 
-    // Resume ma'lumotlarini yuklash
+    // Resume ma'lumotlarini yuklash yoki yaratish
     let resumeData = null;
     if (resumeFile && fs.existsSync(resumeFile)) {
       resumeData = JSON.parse(fs.readFileSync(resumeFile, 'utf8'));
       logger.info(`📂 Resume fayli yuklandi: ${resumeData.processedMessages} xabar qayta ishlanadi`);
+    } else if (!resumeFile) {
+      // Yangi resume fayl yaratish
+      const { createResumeFile } = require('./autoResume');
+      resumeFile = createResumeFile(groupId, group.name, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        filename: filename
+      });
     }
 
     // Kunlar orasidagi farqni hisoblash
@@ -711,6 +719,12 @@ async function processQueue() {
       await saveResultsToFile(result, task.filename);
 
       logger.info(`✅ Tugadi: ${task.name} | Topildi: ${result.phonesFound?.length || 0} raqam`);
+
+      // Resume faylni o'chirish (agar mavjud bo'lsa)
+      if (task.resumeFile) {
+        const { deleteResumeFile } = require('./autoResume');
+        deleteResumeFile(task.resumeFile);
+      }
     } catch (error) {
       logger.error(`❌ Xato: ${task.name}`, error.message);
     }
