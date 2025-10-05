@@ -12,6 +12,10 @@ const {
   getBroadcastLogs,
   cancelBroadcast
 } = require('../../services/groupBroadcaster');
+const {
+  smartBroadcast,
+  getBroadcastProgress
+} = require('../../services/smartBroadcaster');
 
 /**
  * Broadcast sahifasi
@@ -36,19 +40,20 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * Habar yuborish
+ * Habar yuborish (SMART - parallel va tez)
  */
 router.post('/send', async (req, res) => {
   try {
-    const { message_text, delay_seconds } = req.body;
+    const { message_text, messages_per_minute } = req.body;
 
     if (!message_text || message_text.trim().length === 0) {
       return res.redirect('/broadcast?error=' + encodeURIComponent('Habar matni bo\'sh!'));
     }
 
-    const delay = parseInt(delay_seconds) || 5;
+    const messagesPerMinute = parseInt(messages_per_minute) || 15;
 
-    const result = await broadcastMessage(message_text, delay);
+    // SMART broadcast - parallel va tez
+    const result = await smartBroadcast(message_text, messagesPerMinute);
 
     res.redirect('/broadcast/status/' + result.messageId);
   } catch (error) {

@@ -86,17 +86,20 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Delay (sekundlarda):</label>
+            <label class="form-label">Tezlik (habar/minut):</label>
             <input
               type="number"
-              name="delay_seconds"
+              name="messages_per_minute"
               class="form-control"
-              value="5"
-              min="1"
-              max="60"
+              value="15"
+              min="5"
+              max="30"
             >
             <div class="form-text">
-              Har bir guruh o'rtasida kutish vaqti (Flood wait dan qochish uchun)
+              <strong>SMART yuborish:</strong> Har bir akkaunt parallel ishlaydi!<br>
+              <span class="text-success">⚡ 15 habar/minut = Xavfsiz va tez</span><br>
+              <span class="text-warning">⚠️ 20+ habar/minut = FloodWait xavfi ortadi</span><br>
+              <span class="text-muted">💡 Agar 4 akkaunt bo'lsa: 15×4 = 60 habar/minutda!</span>
             </div>
           </div>
 
