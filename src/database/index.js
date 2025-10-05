@@ -221,6 +221,7 @@ async function query(sql, params = []) {
       keywords: params[2] || '',
       sms_template: params[3] || '',
       active: 1,
+      sms_enabled: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -294,6 +295,7 @@ async function query(sql, params = []) {
           if (field === 'keywords') db.groups[groupIndex].keywords = params[paramIdx++];
           if (field === 'sms_template') db.groups[groupIndex].sms_template = params[paramIdx++];
           if (field === 'active') db.groups[groupIndex].active = params[paramIdx++];
+          if (field === 'sms_enabled') db.groups[groupIndex].sms_enabled = params[paramIdx++];
         });
         db.groups[groupIndex].updated_at = new Date().toISOString();
       }
