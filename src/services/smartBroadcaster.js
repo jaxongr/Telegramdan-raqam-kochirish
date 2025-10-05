@@ -16,8 +16,17 @@ const activeBroadcasts = new Map();
 /**
  * SMART BROADCAST - Parallel va tez yuborish
  * Har bir akkaunt o'z guruhlariga parallel yuboradi
+ *
+ * XAVFSIZLIK:
+ * - 10-15 habar/minut: Juda xavfsiz (tavsiya etiladi)
+ * - 16-20 habar/minut: O'rtacha xavf
+ * - 20+ habar/minut: Yuqori xavf (bloklanish mumkin)
  */
 async function smartBroadcast(messageText, messagesPerMinute = 15) {
+  // Xavfsizlik tekshiruvi
+  if (messagesPerMinute > 25) {
+    logger.warn(`⚠️ OGOHLANTIRISH: ${messagesPerMinute} habar/minut juda tez! Bloklanish xavfi yuqori!`);
+  }
   try {
     const result = createBroadcastMessage(messageText);
     const messageId = result.lastInsertRowid;
@@ -112,6 +121,21 @@ async function sendSmartBroadcastInBackground(messageId, messageText, accountGro
 }
 
 /**
+ * Habar matnini ozgina o'zgartirish (spam detection dan qochish)
+ */
+function addRandomVariation(text) {
+  // Oxiriga invisible space yoki minimal o'zgarish
+  const variations = [
+    text, // Original
+    text + '\u200B', // Zero-width space
+    text + ' ', // Regular space
+    text + '\u00A0', // Non-breaking space
+  ];
+
+  return variations[Math.floor(Math.random() * variations.length)];
+}
+
+/**
  * Bitta akkaunt uchun habarlarni yuborish
  */
 async function sendMessagesForAccount(messageId, accountId, groups, messageText, delayMs, session) {
@@ -124,8 +148,11 @@ async function sendMessagesForAccount(messageId, accountId, groups, messageText,
 
   for (const group of groups) {
     try {
+      // Habar matnini ozgina o'zgartirish (har safar boshqacha bo'ladi)
+      const variedText = addRandomVariation(messageText);
+
       // Habar yuborish
-      const result = await sendMessageToGroup(accountId, group.telegram_id, messageText);
+      const result = await sendMessageToGroup(accountId, group.telegram_id, variedText);
 
       if (result.success) {
         session.sentCount++;
