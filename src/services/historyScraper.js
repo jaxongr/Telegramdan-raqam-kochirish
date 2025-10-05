@@ -295,6 +295,9 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
           phonesFound: results.phonesFound,
           lastMessageId: offsetId,
           lastMessageDate: new Date(offsetDate * 1000).toISOString(),
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          filename: filename, // MUHIM: O'sha faylga davom ettirish uchun
           timestamp: new Date().toISOString()
         };
         fs.writeFileSync(resumeFile, JSON.stringify(resumeData, null, 2));

@@ -24,15 +24,27 @@ async function checkAndResumeScans() {
 
     logger.info(`📂 ${resumeFiles.length} ta resume fayl topildi`);
 
-    for (const file of resumeFiles) {
+    // Fayllarni timestamp bo'yicha sortlash (eng yangi birinchi)
+    const sortedFiles = resumeFiles.map(file => {
       const filePath = path.join(resumeDir, file);
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return {
+        file,
+        filePath,
+        data,
+        timestamp: new Date(data.timestamp || 0).getTime()
+      };
+    }).sort((a, b) => b.timestamp - a.timestamp); // Eng yangi birinchi
+
+    logger.info(`🔄 Eng yangi resume: ${sortedFiles[0]?.file}`);
+
+    // Faqat ENG YANGI resume faylni qayta ishlash, eski fayllarni o'chirish
+    for (let i = 0; i < sortedFiles.length; i++) {
+      const { file, filePath, data: resumeData, timestamp } = sortedFiles[i];
 
       try {
-        const resumeData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-
         // Vaqtni tekshirish - 24 soatdan eski bo'lsa o'chirish
-        const timestamp = new Date(resumeData.timestamp);
-        const hoursSince = (Date.now() - timestamp.getTime()) / (1000 * 60 * 60);
+        const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
 
         if (hoursSince > 24) {
           logger.info(`🗑 Eski resume fayl o'chirildi: ${file} (${hoursSince.toFixed(1)} soat oldin)`);
@@ -40,12 +52,24 @@ async function checkAndResumeScans() {
           continue;
         }
 
-        logger.info(`▶️ Davom ettirish: ${resumeData.groupName} (${resumeData.processedMessages} xabar bajarilgan)`);
+        // Agar bu birinchi (eng yangi) fayl emas bo'lsa, o'chirib yuborish
+        if (i > 0) {
+          logger.info(`🗑 Eski resume fayl o'chirildi (yangi bor): ${file}`);
+          fs.unlinkSync(filePath);
+          continue;
+        }
+
+        // Eski filename ni olish yoki yangi yaratish
+        const originalFilename = resumeData.filename || `history_scrape_resumed_${resumeData.groupName}_${Date.now()}.json`;
+
+        logger.info(`▶️ Davom ettirish: ${resumeData.groupName}`);
+        logger.info(`   📊 ${resumeData.processedMessages} xabar bajarilgan`);
+        logger.info(`   📝 Fayl: ${originalFilename}`);
 
         // Navbatga qo'shish
         const task = {
           name: `Resume: ${resumeData.groupName}`,
-          filename: resumeData.filename || `history_scrape_resumed_${Date.now()}.json`,
+          filename: originalFilename,
           execute: async () => {
             const startDate = new Date(resumeData.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
             const endDate = new Date(resumeData.endDate || new Date());
@@ -55,7 +79,7 @@ async function checkAndResumeScans() {
               startDate,
               endDate,
               filePath, // resume fayl
-              resumeData.filename
+              originalFilename // O'sha fayl nomini davom ettirish
             );
           }
         };

@@ -15,6 +15,7 @@
         <a href="/" class="btn btn-outline-light btn-sm"><i class="bi bi-house"></i> Dashboard</a>
         <a href="/accounts" class="btn btn-outline-light btn-sm"><i class="bi bi-people"></i> Akkauntlar</a>
         <a href="/broadcast" class="btn btn-light btn-sm"><i class="bi bi-broadcast"></i> Broadcast</a>
+        <a href="/files" class="btn btn-outline-light btn-sm"><i class="bi bi-folder"></i> Fayllar</a>
         <a href="/broadcast/groups" class="btn btn-outline-light btn-sm"><i class="bi bi-chat-dots"></i> Guruhlar</a>
         <a href="/logout" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i> Chiqish</a>
       </div>
@@ -86,20 +87,17 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Tezlik (habar/minut):</label>
-            <input
-              type="number"
-              name="messages_per_minute"
-              class="form-control"
-              value="15"
-              min="5"
-              max="30"
-            >
+            <label class="form-label">Tezlik (habar/minut per akkaunt):</label>
+            <select name="messages_per_minute" class="form-select">
+              <option value="15">15 habar/min (Xavfsiz - Tavsiya)</option>
+              <option value="20" selected>20 habar/min (Tez - Optimal)</option>
+              <option value="25">25 habar/min (Juda Tez - Xavfli)</option>
+              <option value="30">30 habar/min (Maksimal - FloodWait xavfi)</option>
+            </select>
             <div class="form-text">
-              <strong>SMART yuborish:</strong> Har bir akkaunt parallel ishlaydi!<br>
-              <span class="text-success">⚡ 15 habar/minut = Xavfsiz va tez</span><br>
-              <span class="text-warning">⚠️ 20+ habar/minut = FloodWait xavfi ortadi</span><br>
-              <span class="text-muted">💡 Agar 4 akkaunt bo'lsa: 15×4 = 60 habar/minutda!</span>
+              <strong>💡 PARALLEL yuborish:</strong> Har bir akkaunt o'z tezligida ishlaydi!<br>
+              <span class="text-success">✅ 4 akkaunt × 20 habar/min = <strong>80 habar/minutda!</strong></span><br>
+              <span class="text-info">📊 <%= groups.length %> guruh ≈ <%= Math.ceil(groups.length / (stats.totalAccounts * 20)) %> minut</span>
             </div>
           </div>
 

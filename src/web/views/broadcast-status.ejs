@@ -126,10 +126,41 @@
     </div>
   </div>
 
-  <!-- Auto-refresh agar sending bo'lsa -->
+  <!-- Real-time progress update -->
   <% if (status.status === 'sending') { %>
     <script>
-      setTimeout(() => window.location.reload(), 5000);
+      // Real-time progress yangilanishi
+      let updateInterval = setInterval(async () => {
+        try {
+          const response = await fetch('/broadcast/api/progress/<%= status.messageId %>');
+          const data = await response.json();
+
+          if (data && !data.error) {
+            // Progress bar yangilash
+            const successPercent = (data.sentCount / data.totalGroups * 100).toFixed(1);
+            const failedPercent = (data.failedCount / data.totalGroups * 100).toFixed(1);
+            const skippedPercent = (data.skippedCount / data.totalGroups * 100).toFixed(1);
+
+            document.querySelector('.progress-bar.bg-success').style.width = successPercent + '%';
+            document.querySelector('.progress-bar.bg-success').textContent = data.sentCount;
+
+            document.querySelector('.progress-bar.bg-danger').style.width = failedPercent + '%';
+            document.querySelector('.progress-bar.bg-danger').textContent = data.failedCount;
+
+            // Status yangilash
+            document.querySelector('.col-md-3:nth-child(3) .text-success').textContent = data.sentCount;
+            document.querySelector('.col-md-3:nth-child(4) .text-danger').textContent = data.failedCount;
+
+            // Agar tugagan bo'lsa - to'xtatish va sahifani yangilash
+            if (data.status === 'completed') {
+              clearInterval(updateInterval);
+              setTimeout(() => window.location.reload(), 2000);
+            }
+          }
+        } catch (error) {
+          console.error('Progress yangilashda xato:', error);
+        }
+      }, 2000); // Har 2 sekundda yangilash
     </script>
   <% } %>
 

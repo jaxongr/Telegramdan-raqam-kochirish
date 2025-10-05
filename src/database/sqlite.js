@@ -51,6 +51,9 @@ function initBroadcastDatabase() {
       last_broadcast_time TEXT,
       total_broadcasts INTEGER DEFAULT 0,
       status TEXT DEFAULT 'active',
+      write_permission TEXT DEFAULT 'allowed',
+      slowmode_until TEXT,
+      skip_reason TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (assigned_account_id) REFERENCES telegram_accounts(id)
     )
@@ -240,7 +243,7 @@ function createBroadcastMessage(messageText, scheduledTime = null) {
  * Broadcast message statusini yangilash
  */
 function updateBroadcastStatus(messageId, status, sentCount = null, failedCount = null) {
-  let sql = 'UPDATE broadcast_messages SET status = ?, updated_at = CURRENT_TIMESTAMP';
+  let sql = 'UPDATE broadcast_messages SET status = ?';
   const params = [status];
 
   if (sentCount !== null) {
@@ -314,6 +317,63 @@ function getAccountStats() {
 /**
  * Database yopish
  */
+/**
+ * Guruh write permission yangilash
+ */
+function updateGroupPermission(groupId, writePermission, skipReason = null, slowmodeUntil = null) {
+  const stmt = db.prepare(`
+    UPDATE broadcast_groups
+    SET write_permission = ?, skip_reason = ?, slowmode_until = ?
+    WHERE id = ?
+  `);
+
+  return stmt.run(writePermission, skipReason, slowmodeUntil, groupId);
+}
+
+/**
+ * Guruhni yuborish uchun tekshirish
+ */
+function canSendToGroup(groupId) {
+  const stmt = db.prepare(`
+    SELECT write_permission, slowmode_until, skip_reason
+    FROM broadcast_groups
+    WHERE id = ?
+  `);
+
+  const group = stmt.get(groupId);
+
+  if (!group) return { canSend: false, reason: 'Guruh topilmadi' };
+
+  // Agar yozish taqiqlangan bo'lsa
+  if (group.write_permission === 'denied') {
+    return { canSend: false, reason: group.skip_reason || 'Yozish taqiqlangan' };
+  }
+
+  // Agar slowmode bo'lsa
+  if (group.slowmode_until) {
+    const slowmodeEnd = new Date(group.slowmode_until);
+    if (slowmodeEnd > new Date()) {
+      return { canSend: false, reason: 'SlowMode', waitUntil: group.slowmode_until };
+    }
+  }
+
+  return { canSend: true };
+}
+
+/**
+ * Message guruhga yuborilganmi tekshirish
+ */
+function isMessageSentToGroup(messageId, groupId) {
+  const stmt = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM broadcast_logs
+    WHERE message_id = ? AND group_id = ? AND status = 'sent'
+  `);
+
+  const result = stmt.get(messageId, groupId);
+  return result.count > 0;
+}
+
 function closeDatabase() {
   db.close();
 }
@@ -334,6 +394,9 @@ module.exports = {
   addBroadcastLog,
   getBroadcastStats,
   getAccountStats,
+  updateGroupPermission,
+  canSendToGroup,
+  isMessageSentToGroup,
   closeDatabase,
   db // Raw database access
 };

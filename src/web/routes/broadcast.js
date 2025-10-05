@@ -87,6 +87,20 @@ router.get('/status/:messageId', (req, res) => {
 });
 
 /**
+ * Broadcast progress API (real-time)
+ */
+router.get('/api/progress/:messageId', (req, res) => {
+  try {
+    const messageId = parseInt(req.params.messageId);
+    const progress = getBroadcastProgress(messageId);
+
+    res.json(progress || { error: 'Not found' });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
+/**
  * Broadcast status API
  */
 router.get('/api/status/:messageId', (req, res) => {

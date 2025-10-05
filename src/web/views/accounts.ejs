@@ -16,6 +16,7 @@
         <a href="/accounts" class="btn btn-light btn-sm"><i class="bi bi-people"></i> Akkauntlar</a>
         <a href="/broadcast" class="btn btn-outline-light btn-sm"><i class="bi bi-broadcast"></i> Broadcast</a>
         <a href="/broadcast/groups" class="btn btn-outline-light btn-sm"><i class="bi bi-chat-dots"></i> Guruhlar</a>
+        <a href="/files" class="btn btn-outline-light btn-sm"><i class="bi bi-folder"></i> Fayllar</a>
         <a href="/logout" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i> Chiqish</a>
       </div>
     </div>
@@ -88,9 +89,9 @@
               <i class="bi bi-download"></i> Guruhlarni Yig'ish
             </button>
           </form>
-          <form action="/accounts/clean-telegram-groups" method="POST" style="display: inline">
-            <button type="submit" class="btn btn-danger" onclick="return confirm('⚠️ DIQQAT: Telegram akkauntlaringizdan dublikat guruhlar o\'chiriladi! Har bir guruh faqat 1 akkauntda qoladi. Davom etasizmi?')">
-              <i class="bi bi-trash"></i> Telegram'dan Tozalash (Unikal)
+          <form action="/accounts/deduplicate" method="POST" style="display: inline">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Database\'dagi dublikatlar o\'chiriladi. Telegram\'dan chiqilMAYDI. Davom etasizmi?')">
+              <i class="bi bi-funnel"></i> Dublikatlarni Tozalash (DB)
             </button>
           </form>
           <form action="/accounts/auto-assign" method="POST" style="display: inline">
@@ -98,9 +99,9 @@
               <i class="bi bi-shuffle"></i> Avtomatik Taqsimlash
             </button>
           </form>
-          <form action="/accounts/auto-rebalance" method="POST" style="display: inline">
-            <button type="submit" class="btn btn-success" onclick="return confirm('🤖 TO\'LIQ AVTOMATIK: Ko\'p guruhli akkauntlardan guruhlar leave qilinadi va kam guruhli akkauntlarga avtomatik join qilinadi. Davom etasizmi?')">
-              <i class="bi bi-robot"></i> Avtomatik Rebalance
+          <form action="/accounts/rebalance" method="POST" style="display: inline">
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Barcha guruhlar qayta taqsimlanadi (faqat database). Davom etasizmi?')">
+              <i class="bi bi-arrow-repeat"></i> Qayta Taqsimlash
             </button>
           </form>
         </div>

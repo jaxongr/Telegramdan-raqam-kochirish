@@ -18,6 +18,7 @@ const messagesRouter = require('./routes/messages');
 // YANGI: Broadcast routes
 const accountsRouter = require('./routes/accounts');
 const broadcastRouter = require('./routes/broadcast');
+const filesRouter = require('./routes/files');
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/messages', requireAuth, messagesRouter);
 // YANGI: Broadcast routes
 app.use('/accounts', requireAuth, accountsRouter);
 app.use('/broadcast', requireAuth, broadcastRouter);
+app.use('/files', requireAuth, filesRouter);
 
 // 404
 app.use((req, res) => {

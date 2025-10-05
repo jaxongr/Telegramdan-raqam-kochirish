@@ -295,8 +295,25 @@ async function sendMessageToGroup(accountId, groupTelegramId, messageText) {
   try {
     const client = await getClient(accountId);
 
+    // Telegram ID ni to'g'ri formatga keltirish
+    let chatId = groupTelegramId;
+
+    // Agar string bo'lsa, BigInt ga o'girish
+    if (typeof chatId === 'string') {
+      // Agar "-100" bilan boshlansa, kanal/supergroup
+      if (chatId.startsWith('-100')) {
+        chatId = BigInt(chatId);
+      } else if (chatId.startsWith('-')) {
+        // Oddiy guruh
+        chatId = BigInt(chatId);
+      } else {
+        // Raqam
+        chatId = BigInt(chatId);
+      }
+    }
+
     // Guruhni topish
-    const entity = await client.getEntity(groupTelegramId);
+    const entity = await client.getEntity(chatId);
 
     // Habar yuborish
     await client.sendMessage(entity, { message: messageText });
@@ -305,14 +322,48 @@ async function sendMessageToGroup(accountId, groupTelegramId, messageText) {
     return { success: true };
 
   } catch (error) {
-    logger.error(`✗ Habar yuborishda xato (${groupTelegramId}):`, error);
+    logger.error(`✗ Habar yuborishda xato (${groupTelegramId}):`, error.message);
+
+    // Entity topilmadi - guruhdan chiqib ketilgan yoki o'chirilgan
+    if (error.message.includes('Could not find the input entity') ||
+        error.message.includes('No user has')) {
+      return {
+        success: false,
+        error: 'ENTITY_NOT_FOUND'
+      };
+    }
+
+    // CHAT_WRITE_FORBIDDEN - yozish taqiqlangan
+    if (error.message.includes('CHAT_WRITE_FORBIDDEN')) {
+      return {
+        success: false,
+        error: 'CHAT_WRITE_FORBIDDEN'
+      };
+    }
+
+    // USER_BANNED_IN_CHANNEL - ban qilingan
+    if (error.message.includes('USER_BANNED')) {
+      return {
+        success: false,
+        error: 'USER_BANNED'
+      };
+    }
+
+    // SLOWMODE_WAIT
+    if (error.message.includes('SLOWMODE_WAIT')) {
+      const seconds = parseInt(error.message.match(/\d+/)?.[0] || 60);
+      return {
+        success: false,
+        error: `SLOWMODE_WAIT_${seconds}`
+      };
+    }
 
     // Flood wait
     if (error.message.includes('FLOOD_WAIT')) {
       const seconds = parseInt(error.message.match(/\d+/)?.[0] || 60);
       return {
         success: false,
-        error: 'flood_wait',
+        error: 'FLOOD_WAIT',
         waitSeconds: seconds
       };
     }
