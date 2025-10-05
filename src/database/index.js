@@ -205,9 +205,21 @@ async function query(sql, params = []) {
       result = [...result].sort((a, b) => new Date(b.sent_at) - new Date(a.sent_at));
     }
     if (sqlUpper.includes('LIMIT')) {
-      const limit = params[params.length - 1];
-      result = result.slice(0, limit);
+      // Extract LIMIT value from SQL (can be hardcoded or parameterized)
+      const limitMatch = sql.match(/LIMIT\s+(\d+)/i);
+      if (limitMatch) {
+        const limit = parseInt(limitMatch[1]);
+        console.log(`🔍 DEBUG: Applying LIMIT ${limit}`);
+        result = result.slice(0, limit);
+      } else {
+        // Fallback: try using last parameter
+        const limit = params[params.length - 1];
+        if (typeof limit === 'number') {
+          result = result.slice(0, limit);
+        }
+      }
     }
+    console.log(`🔍 DEBUG: Returning ${result.length} results`);
     return result;
   }
 
