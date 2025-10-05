@@ -77,9 +77,14 @@ async function main() {
 
         // Avtomatik resume - agar to'xtatilgan skanerlash bo'lsa davom ettirish
         const { checkAndResumeScans } = require('./services/autoResume');
-        setTimeout(() => {
-          logger.info('🔄 Avtomatik resume tekshiruvi boshlandi...');
-          checkAndResumeScans().catch(err => logger.error('Auto-resume xatosi:', err));
+        setTimeout(async () => {
+          console.log('\n🔄 Avtomatik resume tekshiruvi boshlandi...');
+          try {
+            await checkAndResumeScans();
+            console.log('✓ Resume tekshiruvi tugadi\n');
+          } catch (err) {
+            console.error('❌ Auto-resume xatosi:', err);
+          }
         }, 15000); // 15 soniya kutish - Telegram client to'liq tayyor bo'lishi uchun
       } else {
         console.error('❌ Telegram client xatosi:', result.error);
