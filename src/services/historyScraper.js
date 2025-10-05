@@ -171,9 +171,9 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
       if (!continueScanning) break;
 
-      // Xabarlarni olish (50 ta batch - API limit uchun kamaytirildi)
+      // Xabarlarni olish (100 ta batch)
       const messages = await telegramClient.getMessages(entity, {
-        limit: 50,
+        limit: 100,
         offsetId: offsetId,
         offsetDate: offsetDate
       });
@@ -283,8 +283,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         logger.info(`📊 Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam | ${currentProgress.messagesPerMinute} msg/min`);
       }
 
-      // Telegram API rate limit (3 soniya kutish - xavfsizlik uchun)
-      await sleep(3000);
+      // Telegram API rate limit (1.5 soniya kutish - optimallashtirilgan)
+      await sleep(1500);
     }
 
     logger.info(`✓ Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi`);
