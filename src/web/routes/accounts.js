@@ -17,6 +17,10 @@ const {
   cleanAndRefreshDatabase
 } = require('../../services/telegramGroupCleaner');
 const {
+  balanceGroupsAcrossAccounts,
+  showAccountBalance
+} = require('../../services/groupBalancer');
+const {
   startQRLogin,
   getLoginStatus,
   cancelLogin
@@ -170,6 +174,33 @@ router.post('/auto-assign', async (req, res) => {
     console.error('Taqsimlashda xato:', error);
     res.redirect('/accounts?error=' + encodeURIComponent(error.message));
   }
+});
+
+/**
+ * Akkauntlar orasida balanslash (SMART)
+ */
+router.post('/balance', async (req, res) => {
+  try {
+    const result = await balanceGroupsAcrossAccounts();
+
+    if (result.suggestions && result.suggestions.length > 0) {
+      // Tavsiyalarni session'ga saqlash
+      req.session.balanceSuggestions = result.suggestions;
+    }
+
+    res.redirect('/accounts?message=' + encodeURIComponent(result.message));
+  } catch (error) {
+    console.error('Balanslashda xato:', error);
+    res.redirect('/accounts?error=' + encodeURIComponent(error.message));
+  }
+});
+
+/**
+ * Balanslash tavsiyalarini ko'rish
+ */
+router.get('/balance-suggestions', (req, res) => {
+  const suggestions = req.session.balanceSuggestions || [];
+  res.render('balance-suggestions', { suggestions });
 });
 
 /**
