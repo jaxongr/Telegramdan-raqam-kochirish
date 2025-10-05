@@ -163,6 +163,9 @@ async function query(sql, params = []) {
     if (sqlUpper.includes('WHERE TO_PHONE') && sqlUpper.includes('DATE(SENT_AT)')) {
       const today = new Date().toISOString().split('T')[0];
       result = result.filter(s => s.to_phone === params[0] && s.sent_at && s.sent_at.split('T')[0] === today);
+    } else if (sqlUpper.includes('WHERE TO_PHONE') && sqlUpper.includes('AND STATUS')) {
+      // Cooldown uchun: WHERE to_phone = ? AND status = ?
+      result = result.filter(s => s.to_phone === params[0] && s.status === params[1]);
     } else {
       // Boshqa WHERE shartlari
       if (sqlUpper.includes('WHERE GROUP_ID')) {
