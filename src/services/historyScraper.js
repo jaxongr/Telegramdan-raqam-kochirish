@@ -179,6 +179,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       });
 
       if (messages.length === 0) {
+        logger.info('📭 Xabarlar tugadi yoki oxiriga yetildi');
         break;
       }
 
@@ -286,16 +287,15 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       await sleep(3000);
     }
 
-    // Progress tugallash
-    updateProgress({ isRunning: false });
-
     logger.info(`✓ Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi`);
+
+    // MUHIM: Progress faqat navbat tizimi tomonidan o'chirilsin!
 
     return results;
 
   } catch (error) {
-    updateProgress({ isRunning: false });
     logger.error('Tarixni skanerlashda xato:', error);
+    // Xato bo'lganda ham progress navbat tomonidan boshqariladi
     throw error;
   }
 }
@@ -696,19 +696,22 @@ async function processQueue() {
       // Natijani saqlash
       await saveResultsToFile(result, task.filename);
 
-      logger.info(`✅ Tugadi: ${task.name}`);
+      logger.info(`✅ Tugadi: ${task.name} | Topildi: ${result.phonesFound?.length || 0} raqam`);
     } catch (error) {
-      logger.error(`❌ Xato: ${task.name}`, error);
+      logger.error(`❌ Xato: ${task.name}`, error.message);
     }
 
-    // Har bir task orasida 2 soniya kutish
+    // Har bir task orasida 5 soniya kutish
     if (taskQueue.length > 0) {
-      await sleep(2000);
+      logger.info(`⏳ Keyingi task boshlanishiga 5 soniya...`);
+      await sleep(5000);
     }
   }
 
+  // Barcha tasklar tugadi - endi progress ni o'chirish
   isProcessingQueue = false;
-  logger.info('✅ Navbat tugadi!');
+  updateProgress({ isRunning: false });
+  logger.info('✅ Barcha navbat tugadi!');
 }
 
 /**
