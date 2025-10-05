@@ -40,7 +40,13 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: Telegram phone number scraper with SemySMS integration\n\nFeatures:\n- Real-time Telegram monitoring for phone numbers\n- Historical message scraping with auto-save\n- SemySMS API integration for automated SMS sending\n- Web dashboard for management\n- Round-robin SMS sending with daily limits\n- JSON-based database\n- Group-specific SMS templates and keywords\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@5.189.141.151 \"curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs git\")",
+      "Bash(ssh -o StrictHostKeyChecking=no root@5.189.141.151 \"npm install -g pm2 && git clone https://github.com/jaxongr/Telegramdan-raqam-kochirish.git /root/telegram-sms\")",
+      "Bash(ssh -o StrictHostKeyChecking=no root@5.189.141.151 \"cd /root/telegram-sms && cat > .env << ''EOF''\nMODE=production\nTELEGRAM_API_ID=20330024\nTELEGRAM_API_HASH=09f429bbd6278fc534798fb349239e0e\nTELEGRAM_PHONE=+998901579450\nTELEGRAM_SESSION=1AgAOMTQ5LjE1NC4xNjcuNDEBu3y1L8XP3USYh9r1tVJXRaH6kdJrdCo0bzxLqV6sF9BaU32BRoqN4yFnxQsB7fEDWADDXIbf4Jqetkt7aYGyszaNMHMr0sCiIYwwcmUbRHoX2UdNXA1PyjSLeNFR8ACuJmH7PxlUFRZuzTI1gbVnMpX9GiBK+h+5KwXC9Qdl38XELUDXjmm9ux87VChlcghm3fhVxJkQfsZ367+A5N5CT3LLkKb/J9vdDZBFj56zoeKewwDvNrqLgZWcv/N97rmTOKRabpFa52tw9HjzBlpsexjHeMKcwRRNilJxClAhohU+64w+eZkNMV0SIXLpfgjjhVmEehXYhU/cG8QJLg5laI0=\nSEMYSMS_API_KEY=c83da9b60ac2fa1463887a85735cb711\nWEB_PORT=3000\nWEB_USERNAME=admin\nWEB_PASSWORD=admin123\nSMS_DAILY_LIMIT_PER_NUMBER=2\nSMS_DELAY_SECONDS=1\nNODE_ENV=production\nLOG_LEVEL=info\nTIMEZONE=Asia/Tashkent\nEOF\n\")",
+      "Bash(ssh -o StrictHostKeyChecking=no root@5.189.141.151 \"cd /root/telegram-sms && npm install --production && mkdir -p data logs exports\")",
+      "Bash(ssh:*)"
     ],
     "deny": [],
     "ask": []

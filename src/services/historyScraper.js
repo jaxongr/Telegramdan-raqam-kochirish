@@ -22,7 +22,13 @@ let currentProgress = {
   startTime: null,
   lastUpdateTime: null,
   messagesPerMinute: 0,
-  estimatedTimeLeft: 0
+  estimatedTimeLeft: 0,
+  // Kunlar uchun progress
+  totalDays: 0,
+  processedDays: 0,
+  currentDate: null,
+  startDate: null,
+  endDate: null
 };
 
 // Queue tizimi
@@ -89,6 +95,9 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       logger.info(`📂 Resume fayli yuklandi: ${resumeData.processedMessages} xabar qayta ishlanadi`);
     }
 
+    // Kunlar orasidagi farqni hisoblash
+    const totalDaysCount = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
     // Progress to'liq reset qilish (yangi skanerlash uchun)
     currentProgress = {
       isRunning: true,
@@ -102,7 +111,13 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       startTime: Date.now(),
       lastUpdateTime: Date.now(),
       messagesPerMinute: 0,
-      estimatedTimeLeft: 0
+      estimatedTimeLeft: 0,
+      // Kunlar
+      totalDays: totalDaysCount,
+      processedDays: 0,
+      currentDate: endDate.toISOString(),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
     };
 
     logger.info(`📜 Sana bo'yicha skanerlash: ${group.name} (${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()})`);
@@ -212,12 +227,17 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // Progress yangilash
+          // Progress yangilash va kunni hisoblash
           const uniquePhones = [...new Set(results.phonesFound.map(p => p.phone))];
+          const currentMsgDate = msgDate;
+          const daysProcessed = Math.ceil((endDate - currentMsgDate) / (1000 * 60 * 60 * 24));
+
           updateProgress({
             processedMessages: currentProgress.processedMessages + 1,
             phonesFound: results.phonesFound.length,
-            uniquePhones: uniquePhones.length
+            uniquePhones: uniquePhones.length,
+            processedDays: daysProcessed,
+            currentDate: currentMsgDate.toISOString()
           });
 
           // Har 100 ta raqam topilganda asosiy faylni yangilash (backup emas!)

@@ -210,9 +210,32 @@
                   </button>
                 </div>
               </div>
-              <div class="progress mb-2" style="height: 25px;">
-                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">0%</div>
+              <!-- Kunlar progress bar -->
+              <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <small class="text-muted">Kunlar progress:</small>
+                  <small class="text-muted">
+                    <strong id="processedDays">0</strong> / <strong id="totalDays">0</strong> kun
+                  </small>
+                </div>
+                <div class="progress" style="height: 20px;">
+                  <div id="daysProgressBar" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <small class="text-muted">
+                  Hozirgi sana: <strong id="currentDateText">-</strong>
+                </small>
               </div>
+
+              <!-- Xabarlar progress bar -->
+              <div class="mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <small class="text-muted">Xabarlar progress:</small>
+                </div>
+                <div class="progress" style="height: 25px;">
+                  <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">0%</div>
+                </div>
+              </div>
+
               <div class="row text-center">
                 <div class="col-md-2">
                   <strong id="processedCount">0</strong> xabar qayta ishlandi
@@ -380,7 +403,22 @@
           document.getElementById('progressBar').classList.add('progress-bar-animated');
         }
 
-        // Progress bar yangilash
+        // Kunlar progress bar yangilash
+        if (progress.totalDays && progress.totalDays > 0) {
+          const daysPercent = Math.round((progress.processedDays / progress.totalDays) * 100);
+          document.getElementById('daysProgressBar').style.width = daysPercent + '%';
+          document.getElementById('daysProgressBar').textContent = daysPercent + '%';
+          document.getElementById('processedDays').textContent = progress.processedDays;
+          document.getElementById('totalDays').textContent = progress.totalDays;
+
+          // Hozirgi sanani ko'rsatish
+          if (progress.currentDate) {
+            const currentDate = new Date(progress.currentDate);
+            document.getElementById('currentDateText').textContent = currentDate.toLocaleDateString('uz-UZ');
+          }
+        }
+
+        // Xabarlar progress bar yangilash
         const percent = progress.totalMessages > 0
           ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
           : 0;
