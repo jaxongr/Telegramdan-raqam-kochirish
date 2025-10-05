@@ -51,7 +51,8 @@
       "WebFetch(domain:semysms.net)",
       "Bash(awk:*)",
       "Bash(xargs:*)",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []

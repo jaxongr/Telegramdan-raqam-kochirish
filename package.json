@@ -34,6 +34,7 @@
     "input": "^1.0.1",
     "json2csv": "^6.0.0-alpha.2",
     "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0",
     "telegram": "^2.22.2",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1",

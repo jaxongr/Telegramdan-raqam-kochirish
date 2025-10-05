@@ -75,6 +75,32 @@ async function main() {
         await telegramClient.startMonitoring();
         console.log('✓ Monitoring boshlandi\n');
 
+        // YANGI: Logistics bot'ni ishga tushirish
+        if (process.env.LOGISTICS_BOT_TOKEN) {
+          console.log('[LOGISTICS] Bot ishga tushirilmoqda...');
+          const logisticsBot = require('./services/logisticsBot');
+          const logisticsBotResult = logisticsBot.startLogisticsBot();
+
+          if (logisticsBotResult.success) {
+            console.log('✓ Logistics bot tayyor');
+
+            // Telegram client'ni logistics bot'ga ulash
+            logisticsBot.setTelegramClient(getClient());
+
+            // Kuzatiladigan guruhlarni o'rnatish
+            const { getActiveGroups } = require('./database/models');
+            const activeGroups = await getActiveGroups();
+            logisticsBot.setMonitoredGroups(activeGroups);
+
+            // Trial checker
+            logisticsBot.checkTrialExpired();
+
+            console.log('✓ Logistics bot to\'liq sozlandi\n');
+          } else {
+            console.error('❌ Logistics bot xatosi:', logisticsBotResult.error);
+          }
+        }
+
         // Avtomatik resume - agar to'xtatilgan skanerlash bo'lsa davom ettirish
         const { checkAndResumeScans } = require('./services/autoResume');
         setTimeout(async () => {

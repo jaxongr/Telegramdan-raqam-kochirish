@@ -130,6 +130,17 @@ async function startMonitoring() {
           }
         }
       }
+
+      // YANGI: Logistics bot'ga yuborish (faqat kalit so'zlar bor guruhlarga)
+      if (keywords.length > 0 && phones.length > 0) {
+        try {
+          const { processNewMessage } = require('./logisticsBot');
+          await processNewMessage(event.message, parseInt(chatId), group.name);
+        } catch (logError) {
+          logger.error('Logistics bot xatosi:', logError);
+        }
+      }
+
     } catch (error) {
       logger.error('Xabar qayta ishlashda xato:', error);
     }
