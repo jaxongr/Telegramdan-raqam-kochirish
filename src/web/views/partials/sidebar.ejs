@@ -1,0 +1,81 @@
+<!-- Sidebar -->
+<nav class="col-md-2 d-md-block sidebar">
+  <div class="position-sticky pt-3">
+    <h5 class="text-white px-3 mb-3">
+      <i class="bi bi-telegram"></i> Telegram SMS
+    </h5>
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'dashboard' ? 'active' : '' %>" href="/">
+          <i class="bi bi-speedometer2"></i> Bosh sahifa
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'groups' ? 'active' : '' %>" href="/groups">
+          <i class="bi bi-collection"></i> Guruhlar
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'phones' ? 'active' : '' %>" href="/phones">
+          <i class="bi bi-telephone"></i> Telefon raqamlar
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'sms' ? 'active' : '' %>" href="/sms">
+          <i class="bi bi-chat-dots"></i> SMS loglar
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'semysms' ? 'active' : '' %>" href="/semysms">
+          <i class="bi bi-sim"></i> SemySMS raqamlar
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'history' ? 'active' : '' %>" href="/history">
+          <i class="bi bi-clock-history"></i> Eski xabarlar
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/history/results">
+          <i class="bi bi-archive"></i> Arxiv natijalar
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'settings' ? 'active' : '' %>" href="/settings">
+          <i class="bi bi-gear"></i> Sozlamalar
+        </a>
+      </li>
+    </ul>
+
+    <hr class="text-white">
+
+    <h5 class="text-white px-3 mb-3 mt-3">
+      <i class="bi bi-megaphone"></i> Broadcast
+    </h5>
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'accounts' ? 'active' : '' %>" href="/accounts">
+          <i class="bi bi-people"></i> Akkauntlar
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPage === 'broadcast' ? 'active' : '' %>" href="/broadcast">
+          <i class="bi bi-broadcast"></i> Habar Yuborish
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/broadcast/groups">
+          <i class="bi bi-chat-dots"></i> Guruhlar Ro'yxati
+        </a>
+      </li>
+    </ul>
+
+    <hr class="text-white">
+    <div class="px-3">
+      <small class="text-muted">Foydalanuvchi: <%= typeof username !== 'undefined' ? username : 'admin' %></small><br>
+      <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+        <i class="bi bi-box-arrow-right"></i> Chiqish
+      </a>
+    </div>
+  </div>
+</nav>

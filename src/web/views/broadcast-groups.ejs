@@ -10,16 +10,24 @@
 <body>
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
-      <a class="navbar-brand" href="/broadcast">
-        <i class="bi bi-arrow-left"></i> Broadcast
-      </a>
-      <div class="btn-group">
-        <a href="/broadcast/groups?filter=all" class="btn btn-sm <%= filter === 'all' ? 'btn-light' : 'btn-outline-light' %>">Hammasi</a>
-        <a href="/broadcast/groups?filter=assigned" class="btn btn-sm <%= filter === 'assigned' ? 'btn-light' : 'btn-outline-light' %>">Tayinlangan</a>
-        <a href="/broadcast/groups?filter=unassigned" class="btn btn-sm <%= filter === 'unassigned' ? 'btn-light' : 'btn-outline-light' %>">Tayinlanmagan</a>
+      <a class="navbar-brand" href="/">📱 Telegram SMS & Broadcast</a>
+      <div>
+        <a href="/" class="btn btn-outline-light btn-sm"><i class="bi bi-house"></i> Dashboard</a>
+        <a href="/accounts" class="btn btn-outline-light btn-sm"><i class="bi bi-people"></i> Akkauntlar</a>
+        <a href="/broadcast" class="btn btn-outline-light btn-sm"><i class="bi bi-broadcast"></i> Broadcast</a>
+        <a href="/broadcast/groups" class="btn btn-light btn-sm"><i class="bi bi-chat-dots"></i> Guruhlar</a>
+        <a href="/logout" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i> Chiqish</a>
       </div>
     </div>
   </nav>
+
+  <div class="container-fluid mt-3">
+    <div class="btn-group mb-3">
+      <a href="/broadcast/groups?filter=all" class="btn btn-sm <%= filter === 'all' ? 'btn-primary' : 'btn-outline-primary' %>">Hammasi</a>
+      <a href="/broadcast/groups?filter=assigned" class="btn btn-sm <%= filter === 'assigned' ? 'btn-primary' : 'btn-outline-primary' %>">Tayinlangan</a>
+      <a href="/broadcast/groups?filter=unassigned" class="btn btn-sm <%= filter === 'unassigned' ? 'btn-primary' : 'btn-outline-primary' %>">Tayinlanmagan</a>
+    </div>
+  </div>
 
   <div class="container mt-4">
     <div class="card">
