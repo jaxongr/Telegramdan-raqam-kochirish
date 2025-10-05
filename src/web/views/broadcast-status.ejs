@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broadcast Status - #<%= status.messageId %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/broadcast">
+        <i class="bi bi-arrow-left"></i> Broadcast sahifasiga qaytish
+      </a>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h4><i class="bi bi-broadcast"></i> Broadcast #<%= status.messageId %></h4>
+      </div>
+      <div class="card-body">
+        <!-- Status -->
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <strong>Status:</strong>
+            <% if (status.status === 'completed') { %>
+              <span class="badge bg-success">Tugadi</span>
+            <% } else if (status.status === 'sending') { %>
+              <span class="badge bg-primary">Yuborilmoqda</span>
+            <% } else { %>
+              <span class="badge bg-warning"><%= status.status %></span>
+            <% } %>
+          </div>
+          <div class="col-md-3">
+            <strong>Jami:</strong> <%= status.totalGroups %> guruh
+          </div>
+          <div class="col-md-3">
+            <strong>Muvaffaqiyatli:</strong>
+            <span class="text-success"><%= status.sentCount %></span>
+          </div>
+          <div class="col-md-3">
+            <strong>Xato:</strong>
+            <span class="text-danger"><%= status.failedCount %></span>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <% const progress = status.totalGroups > 0 ? ((status.sentCount + status.failedCount) / status.totalGroups * 100) : 0 %>
+        <div class="progress mb-3" style="height: 30px">
+          <div class="progress-bar bg-success" style="width: <%= (status.sentCount / status.totalGroups * 100) %>%">
+            <%= status.sentCount %>
+          </div>
+          <div class="progress-bar bg-danger" style="width: <%= (status.failedCount / status.totalGroups * 100) %>%">
+            <%= status.failedCount %>
+          </div>
+        </div>
+
+        <!-- Habar matni -->
+        <div class="alert alert-secondary">
+          <strong>Habar:</strong><br>
+          <%= status.messageText || 'N/A' %>
+        </div>
+
+        <!-- Vaqtlar -->
+        <div class="row">
+          <div class="col-md-4">
+            <small><strong>Boshlangan:</strong></small><br>
+            <%= status.startedAt ? new Date(status.startedAt).toLocaleString('uz-UZ') : '-' %>
+          </div>
+          <div class="col-md-4">
+            <small><strong>Tugagan:</strong></small><br>
+            <%= status.completedAt ? new Date(status.completedAt).toLocaleString('uz-UZ') : '-' %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loglar -->
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="bi bi-list-ul"></i> Loglar (<%= logs.length %>)</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>Guruh</th>
+                <th>Akkaunt</th>
+                <th>Status</th>
+                <th>Xato</th>
+                <th>Vaqt</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% logs.forEach(log => { %>
+                <tr>
+                  <td>
+                    <small><%= log.group_title || log.group_telegram_id %></small>
+                  </td>
+                  <td>
+                    <small><%= log.account_phone || '-' %></small>
+                  </td>
+                  <td>
+                    <% if (log.status === 'success') { %>
+                      <span class="badge bg-success">✓</span>
+                    <% } else { %>
+                      <span class="badge bg-danger">✗</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <small class="text-danger"><%= log.error || '-' %></small>
+                  </td>
+                  <td>
+                    <small><%= log.sent_at ? new Date(log.sent_at).toLocaleString('uz-UZ') : '-' %></small>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-refresh agar sending bo'lsa -->
+  <% if (status.status === 'sending') { %>
+    <script>
+      setTimeout(() => window.location.reload(), 5000);
+    </script>
+  <% } %>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -15,6 +15,10 @@ const settingsRouter = require('./routes/settings');
 const historyRouter = require('./routes/history');
 const messagesRouter = require('./routes/messages');
 
+// YANGI: Broadcast routes
+const accountsRouter = require('./routes/accounts');
+const broadcastRouter = require('./routes/broadcast');
+
 const app = express();
 
 // View engine
@@ -76,6 +80,10 @@ app.use('/semysms', requireAuth, semysmsRouter);
 app.use('/history', requireAuth, historyRouter);
 app.use('/settings', requireAuth, settingsRouter);
 app.use('/messages', requireAuth, messagesRouter);
+
+// YANGI: Broadcast routes
+app.use('/accounts', requireAuth, accountsRouter);
+app.use('/broadcast', requireAuth, broadcastRouter);
 
 // 404
 app.use((req, res) => {

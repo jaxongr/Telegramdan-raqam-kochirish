@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { initDatabase } = require('./database');
+const { initBroadcastDatabase } = require('./database/sqlite'); // YANGI
 const app = require('./web/app');
 const logger = require('./utils/logger');
 
@@ -13,6 +14,7 @@ async function main() {
     // 1. Database
     console.log('[1/3] Database ishga tushirilmoqda...');
     await initDatabase();
+    initBroadcastDatabase(); // YANGI: Broadcast database
     console.log('✓ Database tayyor\n');
 
     // 2. Telegram Client (faqat serverda ishlaydi)

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broadcast - Guruh Habarlar</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">📱 Telegram SMS & Broadcast</a>
+      <div>
+        <a href="/" class="btn btn-outline-light btn-sm">SMS Tizim</a>
+        <a href="/accounts" class="btn btn-outline-light btn-sm">Akkauntlar</a>
+        <a href="/broadcast" class="btn btn-light btn-sm">Broadcast</a>
+        <a href="/broadcast/groups" class="btn btn-outline-light btn-sm">Guruhlar</a>
+        <a href="/logout" class="btn btn-outline-danger btn-sm">Chiqish</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <% if (message) { %>
+      <div class="alert alert-success alert-dismissible">
+        <%= message %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="alert alert-danger alert-dismissible">
+        <%= error %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% } %>
+
+    <!-- Statistika -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="card bg-success text-white">
+          <div class="card-body">
+            <h5><i class="bi bi-chat-dots"></i> Jami Guruhlar</h5>
+            <h2><%= stats.totalGroups %></h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-info text-white">
+          <div class="card-body">
+            <h5><i class="bi bi-check2-circle"></i> Tayinlangan</h5>
+            <h2><%= stats.assignedGroups %></h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-warning text-white">
+          <div class="card-body">
+            <h5><i class="bi bi-broadcast"></i> Yuborilgan</h5>
+            <h2><%= stats.totalMessages %></h2>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Habar yuborish formi -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5><i class="bi bi-megaphone"></i> Barcha Guruhlarga Habar Yuborish</h5>
+      </div>
+      <div class="card-body">
+        <form action="/broadcast/send" method="POST">
+          <div class="mb-3">
+            <label class="form-label">Habar matni:</label>
+            <textarea
+              name="message_text"
+              class="form-control"
+              rows="6"
+              required
+              placeholder="Bu yerga habaringizni yozing..."
+            ></textarea>
+            <div class="form-text">
+              Barcha guruhlar: <%= groups.length %> ta
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Delay (sekundlarda):</label>
+            <input
+              type="number"
+              name="delay_seconds"
+              class="form-control"
+              value="5"
+              min="1"
+              max="60"
+            >
+            <div class="form-text">
+              Har bir guruh o'rtasida kutish vaqti (Flood wait dan qochish uchun)
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-lg btn-primary">
+            <i class="bi bi-send-fill"></i> Habar Yuborish (<%= groups.length %> guruhga)
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Oxirgi habarlar -->
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="bi bi-clock-history"></i> Oxirgi Yuborilgan Habarlar</h5>
+      </div>
+      <div class="card-body">
+        <% if (recentBroadcasts.length === 0) { %>
+          <div class="alert alert-info">
+            Hali habar yuborilmagan
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Habar</th>
+                  <th>Status</th>
+                  <th>Guruhlar</th>
+                  <th>Muvaffaqiyatli</th>
+                  <th>Xato</th>
+                  <th>Vaqt</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% recentBroadcasts.forEach(msg => { %>
+                  <tr>
+                    <td><%= msg.id %></td>
+                    <td>
+                      <%= msg.message_text.substring(0, 50) %><%= msg.message_text.length > 50 ? '...' : '' %>
+                    </td>
+                    <td>
+                      <% if (msg.status === 'completed') { %>
+                        <span class="badge bg-success">Tugadi</span>
+                      <% } else if (msg.status === 'sending') { %>
+                        <span class="badge bg-primary">Yuborilmoqda</span>
+                      <% } else if (msg.status === 'pending') { %>
+                        <span class="badge bg-warning">Kutilmoqda</span>
+                      <% } else { %>
+                        <span class="badge bg-danger"><%= msg.status %></span>
+                      <% } %>
+                    </td>
+                    <td><%= msg.total_groups %></td>
+                    <td class="text-success"><%= msg.sent_count %></td>
+                    <td class="text-danger"><%= msg.failed_count %></td>
+                    <td><%= new Date(msg.created_at).toLocaleString('uz-UZ') %></td>
+                    <td>
+                      <a href="/broadcast/status/<%= msg.id %>" class="btn btn-sm btn-info">
+                        <i class="bi bi-eye"></i> Ko'rish
+                      </a>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

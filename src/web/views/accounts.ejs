@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Akkauntlar - Broadcast Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">📱 Telegram SMS & Broadcast</a>
+      <div>
+        <a href="/" class="btn btn-outline-light btn-sm">SMS Tizim</a>
+        <a href="/accounts" class="btn btn-light btn-sm">Akkauntlar</a>
+        <a href="/broadcast" class="btn btn-outline-light btn-sm">Broadcast</a>
+        <a href="/logout" class="btn btn-outline-danger btn-sm">Chiqish</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <% if (message) { %>
+      <div class="alert alert-success alert-dismissible">
+        <%= message %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="alert alert-danger alert-dismissible">
+        <%= error %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% } %>
+
+    <!-- Statistika -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-white bg-primary">
+          <div class="card-body">
+            <h5><i class="bi bi-person-circle"></i> Akkauntlar</h5>
+            <h2><%= stats.totalAccounts %></h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-white bg-success">
+          <div class="card-body">
+            <h5><i class="bi bi-chat-dots"></i> Guruhlar</h5>
+            <h2><%= stats.totalGroups %></h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-white bg-info">
+          <div class="card-body">
+            <h5><i class="bi bi-check-circle"></i> Tayinlangan</h5>
+            <h2><%= stats.assignedGroups %></h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-white bg-warning">
+          <div class="card-body">
+            <h5><i class="bi bi-broadcast"></i> Habarlar</h5>
+            <h2><%= stats.totalMessages %></h2>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Amallar</h5>
+        <div class="btn-group" role="group">
+          <a href="/accounts/add" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Yangi Akkaunt Qo'shish (QR Code)
+          </a>
+          <form action="/accounts/fetch-groups" method="POST" style="display: inline">
+            <button type="submit" class="btn btn-success" onclick="return confirm('Barcha akkauntlardan guruhlar yig\'iladi. Davom etasizmi?')">
+              <i class="bi bi-download"></i> Guruhlarni Yig'ish
+            </button>
+          </form>
+          <form action="/accounts/auto-assign" method="POST" style="display: inline">
+            <button type="submit" class="btn btn-info">
+              <i class="bi bi-shuffle"></i> Avtomatik Taqsimlash
+            </button>
+          </form>
+          <form action="/accounts/rebalance" method="POST" style="display: inline">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Barcha guruhlar qayta taqsimlanadi. Davom etasizmi?')">
+              <i class="bi bi-arrow-repeat"></i> Qayta Balanslash
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Akkauntlar ro'yxati -->
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="bi bi-people"></i> Telegram Akkauntlar</h5>
+      </div>
+      <div class="card-body">
+        <% if (accounts.length === 0) { %>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Akkauntlar yo'q. QR Code orqali yangi akkaunt qo'shing.
+          </div>
+        <% } else { %>
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Telefon</th>
+                <th>Status</th>
+                <th>Guruhlar</th>
+                <th>Yuborilgan</th>
+                <th>Oxirgi</th>
+                <th>Amallar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% accounts.forEach(account => { %>
+                <tr>
+                  <td><%= account.id %></td>
+                  <td>
+                    <strong><%= account.phone %></strong>
+                  </td>
+                  <td>
+                    <% if (account.status === 'active') { %>
+                      <span class="badge bg-success">Active</span>
+                    <% } else if (account.status === 'flood_wait') { %>
+                      <span class="badge bg-warning">Flood Wait</span>
+                    <% } else { %>
+                      <span class="badge bg-danger"><%= account.status %></span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <span class="badge bg-primary"><%= account.actual_groups_count || 0 %> guruh</span>
+                  </td>
+                  <td><%= account.total_messages_sent || 0 %> ta</td>
+                  <td>
+                    <%= account.last_message_time ? new Date(account.last_message_time).toLocaleString('uz-UZ') : '-' %>
+                  </td>
+                  <td>
+                    <form action="/accounts/delete/<%= account.id %>" method="POST" style="display: inline">
+                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Akkauntni o\'chirasizmi?')">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
