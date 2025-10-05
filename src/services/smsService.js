@@ -3,8 +3,9 @@ const { getActiveSemySMSPhones, updateSemySMSPhone, logSMS, getSMSCountToday } =
 const logger = require('../utils/logger');
 
 const SEMYSMS_API_URL = 'https://semysms.net/api/3';
-const DAILY_LIMIT = parseInt(process.env.SMS_DAILY_LIMIT_PER_NUMBER) || 2;
+const DAILY_LIMIT = parseInt(process.env.SMS_DAILY_LIMIT_PER_NUMBER) || 1000000;
 const SMS_DELAY = parseInt(process.env.SMS_DELAY_SECONDS) || 1;
+const SMS_COOLDOWN_HOURS = parseInt(process.env.SMS_COOLDOWN_HOURS) || 2; // 2 soat cooldown
 
 let currentPhoneIndex = 0; // Round-robin uchun
 
@@ -19,7 +20,18 @@ async function sendSMS(toPhone, groupId, messageText) {
       return { success: false, error: 'invalid_input' };
     }
 
-    // Kunlik limit tekshirish
+    // Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
+    const lastSMS = await getLastSMSTime(toPhone);
+    if (lastSMS) {
+      const hoursSinceLastSMS = (Date.now() - new Date(lastSMS).getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastSMS < SMS_COOLDOWN_HOURS) {
+        const remainingMinutes = Math.ceil((SMS_COOLDOWN_HOURS - hoursSinceLastSMS) * 60);
+        logger.info(`${toPhone} uchun cooldown: ${remainingMinutes} daqiqa qoldi`);
+        return { success: false, error: 'cooldown_active', remainingMinutes };
+      }
+    }
+
+    // Kunlik limit tekshirish (faqat backup)
     const todayCount = await getSMSCountToday(toPhone);
     if (todayCount >= DAILY_LIMIT) {
       logger.warn(`${toPhone} bugun limitga yetgan (${todayCount}/${DAILY_LIMIT})`);
@@ -257,6 +269,28 @@ async function updateAllBalances() {
 }
 
 /**
+ * Oxirgi SMS yuborilgan vaqtni olish
+ */
+async function getLastSMSTime(toPhone) {
+  try {
+    const { query } = require('../database/index');
+    const logs = await query(
+      'SELECT * FROM sms_logs WHERE to_phone = ? AND status = ? ORDER BY sent_at DESC LIMIT 1',
+      [toPhone, 'success']
+    );
+
+    if (logs && logs.length > 0) {
+      return logs[0].sent_at;
+    }
+
+    return null;
+  } catch (error) {
+    logger.error('Oxirgi SMS vaqtini olishda xato:', error);
+    return null;
+  }
+}
+
+/**
  * Sleep funksiyasi
  */
 function sleep(ms) {
@@ -268,5 +302,6 @@ module.exports = {
   sendTestSMS,
   checkBalance,
   updateAllBalances,
-  prepareSMSText
+  prepareSMSText,
+  getLastSMSTime
 };
