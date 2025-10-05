@@ -57,7 +57,9 @@ async function startMonitoring() {
   logger.info('📡 Monitoring boshlandi...');
 
   // Faol guruhlarni olish
+  logger.info('🔍 Faol guruhlar olinmoqda...');
   const activeGroups = await getActiveGroups();
+  logger.info(`✅ ${activeGroups.length} ta guruh topildi`);
   logger.info(`Monitoring: ${activeGroups.length} ta guruh`);
 
   // Yangi xabarlarni tinglash
