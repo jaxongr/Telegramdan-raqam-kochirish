@@ -148,33 +148,28 @@ router.get('/results', async (req, res) => {
     if (fs.existsSync(exportDir)) {
       const files = fs.readdirSync(exportDir);
 
-      // Faqat JSON fayllarni olish
+      // Faqat JSON fayllarni olish - TEZKOR (faylni o'qimasdan)
       exportFiles = files
         .filter(file => file.endsWith('.json') && file.startsWith('history_scrape_'))
         .map(file => {
           const filePath = path.join(exportDir, file);
           const stats = fs.statSync(filePath);
 
-          // Faylni o'qish va statistikani olish
-          let totalPhones = 0;
-          let uniquePhones = 0;
-          try {
-            const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            const phones = content.phones || [];
-            totalPhones = phones.length; // Real raqamlar soni
-            uniquePhones = [...new Set(phones.map(p => p.phone))].length;
-          } catch (e) {
-            // Xato bo'lsa default qiymatlar
-            console.error('File read error:', e.message);
-          }
+          // Faqat metadata - faylni o'qimaslik (katta fayllar uchun juda sekin!)
+          const sizeKB = (stats.size / 1024).toFixed(2);
+          const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
+          const displaySize = stats.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
 
           return {
             name: file,
             txtFile: file.replace('.json', '.txt'),
-            size: (stats.size / 1024).toFixed(2), // KB
+            xlsxFile: file.replace('.json', '.xlsx'),
+            size: displaySize,
+            sizeBytes: stats.size,
             created: stats.mtime,
-            totalPhones,
-            uniquePhones
+            // Telefon raqamlarni ko'rsatmaslik - faylni ochish sekin
+            totalPhones: '-',
+            uniquePhones: '-'
           };
         })
         .sort((a, b) => b.created - a.created); // Eng yangilarni yuqorida
