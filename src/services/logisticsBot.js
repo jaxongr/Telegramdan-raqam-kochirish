@@ -434,8 +434,11 @@ async function postToTargetGroup(announcementId, category, formattedText, score,
     }
 
     // Topic ID (mavzu ID) - Yoldauz | Rasmiy guruhida yaratilgan
-    // Yukchi = topic 1, Dispecher = topic 2 (forum group'da)
-    const topicId = category === 'yukchi' ? 1 : 2; // Bu ID'larni guruhdan olish kerak
+    // MUHIM: Guruhda yaratilgan topic ID'larni .env'ga qo'shing
+    // LOGISTICS_TOPIC_YUKCHI=... va LOGISTICS_TOPIC_DISPECHER=...
+    const yukchiTopicId = process.env.LOGISTICS_TOPIC_YUKCHI || null;
+    const dispecherTopicId = process.env.LOGISTICS_TOPIC_DISPECHER || null;
+    const topicId = category === 'yukchi' ? yukchiTopicId : dispecherTopicId;
 
     // Inline buttons
     const keyboard = {
@@ -449,15 +452,22 @@ async function postToTargetGroup(announcementId, category, formattedText, score,
       ]
     };
 
-    // Post (message_thread_id = topicId for forum groups)
+    // Post options
+    const postOptions = {
+      reply_markup: keyboard
+    };
+
+    // Faqat topic ID bo'lsa qo'shish (forum group uchun)
+    if (topicId) {
+      postOptions.message_thread_id = parseInt(topicId);
+    }
+
+    // Post
     await bot.sendMessage(TARGET_GROUP_ID, `
 ${formattedText}
 
 📊 Score: ${score} | Guruhlar: ${details.groupsCount} | Kunlik: ${details.dailyPostsCount}
-    `, {
-      reply_markup: keyboard,
-      message_thread_id: topicId // Forum group uchun
-    });
+    `, postOptions);
 
     console.log(`✅ Guruhga post qilindi: ${category}`);
   } catch (error) {
