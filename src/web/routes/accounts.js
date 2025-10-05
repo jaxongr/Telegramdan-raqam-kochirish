@@ -17,6 +17,12 @@ const {
   getLoginStatus,
   cancelLogin
 } = require('../../services/accountScanner');
+const {
+  startPhoneLogin,
+  submitPhoneCode,
+  submitPassword,
+  cancelPhoneLogin
+} = require('../../services/phoneLogin');
 
 /**
  * Akkauntlar ro'yxati sahifasi
@@ -43,6 +49,15 @@ router.get('/', async (req, res) => {
  */
 router.get('/add', (req, res) => {
   res.render('account-scanner', {
+    error: null
+  });
+});
+
+/**
+ * Telefon login sahifasi
+ */
+router.get('/add-phone', (req, res) => {
+  res.render('account-phone-login', {
     error: null
   });
 });
@@ -160,6 +175,48 @@ router.get('/api/info/:id', async (req, res) => {
     const info = await getAccountInfo(parseInt(req.params.id));
     res.json({ success: true, info });
   } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Telefon login boshlash (API)
+ */
+router.post('/api/phone-login', async (req, res) => {
+  try {
+    const { phone, apiId, apiHash } = req.body;
+    const result = await startPhoneLogin(phone, apiId, apiHash);
+    res.json(result);
+  } catch (error) {
+    console.error('Telefon login xatosi:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * SMS kodni tasdiqlash (API)
+ */
+router.post('/api/phone-code', async (req, res) => {
+  try {
+    const { loginId, code } = req.body;
+    const result = await submitPhoneCode(loginId, code);
+    res.json(result);
+  } catch (error) {
+    console.error('Kod tasdiqlash xatosi:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 2FA parolni tasdiqlash (API)
+ */
+router.post('/api/phone-password', async (req, res) => {
+  try {
+    const { loginId, password } = req.body;
+    const result = await submitPassword(loginId, password);
+    res.json(result);
+  } catch (error) {
+    console.error('Parol tasdiqlash xatosi:', error);
     res.json({ success: false, error: error.message });
   }
 });
