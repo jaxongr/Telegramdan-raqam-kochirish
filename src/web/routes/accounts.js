@@ -21,6 +21,9 @@ const {
   showAccountBalance
 } = require('../../services/groupBalancer');
 const {
+  fullyAutomaticRebalance
+} = require('../../services/autoGroupJoiner');
+const {
   startQRLogin,
   getLoginStatus,
   cancelLogin
@@ -177,7 +180,27 @@ router.post('/auto-assign', async (req, res) => {
 });
 
 /**
- * Akkauntlar orasida balanslash (SMART)
+ * TO'LIQ AVTOMATIK REBALANCE
+ */
+router.post('/auto-rebalance', async (req, res) => {
+  try {
+    const result = await fullyAutomaticRebalance();
+
+    if (result.balanced) {
+      res.redirect('/accounts?message=' + encodeURIComponent(
+        `Avtomatik rebalance tugadi! ${result.totalMoved || 0} guruh ko'chirildi.`
+      ));
+    } else {
+      res.redirect('/accounts?error=' + encodeURIComponent(result.reason || 'Xato'));
+    }
+  } catch (error) {
+    console.error('Avtomatik rebalance xatosi:', error);
+    res.redirect('/accounts?error=' + encodeURIComponent(error.message));
+  }
+});
+
+/**
+ * Akkauntlar orasida balanslash (SMART - yarim-avtomatik)
  */
 router.post('/balance', async (req, res) => {
   try {
