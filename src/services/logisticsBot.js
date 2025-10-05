@@ -60,7 +60,7 @@ function startLogisticsBot(token = BOT_TOKEN) {
  */
 function setTelegramClient(client) {
   telegramClient = client;
-  console.log('✅ Telegram client logistics bot'ga ulandi');
+  console.log('✅ Telegram client logistics bot\'ga ulandi');
 }
 
 /**
