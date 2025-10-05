@@ -154,20 +154,10 @@ async function classifyUser(telegramId, username, firstName, messageText, telegr
     hasMultiRoutes: false
   };
 
-  // 1. Admin tomonidan tasdiqlangan bo'lsa
-  const userClassification = getUserClassification(telegramId);
-  if (userClassification && userClassification.admin_verified) {
-    return {
-      category: userClassification.category,
-      score: 100,
-      details: {
-        adminVerified: true,
-        ...details
-      }
-    };
-  }
+  // ADMIN TO'G'RILASH KLASSIFIKATSIYAGA ARALASHMAYDI!
+  // Faqat ball tizimi ishlaydi
 
-  // 2. Guruhlar soni (faqat logistics guruhlar)
+  // 1. Guruhlar soni (faqat logistics guruhlar)
   if (telegramClient && groupsList.length > 0) {
     const userInfo = await getUserInfo(telegramClient, telegramId, groupsList);
     if (userInfo) {

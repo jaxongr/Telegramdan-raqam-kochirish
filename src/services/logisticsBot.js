@@ -284,44 +284,7 @@ Muvaffaqiyatlar!
       return;
     }
 
-    // Admin to'g'rilash
-    if (data.startsWith('admin_correct_')) {
-      const adminId = userId;
-      if (!ADMIN_IDS.includes(adminId)) {
-        return bot.answerCallbackQuery(query.id, { text: '❌ Ruxsat yo\'q' });
-      }
-
-      const parts = data.replace('admin_correct_', '').split('_');
-      const announcementId = parseInt(parts[0]);
-      const newCategory = parts[1]; // yukchi yoki dispecher
-
-      const { default: betterSqlite3 } = await import('better-sqlite3');
-      const Database = betterSqlite3;
-      const path = require('path');
-      const dbPath = path.join(__dirname, '../../data/logistics.db');
-      const db = new Database(dbPath);
-
-      const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(announcementId);
-
-      if (announcement) {
-        const oldCategory = announcement.category;
-        saveAdminCorrection(announcementId, announcement.user_telegram_id, oldCategory, newCategory, adminId);
-
-        bot.answerCallbackQuery(query.id, {
-          text: `✅ ${oldCategory} → ${newCategory} o'zgartirildi. Keyingi safar to'g'ri klassifikatsiya qilinadi!`,
-          show_alert: true
-        });
-
-        // Xabarni yangilash
-        bot.editMessageReplyMarkup(
-          { inline_keyboard: [] },
-          { chat_id: chatId, message_id: query.message.message_id }
-        );
-      }
-
-      db.close();
-      return;
-    }
+    // Admin to'g'rilash O'CHIRILDI (klassifikatsiyaga aralashmaydi)
 
     bot.answerCallbackQuery(query.id);
   });
@@ -440,15 +403,10 @@ async function postToTargetGroup(announcementId, category, formattedText, score,
     const dispecherTopicId = process.env.LOGISTICS_TOPIC_DISPECHER || null;
     const topicId = category === 'yukchi' ? yukchiTopicId : dispecherTopicId;
 
-    // Inline buttons
+    // Inline buttons (faqat raqam olish)
     const keyboard = {
       inline_keyboard: [
-        [{ text: '📞 Raqamni olish', callback_data: `get_phone_${announcementId}` }],
-        // Admin uchun
-        ...(ADMIN_IDS.length > 0 ? [[
-          { text: '✅ Yukchi', callback_data: `admin_correct_${announcementId}_yukchi` },
-          { text: '❌ Dispecher', callback_data: `admin_correct_${announcementId}_dispecher` }
-        ]] : [])
+        [{ text: '📞 Raqamni olish', callback_data: `get_phone_${announcementId}` }]
       ]
     };
 
