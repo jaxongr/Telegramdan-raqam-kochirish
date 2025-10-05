@@ -48,7 +48,9 @@
       "Bash(ssh -o StrictHostKeyChecking=no root@5.189.141.151 \"cd /root/telegram-sms && npm install --production && mkdir -p data logs exports\")",
       "Bash(ssh:*)",
       "WebSearch",
-      "WebFetch(domain:semysms.net)"
+      "WebFetch(domain:semysms.net)",
+      "Bash(awk:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

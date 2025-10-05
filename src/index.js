@@ -15,8 +15,8 @@ async function main() {
     await initDatabase();
     console.log('✓ Database tayyor\n');
 
-    // 2. Telegram Client (agar production mode bo'lsa)
-    if (MODE === 'production') {
+    // 2. Telegram Client (faqat serverda ishlaydi)
+    if (MODE === 'server') {
       console.log('[2/3] Telegram client ishga tushirilmoqda...');
       const telegramClient = require('./services/telegramClient');
       const historyScraper = require('./services/historyScraper');
@@ -73,7 +73,7 @@ async function main() {
         process.exit(1);
       }
     } else {
-      console.log('[2/3] DEMO REJIM (Telegram o\'chirilgan)\n');
+      console.log('[2/3] LOKAL REJIM (Telegram o\'chirilgan - faqat web dashboard)\n');
     }
 
     // 3. Web Server
@@ -82,10 +82,12 @@ async function main() {
       console.log(`✓ Web dashboard: http://localhost:${PORT}`);
       console.log('\n=== Tizim to\'liq ishga tushdi ===\n');
 
-      if (MODE === 'demo') {
+      if (MODE === 'server') {
+        console.log('🚀 SERVER REJIM (Telegram va SemySMS yoqilgan)');
+      } else if (MODE === 'demo') {
         console.log('📌 DEMO REJIM (Telegram va SemySMS kerak emas)');
       } else {
-        console.log('🚀 PRODUCTION REJIM (Real Telegram va SemySMS)');
+        console.log('💻 LOKAL REJIM (Faqat web dashboard - Telegram serverda ishlaydi)');
       }
 
       console.log('\nLogin ma\'lumotlari:');
