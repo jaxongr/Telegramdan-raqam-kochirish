@@ -133,9 +133,15 @@ async function sendViaSemySMS(fromPhone, toPhone, text) {
     }
     cleanedTo = '+' + cleanedTo; // + qo'shish
 
+    // From phone ni ham international formatga
+    let cleanedFrom = fromPhone.replace(/\D/g, '');
+    if (!cleanedFrom.startsWith('998')) {
+      cleanedFrom = '998' + cleanedFrom;
+    }
+
     const params = {
-      token: apiKey, // SemySMS 'token' parametrini ishlatadi
-      device: 'active', // Aktiv device ishlatish
+      token: apiKey,
+      device: cleanedFrom, // From phone device sifatida
       phone: cleanedTo,
       msg: text
     };
