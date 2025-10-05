@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { getAllGroups, createGroup, updateGroup, deleteGroup, getGroupById } = require('../../database/models');
 
-// Production yoki Demo rejimga qarab to'g'ri service'ni tanlash
+// Server yoki Demo rejimga qarab to'g'ri service'ni tanlash
 const MODE = process.env.MODE || 'demo';
-const telegramService = MODE === 'production'
+const telegramService = MODE === 'server'
   ? require('../../services/telegramClient')
   : require('../../services/telegramMonitor');
 
