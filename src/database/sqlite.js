@@ -276,7 +276,7 @@ function addBroadcastLog(messageId, groupId, accountId, status, error = null) {
  * Statistika
  */
 function getBroadcastStats() {
-  const accountsStmt = db.prepare('SELECT COUNT(*) as count FROM telegram_accounts WHERE status = "active"');
+  const accountsStmt = db.prepare("SELECT COUNT(*) as count FROM telegram_accounts WHERE status = 'active'");
   const groupsStmt = db.prepare('SELECT COUNT(*) as count FROM broadcast_groups');
   const messagesStmt = db.prepare('SELECT COUNT(*) as count FROM broadcast_messages');
   const assignedStmt = db.prepare('SELECT COUNT(*) as count FROM broadcast_groups WHERE assigned_account_id IS NOT NULL');
