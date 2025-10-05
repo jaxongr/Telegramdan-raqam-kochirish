@@ -13,6 +13,7 @@ const smsRouter = require('./routes/sms');
 const semysmsRouter = require('./routes/semysms');
 const settingsRouter = require('./routes/settings');
 const historyRouter = require('./routes/history');
+const messagesRouter = require('./routes/messages');
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/sms', requireAuth, smsRouter);
 app.use('/semysms', requireAuth, semysmsRouter);
 app.use('/history', requireAuth, historyRouter);
 app.use('/settings', requireAuth, settingsRouter);
+app.use('/messages', requireAuth, messagesRouter);
 
 // 404
 app.use((req, res) => {

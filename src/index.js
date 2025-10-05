@@ -65,6 +65,10 @@ async function main() {
         const { getClient } = require('./services/telegramClient');
         historyScraper.setClient(getClient());
 
+        // Messages router uchun client ni o'rnatish
+        const messagesRouter = require('./web/routes/messages');
+        messagesRouter.setTelegramClient(getClient());
+
         // Monitoring'ni boshlash
         await telegramClient.startMonitoring();
         console.log('✓ Monitoring boshlandi\n');
