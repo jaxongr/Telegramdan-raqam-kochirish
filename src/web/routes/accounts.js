@@ -115,8 +115,10 @@ router.post('/api/cancel-login/:loginId', async (req, res) => {
  */
 router.post('/fetch-groups', async (req, res) => {
   try {
-    await fetchGroupsFromAllAccounts();
-    res.redirect('/accounts?message=Guruhlar muvaffaqiyatli yig\'ildi');
+    const result = await fetchGroupsFromAllAccounts();
+    res.redirect('/accounts?message=' + encodeURIComponent(
+      `${result.total} guruh topildi, ${result.newAssigned} yangi guruh tayinlandi`
+    ));
   } catch (error) {
     console.error('Guruhlarni yig\'ishda xato:', error);
     res.redirect('/accounts?error=' + encodeURIComponent(error.message));

@@ -8,7 +8,8 @@ const {
   updateAccountStatus,
   upsertBroadcastGroup,
   assignGroupToAccount,
-  getUnassignedGroups
+  getUnassignedGroups,
+  db
 } = require('../database/sqlite');
 
 // Active client connections
@@ -74,6 +75,7 @@ async function fetchGroupsFromAllAccounts() {
   logger.info(`📥 ${accounts.length} ta akkauntdan guruhlar yig'ilyapti...`);
 
   let totalGroups = 0;
+  let newGroups = 0;
   const allGroups = [];
 
   for (const account of accounts) {
@@ -84,6 +86,7 @@ async function fetchGroupsFromAllAccounts() {
       const dialogs = await client.getDialogs({ limit: 500 });
 
       let accountGroups = 0;
+      let accountNewGroups = 0;
 
       for (const dialog of dialogs) {
         const entity = dialog.entity;
@@ -94,8 +97,29 @@ async function fetchGroupsFromAllAccounts() {
           const title = entity.title || 'Nomsiz guruh';
           const username = entity.username || null;
 
-          // Database ga saqlash
-          upsertBroadcastGroup(telegramId, title, username);
+          // Guruh allaqachon boshqa akkauntga biriktirilganmi tekshirish
+          const existingGroup = db.prepare('SELECT * FROM broadcast_groups WHERE telegram_id = ?').get(telegramId);
+
+          if (existingGroup) {
+            // Guruh mavjud - faqat ma'lumotlarni yangilash
+            upsertBroadcastGroup(telegramId, title, username);
+
+            // Agar bu guruh hali hech kimga tayinlanmagan bo'lsa, bu akkauntga tayinlash
+            if (!existingGroup.assigned_account_id) {
+              assignGroupToAccount(existingGroup.id, account.id);
+              accountNewGroups++;
+              newGroups++;
+              logger.info(`    → ${title} guruh ${account.phone} ga tayinlandi`);
+            }
+          } else {
+            // Yangi guruh - qo'shish va avtomatik tayinlash
+            upsertBroadcastGroup(telegramId, title, username);
+            const group = db.prepare('SELECT * FROM broadcast_groups WHERE telegram_id = ?').get(telegramId);
+            assignGroupToAccount(group.id, account.id);
+            accountNewGroups++;
+            newGroups++;
+            logger.info(`    + ${title} guruh qo'shildi va ${account.phone} ga tayinlandi`);
+          }
 
           allGroups.push({
             telegram_id: telegramId,
@@ -109,7 +133,8 @@ async function fetchGroupsFromAllAccounts() {
         }
       }
 
-      logger.info(`  ✓ ${account.phone}: ${accountGroups} guruh topildi`);
+      logger.info(`  ✓ ${account.phone}: ${accountGroups} guruh topildi (${accountNewGroups} yangi)`);
+
 
     } catch (error) {
       logger.error(`  ✗ ${account.phone}: xato - ${error.message}`);
@@ -123,8 +148,8 @@ async function fetchGroupsFromAllAccounts() {
     }
   }
 
-  logger.info(`✅ Jami ${totalGroups} guruh topildi va saqlandi`);
-  return allGroups;
+  logger.info(`✅ Jami ${totalGroups} guruh topildi, ${newGroups} yangi guruh tayinlandi`);
+  return { total: totalGroups, newAssigned: newGroups };
 }
 
 /**
