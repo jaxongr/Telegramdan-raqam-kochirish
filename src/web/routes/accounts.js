@@ -14,6 +14,9 @@ const {
   getAccountInfo
 } = require('../../services/multiAccountManager');
 const {
+  cleanAndRefreshDatabase
+} = require('../../services/telegramGroupCleaner');
+const {
   startQRLogin,
   getLoginStatus,
   cancelLogin
@@ -127,7 +130,22 @@ router.post('/fetch-groups', async (req, res) => {
 });
 
 /**
- * Guruhlarni unikallashtiruv va taqsimlash
+ * Telegram'dan guruhlarni unikallashtiruv (REAL CLEANING)
+ */
+router.post('/clean-telegram-groups', async (req, res) => {
+  try {
+    const result = await cleanAndRefreshDatabase();
+    res.redirect('/accounts?message=' + encodeURIComponent(
+      `Telegram tozalandi! Unikal guruhlar: ${result.uniqueGroups}, ${result.telegramCleaned} guruhdan chiqildi`
+    ));
+  } catch (error) {
+    console.error('Telegram tozalashda xato:', error);
+    res.redirect('/accounts?error=' + encodeURIComponent(error.message));
+  }
+});
+
+/**
+ * Guruhlarni unikallashtiruv va taqsimlash (DATABASE ONLY)
  */
 router.post('/deduplicate', async (req, res) => {
   try {
