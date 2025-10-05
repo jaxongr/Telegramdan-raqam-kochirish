@@ -15,6 +15,9 @@ const {
 // Active client connections
 const activeClients = new Map();
 
+// Client creation locks (prevent duplicate connections)
+const clientLocks = new Map();
+
 /**
  * Akkaunt uchun Telegram client yaratish
  */

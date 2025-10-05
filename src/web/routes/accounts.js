@@ -40,9 +40,11 @@ const {
  */
 router.get('/', async (req, res) => {
   try {
+    // Database'dan tez ma'lumot olish (Telegram client ishlatmasdan)
     const accounts = getAccountStats();
     const stats = getBroadcastStats();
 
+    // Sahifani darhol yuklash
     res.render('accounts', {
       accounts,
       stats,
