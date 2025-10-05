@@ -379,7 +379,7 @@ async function scrapeMultipleGroupsByDate(groupIds, startDate, endDate = new Dat
 
       logger.info(`📖 Guruh ${i + 1}/${groupIds.length} skanerlanyapti...`);
 
-      const result = await scrapeGroupHistoryByDate(groupId, startDate, endDate);
+      const result = await scrapeGroupHistoryByDate(groupId, startDate, endDate, null, customFilename);
 
       groupResults.push({
         groupName: result.groupName,
