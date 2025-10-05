@@ -292,7 +292,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
           groupId,
           groupName: group.name,
           processedMessages: currentProgress.processedMessages,
-          phonesFound: results.phonesFound,
+          phonesFoundCount: results.phonesFound.length, // Faqat count, barcha raqamlar emas!
           lastMessageId: offsetId,
           lastMessageDate: new Date(offsetDate * 1000).toISOString(),
           startDate: startDate.toISOString(),

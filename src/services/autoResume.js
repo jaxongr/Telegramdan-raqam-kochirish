@@ -62,8 +62,9 @@ async function checkAndResumeScans() {
         // Eski filename ni olish yoki yangi yaratish
         const originalFilename = resumeData.filename || `history_scrape_resumed_${resumeData.groupName}_${Date.now()}.json`;
 
+        const phonesCount = resumeData.phonesFoundCount || (resumeData.phonesFound ? resumeData.phonesFound.length : 0);
         logger.info(`▶️ Davom ettirish: ${resumeData.groupName}`);
-        logger.info(`   📊 ${resumeData.processedMessages} xabar bajarilgan`);
+        logger.info(`   📊 ${resumeData.processedMessages} xabar | ${phonesCount} raqam topildi`);
         logger.info(`   📝 Fayl: ${originalFilename}`);
 
         // Navbatga qo'shish
