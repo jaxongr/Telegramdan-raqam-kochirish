@@ -148,17 +148,31 @@ router.get('/results', async (req, res) => {
     if (fs.existsSync(exportDir)) {
       const files = fs.readdirSync(exportDir);
 
-      // Faqat JSON fayllarni olish - TEZKOR (faylni o'qimasdan)
+      // Faqat JSON fayllarni olish - kichik fayllarni o'qish, kattalarini emas
       exportFiles = files
         .filter(file => file.endsWith('.json') && file.startsWith('history_scrape_'))
         .map(file => {
           const filePath = path.join(exportDir, file);
           const stats = fs.statSync(filePath);
 
-          // Faqat metadata - faylni o'qimaslik (katta fayllar uchun juda sekin!)
           const sizeKB = (stats.size / 1024).toFixed(2);
           const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
           const displaySize = stats.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+          let totalPhones = 0;
+          let uniquePhones = 0;
+
+          // Faqat 2MB dan kichik fayllarni o'qish (sekinlik oldini olish)
+          if (stats.size < 2 * 1024 * 1024) {
+            try {
+              const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              const phones = content.phones || [];
+              totalPhones = phones.length;
+              uniquePhones = [...new Set(phones.map(p => p.phone))].length;
+            } catch (e) {
+              console.error('File read error:', file, e.message);
+            }
+          }
 
           return {
             name: file,
@@ -167,9 +181,8 @@ router.get('/results', async (req, res) => {
             size: displaySize,
             sizeBytes: stats.size,
             created: stats.mtime,
-            // Telefon raqamlarni ko'rsatmaslik - faylni ochish sekin
-            totalPhones: '-',
-            uniquePhones: '-'
+            totalPhones,
+            uniquePhones
           };
         })
         .sort((a, b) => b.created - a.created); // Eng yangilarni yuqorida
