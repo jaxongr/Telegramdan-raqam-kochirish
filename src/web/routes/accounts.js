@@ -58,7 +58,9 @@ router.get('/add', (req, res) => {
  */
 router.get('/add-phone', (req, res) => {
   res.render('account-phone-login', {
-    error: null
+    error: null,
+    apiId: process.env.TELEGRAM_API_ID || '',
+    apiHash: process.env.TELEGRAM_API_HASH || ''
   });
 });
 
