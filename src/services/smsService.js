@@ -2,7 +2,7 @@ const axios = require('axios');
 const { getActiveSemySMSPhones, updateSemySMSPhone, logSMS, getSMSCountToday } = require('../database/models');
 const logger = require('../utils/logger');
 
-const SEMYSMS_API_URL = 'https://uz.my.comfolks.com';
+const SEMYSMS_API_URL = 'https://semysms.net/api/3';
 const DAILY_LIMIT = parseInt(process.env.SMS_DAILY_LIMIT_PER_NUMBER) || 2;
 const SMS_DELAY = parseInt(process.env.SMS_DELAY_SECONDS) || 1;
 
@@ -126,18 +126,21 @@ async function sendViaSemySMS(fromPhone, toPhone, text) {
       throw new Error('SEMYSMS_API_KEY .env faylda yo\'q');
     }
 
-    // To'g'ri formatga keltirish
-    const cleanedTo = toPhone.replace(/\D/g, ''); // faqat raqamlar
-    const cleanedFrom = fromPhone.replace(/\D/g, '');
+    // Telefon raqamni international formatga keltirish
+    let cleanedTo = toPhone.replace(/\D/g, ''); // faqat raqamlar
+    if (!cleanedTo.startsWith('998')) {
+      cleanedTo = '998' + cleanedTo; // Uzbekistan country code
+    }
+    cleanedTo = '+' + cleanedTo; // + qo'shish
 
     const params = {
-      apikey: apiKey,
-      phone: cleanedFrom,
-      to: cleanedTo,
-      text: text
+      token: apiKey, // SemySMS 'token' parametrini ishlatadi
+      device: 'active', // Aktiv device ishlatish
+      phone: cleanedTo,
+      msg: text
     };
 
-    const response = await axios.post(`${SEMYSMS_API_URL}/sms.php`, null, {
+    const response = await axios.get(`${SEMYSMS_API_URL}/sms.php`, {
       params,
       timeout: 10000
     });
@@ -173,10 +176,9 @@ async function checkBalance(phone) {
 
     const cleanedPhone = phone.replace(/\D/g, '');
 
-    const response = await axios.get(`${SEMYSMS_API_URL}/getBalance.php`, {
+    const response = await axios.get(`${SEMYSMS_API_URL}/balance.php`, {
       params: {
-        apikey: apiKey,
-        phone: cleanedPhone
+        token: apiKey
       },
       timeout: 5000
     });
