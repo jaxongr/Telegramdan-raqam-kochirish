@@ -283,8 +283,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         logger.info(`📊 Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam | ${currentProgress.messagesPerMinute} msg/min`);
       }
 
-      // Telegram API rate limit (1.5 soniya kutish - optimallashtirilgan)
-      await sleep(1500);
+      // Telegram API rate limit (2 soniya kutish - xavfsiz)
+      await sleep(2000);
     }
 
     logger.info(`✓ Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi`);
