@@ -267,6 +267,7 @@ async function query(sql, params = []) {
       id: db.semysms_phones.length + 1,
       phone: params[0],
       balance: params[1] || 0,
+      device_id: params[2] || null, // SemySMS device ID
       status: 'active',
       last_used: null,
       total_sent: 0,

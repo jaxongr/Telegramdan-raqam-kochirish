@@ -133,15 +133,19 @@ async function sendViaSemySMS(fromPhone, toPhone, text) {
     }
     cleanedTo = '+' + cleanedTo; // + qo'shish
 
-    // From phone ni ham international formatga
-    let cleanedFrom = fromPhone.replace(/\D/g, '');
-    if (!cleanedFrom.startsWith('998')) {
-      cleanedFrom = '998' + cleanedFrom;
+    // Device ID ni olish - fromPhone o'rniga deviceId ishlatamiz
+    // Lekin avval fromPhone dan deviceId ni topish kerak
+    const { getActiveSemySMSPhones: getPhones } = require('../database/models');
+    const phones = await getPhones();
+    const senderPhone = phones.find(p => p.phone === fromPhone.replace(/\D/g, ''));
+
+    if (!senderPhone || !senderPhone.device_id) {
+      throw new Error(`Device ID topilmadi: ${fromPhone}`);
     }
 
     const params = {
       token: apiKey,
-      device: cleanedFrom, // From phone device sifatida
+      device: senderPhone.device_id, // SemySMS device ID
       phone: cleanedTo,
       msg: text
     };

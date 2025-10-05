@@ -159,10 +159,10 @@ async function getSemySMSPhoneByNumber(phone) {
   return rows[0];
 }
 
-async function createSemySMSPhone(phone, balance = 0) {
+async function createSemySMSPhone(phone, balance = 0, deviceId = null) {
   const result = await query(
-    'INSERT INTO semysms_phones (phone, balance) VALUES (?, ?)',
-    [phone, balance]
+    'INSERT INTO semysms_phones (phone, balance, device_id) VALUES (?, ?, ?)',
+    [phone, balance, deviceId]
   );
   return result.lastID || result.insertId;
 }
