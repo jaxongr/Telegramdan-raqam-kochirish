@@ -155,15 +155,18 @@ async function sendViaSemySMS(fromPhone, toPhone, text) {
       timeout: 10000
     });
 
-    if (response.data && response.data.success) {
+    // SemySMS response: {"code":"0","id_device":...,"id":...}
+    // code="0" = success
+    if (response.data && response.data.code === "0") {
       return {
         success: true,
-        balance: response.data.balance || null
+        smsId: response.data.id,
+        deviceId: response.data.id_device
       };
     } else {
       return {
         success: false,
-        error: response.data?.error || response.data?.message || 'Unknown error'
+        error: response.data?.error || response.data?.message || `Error code: ${response.data?.code || 'unknown'}`
       };
     }
 
