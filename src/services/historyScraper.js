@@ -505,10 +505,14 @@ async function saveResultsToFile(results, filename = null) {
       }
     }
 
+    // Unikal raqamlarni hisoblash
+    const uniquePhones = [...new Set(phones.map(p => p.phone))].length;
+
     // JSON formatda saqlash
     fs.writeFileSync(filePath, JSON.stringify({
       scrapedAt: new Date().toISOString(),
       totalPhones: phones.length,
+      uniquePhones: uniquePhones,
       phones: phones
     }, null, 2));
 
