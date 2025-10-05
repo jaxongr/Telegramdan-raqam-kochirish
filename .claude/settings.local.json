@@ -50,7 +50,8 @@
       "WebSearch",
       "WebFetch(domain:semysms.net)",
       "Bash(awk:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(scp:*)"
     ],
     "deny": [],
     "ask": []

@@ -69,6 +69,12 @@ async function query(sql, params = []) {
   // Simple implementation for common queries
   const sqlUpper = sql.trim().toUpperCase();
 
+  // Debug: log all SMS_LOGS queries
+  if (sqlUpper.includes('SMS_LOGS')) {
+    console.log(`🔍 SQL Query: ${sql}`);
+    console.log(`🔍 Params: ${JSON.stringify(params)}`);
+  }
+
   // COUNT queries (COUNT(*) yoki COUNT(DISTINCT ...))
   if (sqlUpper.includes('COUNT(') && (sqlUpper.includes('COUNT(*)') || sqlUpper.includes('COUNT(DISTINCT'))) {
     if (sqlUpper.includes('FROM GROUPS')) {
@@ -165,7 +171,20 @@ async function query(sql, params = []) {
       result = result.filter(s => s.to_phone === params[0] && s.sent_at && s.sent_at.split('T')[0] === today);
     } else if (sqlUpper.includes('WHERE TO_PHONE') && sqlUpper.includes('AND STATUS')) {
       // Cooldown uchun: WHERE to_phone = ? AND status = ?
-      result = result.filter(s => s.to_phone === params[0] && s.status === params[1]);
+      console.log(`🔍 DEBUG: Total SMS logs in db: ${db.sms_logs.length}`);
+      console.log(`🔍 DEBUG: Looking for to_phone="${params[0]}" status="${params[1]}"`);
+      console.log(`🔍 DEBUG: Sample logs:`, db.sms_logs.slice(0, 3).map(s => ({ to_phone: s.to_phone, status: s.status, sent_at: s.sent_at })));
+
+      result = result.filter(s => {
+        const phoneMatch = s.to_phone === params[0];
+        const statusMatch = s.status === params[1];
+        if (s.to_phone && s.to_phone.includes('933873307')) {
+          console.log(`🔍 DEBUG: Found matching phone: to_phone="${s.to_phone}" (match=${phoneMatch}), status="${s.status}" (match=${statusMatch})`);
+        }
+        return phoneMatch && statusMatch;
+      });
+
+      console.log(`🔍 DEBUG: Filtered result count: ${result.length}`);
     } else {
       // Boshqa WHERE shartlari
       if (sqlUpper.includes('WHERE GROUP_ID')) {
