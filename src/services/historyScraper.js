@@ -506,21 +506,21 @@ async function saveResultsToFile(results, filename = null) {
     }
 
     // Unikal raqamlarni hisoblash
-    const uniquePhones = [...new Set(phones.map(p => p.phone))].length;
+    const uniquePhonesCount = [...new Set(phones.map(p => p.phone))].length;
 
     // JSON formatda saqlash
     fs.writeFileSync(filePath, JSON.stringify({
       scrapedAt: new Date().toISOString(),
       totalPhones: phones.length,
-      uniquePhones: uniquePhones,
+      uniquePhones: uniquePhonesCount,
       phones: phones
     }, null, 2));
 
     // TXT formatda ham saqlash (faqat raqamlar)
     const txtFilename = filename.replace('.json', '.txt');
     const txtFilePath = path.join(exportDir, txtFilename);
-    const uniquePhones = [...new Set(phones.map(p => p.phone))];
-    fs.writeFileSync(txtFilePath, uniquePhones.join('\n'));
+    const uniquePhonesArray = [...new Set(phones.map(p => p.phone))];
+    fs.writeFileSync(txtFilePath, uniquePhonesArray.join('\n'));
 
     // Excel formatda saqlash (takrorlanish soni bilan)
     const excelFilename = filename.replace('.json', '.xlsx');
