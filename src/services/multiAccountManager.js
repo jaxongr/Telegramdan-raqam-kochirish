@@ -153,6 +153,78 @@ async function fetchGroupsFromAllAccounts() {
 }
 
 /**
+ * Database'da guruhlarni unikallashtiriu - har bir guruh faqat bitta akkauntga tayinlanadi
+ */
+async function deduplicateAndAssignUniqueGroups() {
+  const accounts = getActiveAccounts();
+
+  if (accounts.length === 0) {
+    logger.warn('Aktiv akkauntlar yo\'q!');
+    return { uniqueGroups: 0, duplicatesRemoved: 0 };
+  }
+
+  logger.info(`🔄 Database'da guruhlar unikallashtirilmoqda...`);
+
+  // Avval barcha guruhlarni yig'amiz
+  await fetchGroupsFromAllAccounts();
+
+  // Endi database'dagi barcha guruhlarni tekshiramiz
+  const allGroups = db.prepare('SELECT telegram_id, COUNT(*) as count FROM broadcast_groups GROUP BY telegram_id').all();
+
+  let uniqueGroups = 0;
+  let duplicatesInDB = 0;
+  const groupAssignments = new Map(); // telegram_id -> account_id
+
+  // Har bir unikal guruhni bitta akkauntga tayinlash
+  for (const groupInfo of allGroups) {
+    const telegramId = groupInfo.telegram_id;
+
+    // Bu telegram_id uchun barcha yozuvlarni topish
+    const entries = db.prepare('SELECT id, assigned_account_id FROM broadcast_groups WHERE telegram_id = ?').all(telegramId);
+
+    if (entries.length === 1) {
+      // Faqat bitta yozuv - unikal
+      uniqueGroups++;
+    } else {
+      // Ko'p yozuv bor - faqat birinchisini saqlaymiz
+      const keepEntry = entries[0];
+      const removeIds = entries.slice(1).map(e => e.id);
+
+      // Qolganlarini o'chirish
+      for (const removeId of removeIds) {
+        db.prepare('DELETE FROM broadcast_groups WHERE id = ?').run(removeId);
+        duplicatesInDB++;
+      }
+
+      uniqueGroups++;
+    }
+  }
+
+  // Endi tayinlanmagan guruhlarni round-robin bilan taqsimlash
+  const unassigned = getUnassignedGroups();
+  let currentAccountIndex = 0;
+  let assigned = 0;
+
+  for (const group of unassigned) {
+    const account = accounts[currentAccountIndex];
+    assignGroupToAccount(group.id, account.id);
+    assigned++;
+    currentAccountIndex = (currentAccountIndex + 1) % accounts.length;
+  }
+
+  logger.info(`✅ Unikallashtiuv tugadi:`);
+  logger.info(`   - Unikal guruhlar: ${uniqueGroups}`);
+  logger.info(`   - Database'dan o'chirilgan dublikatlar: ${duplicatesInDB}`);
+  logger.info(`   - Yangi tayinlangan: ${assigned}`);
+
+  return {
+    uniqueGroups,
+    duplicatesRemoved: duplicatesInDB,
+    newlyAssigned: assigned
+  };
+}
+
+/**
  * Guruhlarni akkauntlarga avtomatik taqsimlash (Load Balancing)
  */
 async function autoAssignGroupsToAccounts() {
@@ -293,6 +365,7 @@ module.exports = {
   createClientForAccount,
   getClient,
   fetchGroupsFromAllAccounts,
+  deduplicateAndAssignUniqueGroups,
   autoAssignGroupsToAccounts,
   rebalanceGroups,
   sendMessageToGroup,

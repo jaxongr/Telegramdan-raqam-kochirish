@@ -8,6 +8,7 @@ const {
 } = require('../../database/sqlite');
 const {
   fetchGroupsFromAllAccounts,
+  deduplicateAndAssignUniqueGroups,
   autoAssignGroupsToAccounts,
   rebalanceGroups,
   getAccountInfo
@@ -121,6 +122,21 @@ router.post('/fetch-groups', async (req, res) => {
     ));
   } catch (error) {
     console.error('Guruhlarni yig\'ishda xato:', error);
+    res.redirect('/accounts?error=' + encodeURIComponent(error.message));
+  }
+});
+
+/**
+ * Guruhlarni unikallashtiruv va taqsimlash
+ */
+router.post('/deduplicate', async (req, res) => {
+  try {
+    const result = await deduplicateAndAssignUniqueGroups();
+    res.redirect('/accounts?message=' + encodeURIComponent(
+      `Unikal: ${result.uniqueGroups}, O'chirildi: ${result.duplicatesRemoved}, Tayinlandi: ${result.newlyAssigned}`
+    ));
+  } catch (error) {
+    console.error('Unikallashtirishda xato:', error);
     res.redirect('/accounts?error=' + encodeURIComponent(error.message));
   }
 });

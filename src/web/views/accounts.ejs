@@ -88,6 +88,11 @@
               <i class="bi bi-download"></i> Guruhlarni Yig'ish
             </button>
           </form>
+          <form action="/accounts/deduplicate" method="POST" style="display: inline">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Guruhlar unikallashtiriladi va teng taqsimlanadi. Davom etasizmi?')">
+              <i class="bi bi-funnel"></i> Guruhlarni Unikallashtiruv
+            </button>
+          </form>
           <form action="/accounts/auto-assign" method="POST" style="display: inline">
             <button type="submit" class="btn btn-info">
               <i class="bi bi-shuffle"></i> Avtomatik Taqsimlash
