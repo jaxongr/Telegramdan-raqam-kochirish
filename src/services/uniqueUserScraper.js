@@ -56,6 +56,10 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
     console.log(`📅 Sana: ${startDate.toISOString()} -> ${endDate.toISOString()}`);
     console.log(`👤 Har userdan: ${maxPhonesPerUser} ta raqam`);
 
+    // 🐛 DEBUG - extractPhones test
+    const testPhones = extractPhones('Test raqam: 90 123 45 67');
+    console.log(`🐛 extractPhones test: ${testPhones.length > 0 ? 'ISHLAYAPTI ✓' : 'ISHLAMAYAPTI ✗'} - ${JSON.stringify(testPhones)}`);
+
     if (!telegramClient || !telegramClient.connected) {
       throw new Error('Telegram client ulanmagan!');
     }
@@ -152,6 +156,11 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
 
         // Telefon raqamlarni topish (faqat kerakli userlar uchun)
         const phones = extractPhones(message.text);
+
+        // 🐛 DEBUG
+        if (batchCount === 1 && phones.length > 0) {
+          console.log(`🐛 DEBUG: Raqam topildi! Text: "${message.text.substring(0, 50)}..." | Phones: ${phones.join(', ')}`);
+        }
 
         if (phones.length > 0) {
           // Raqamlarni qo'shish
