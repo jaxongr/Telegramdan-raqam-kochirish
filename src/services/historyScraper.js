@@ -648,7 +648,7 @@ async function saveResultsToFile(results, filename = null) {
       txtFile: txtFilename,
       excelFile: excelFilename,
       totalPhones: phones.length,
-      uniquePhones: uniquePhones.length
+      uniquePhones: uniquePhonesCount
     };
 
   } catch (error) {
