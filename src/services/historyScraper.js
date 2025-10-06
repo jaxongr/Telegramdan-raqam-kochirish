@@ -301,14 +301,19 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       // Har bir xabarni ko'rib chiqish
       for (const message of messages) {
         try {
-          if (!message || !message.text || !message.date) continue;
+          if (!message || !message.date) continue;
 
-          // Sana tekshirish
+          // BIRINCHI - Sana tekshirish (text bo'lmasa ham!)
           const msgDate = new Date(message.date * 1000);
           if (msgDate < startDate) {
+            console.log(`⏹️ SANA YETDI: msgDate=${msgDate.toISOString()}, startDate=${startDate.toISOString()}, message.id=${message.id}`);
+            logger.info(`⏹️ Boshlanish sanasiga yetildi: ${startDate.toLocaleDateString()}. Skanerlash to'xtatiladi.`);
             continueScanning = false;
             break;
           }
+
+          // Agar text yo'q bo'lsa, telefon raqam ham yo'q - keyingisiga o'tamiz
+          if (!message.text) continue;
 
           // Telefon raqamlarni topish (kalit so'z tekshiruvisiz - BARCHA xabarlardan)
           const phones = extractPhones(message.text);
