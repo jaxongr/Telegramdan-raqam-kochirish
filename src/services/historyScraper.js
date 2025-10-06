@@ -206,6 +206,9 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
       while (retryCount < maxRetries) {
         try {
+          // Debug log
+          console.log(`🔍 Batch #${batchCount + 1} - getMessages(limit=${currentBatchSize}, offsetId=${offsetId}, offsetDate=${offsetDate})`);
+
           // Har 10 batch da status ko'rsatish
           if (batchCount % 10 === 0) {
             logger.info(`🔍 [${group.name}] Batch #${batchCount + 1} - Size: ${currentBatchSize}, Sleep: ${currentSleepMs}ms`);
@@ -216,6 +219,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             offsetId: offsetId,
             offsetDate: offsetDate
           });
+
+          console.log(`✓ Batch #${batchCount + 1} - ${messages.length} ta xabar keldi`);
 
           if (batchCount % 10 === 0) {
             logger.info(`✓ [${group.name}] ${messages.length} ta xabar olindi`);
@@ -285,6 +290,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       }
 
       if (messages.length === 0) {
+        console.log(`📭 Xabarlar tugadi! batchCount=${batchCount}, offsetId=${offsetId}, offsetDate=${offsetDate}`);
         logger.info('📭 Xabarlar tugadi yoki oxiriga yetildi');
         break;
       }
