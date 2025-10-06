@@ -170,6 +170,12 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
     let continueScanning = true;
     let batchCount = 0;
 
+    // Adaptive rate limiting
+    let currentBatchSize = 150; // Boshlang'ich batch
+    let currentSleepMs = 600;   // Boshlang'ich sleep (ms)
+    let floodWaitCount = 0;     // FLOOD_WAIT hisoblagich
+    let successCount = 0;       // Muvaffaqiyatli so'rovlar
+
     while (continueScanning) {
       // Stop yoki Pause tekshirish
       if (currentProgress.shouldStop) {
@@ -190,20 +196,20 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
       if (!continueScanning) break;
 
-      // Xabarlarni olish (100 ta batch - FLOOD_WAIT oldini olish)
+      // Xabarlarni olish (ADAPTIVE batch va sleep)
       let messages = [];
       let retryCount = 0;
-      const maxRetries = 10;
+      const maxRetries = 20; // Ko'proq retry - hech qachon to'xtamaydi
 
       while (retryCount < maxRetries) {
         try {
-          // Faqat har 10 batch da log yozish
+          // Har 10 batch da status ko'rsatish
           if (batchCount % 10 === 0) {
-            logger.info(`🔍 [${group.name}] Batch #${batchCount + 1} - Xabarlar olinmoqda...`);
+            logger.info(`🔍 [${group.name}] Batch #${batchCount + 1} - Size: ${currentBatchSize}, Sleep: ${currentSleepMs}ms`);
           }
 
           messages = await telegramClient.getMessages(entity, {
-            limit: 100, // Kamroq batch - FLOOD_WAIT kamroq
+            limit: currentBatchSize, // Dynamic batch size
             offsetId: offsetId,
             offsetDate: offsetDate
           });
@@ -212,33 +218,67 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             logger.info(`✓ [${group.name}] ${messages.length} ta xabar olindi`);
           }
 
+          // ✅ MUVAFFAQIYATLI - tezlashtirish
+          successCount++;
+          floodWaitCount = 0; // Reset
+
+          // Har 5 muvaffaqiyatli so'rovda tezlashtirish
+          if (successCount >= 5) {
+            successCount = 0;
+
+            // Batch size ni oshirish (max 200)
+            if (currentBatchSize < 200) {
+              currentBatchSize = Math.min(200, currentBatchSize + 20);
+            }
+
+            // Sleep ni kamaytirish (min 400ms)
+            if (currentSleepMs > 400) {
+              currentSleepMs = Math.max(400, currentSleepMs - 100);
+              logger.info(`⚡ Tezlashtirish: batch=${currentBatchSize}, sleep=${currentSleepMs}ms`);
+            }
+          }
+
           // Muvaffaqiyatli bo'lsa, retry loop dan chiqish
           break;
 
         } catch (apiError) {
-          // FLOOD_WAIT yoki boshqa API xatolari
+          // ❌ FLOOD_WAIT - sekinlashtirish
           if (apiError.message && apiError.message.includes('FLOOD_WAIT')) {
             const waitSeconds = parseInt(apiError.message.match(/\d+/)?.[0] || 60);
-            logger.warn(`⏳ FLOOD_WAIT (retry ${retryCount + 1}/${maxRetries}): ${waitSeconds} soniya kutish`);
-            await sleep((waitSeconds + 2) * 1000); // +2 soniya qo'shimcha xavfsizlik
+
+            floodWaitCount++;
+            successCount = 0; // Reset
+
+            // ADAPTIVE: har safar sekinlashtirish
+            currentBatchSize = Math.max(50, currentBatchSize - 30);
+            currentSleepMs = Math.min(3000, currentSleepMs + 500);
+
+            logger.warn(`🐌 FLOOD_WAIT #${floodWaitCount} - sekinlashtirish: batch=${currentBatchSize}, sleep=${currentSleepMs}ms`);
+            logger.warn(`⏳ ${waitSeconds + 3}s kutish...`);
+
+            await sleep((waitSeconds + 3) * 1000); // +3s xavfsizlik
             retryCount++;
-            continue; // Qaytadan urinish
+            continue;
+
           } else if (apiError.message && apiError.message.includes('TIMEOUT')) {
-            logger.warn(`⏳ TIMEOUT (retry ${retryCount + 1}/${maxRetries}): 10 soniya kutish`);
+            logger.warn(`⏳ TIMEOUT (retry ${retryCount + 1}): 10s kutish`);
             await sleep(10000);
             retryCount++;
-            continue; // Qaytadan urinish
+            continue;
+
           } else {
             logger.error(`❌ [${group.name}] API xatosi:`, apiError.message);
-            throw apiError; // Boshqa xatolar uchun throw
+            throw apiError;
           }
         }
       }
 
-      // Agar max retry ga yetsa
+      // Agar max retry ga yetsa - sekinlashtir va davom et
       if (retryCount >= maxRetries && messages.length === 0) {
-        logger.error(`❌ [${group.name}] Max retry (${maxRetries}) ga yetdi, skan to'xtatildi`);
-        throw new Error(`FLOOD_WAIT: Max retry (${maxRetries}) ga yetdi`);
+        logger.warn(`⚠️ Max retry (${maxRetries}), batch=50, sleep=5s bilan davom`);
+        currentBatchSize = 50;
+        currentSleepMs = 5000;
+        retryCount = 0; // Reset - davom etish
       }
 
       if (messages.length === 0) {
@@ -345,8 +385,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         logger.info(`📊 [${group.name}] Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min`);
       }
 
-      // Telegram API rate limit (1200ms kutish - FLOOD_WAIT oldini olish)
-      await sleep(1200);
+      // Telegram API rate limit (ADAPTIVE sleep)
+      await sleep(currentSleepMs);
     }
 
     // Oxirida unikallashtirib, uniquePhones ni yangilash
