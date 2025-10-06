@@ -122,6 +122,7 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
 
       batchCount++;
       results.totalMessages += messages.length;
+      currentProgress.totalMessages = results.totalMessages; // ✅ Progress uchun
       console.log(`🔍 Batch #${batchCount} - ${messages.length} ta xabar`);
 
       // Har bir xabarni ko'rib chiqish
@@ -187,6 +188,7 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
       // Unikal raqamlar soni (har batch)
       const uniqueNow = [...new Set(results.phones.map(p => p.phone))].length;
       results.uniquePhones = uniqueNow;
+      currentProgress.uniquePhones = uniqueNow; // ✅ Progress uchun
 
       // Log (har 3 batch - oddiy skanerlashdek)
       if (batchCount % 3 === 0) {
