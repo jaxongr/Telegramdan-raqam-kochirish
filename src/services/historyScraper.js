@@ -799,16 +799,22 @@ function addToQueue(task) {
  * Navbatni qayta ishlash
  */
 async function processQueue() {
+  console.log('🔥 [DEBUG] processQueue() BOSHLANDI');
+  console.log(`🔥 [DEBUG] isProcessingQueue=${isProcessingQueue}, taskQueue.length=${taskQueue.length}`);
+
   if (isProcessingQueue) {
+    console.log('⚠️ Queue allaqachon ishlamoqda, kutilmoqda...');
     logger.info('⚠️ Queue allaqachon ishlamoqda, kutilmoqda...');
     return;
   }
   if (taskQueue.length === 0) {
+    console.log('ℹ️ Queue bo\'sh');
     logger.info('ℹ️ Queue bo\'sh');
     return;
   }
 
   isProcessingQueue = true;
+  console.log(`\n▶️ Queue ishga tushirildi - ${taskQueue.length} ta task`);
   logger.info(`\n▶️ Queue ishga tushirildi - ${taskQueue.length} ta task`);
 
   try {
@@ -821,10 +827,13 @@ async function processQueue() {
 
       try {
         // Task ni bajarish
+        console.log(`⏳ Task bajarilmoqda: ${task.name}`);
+        console.log(`   🎯 Execute funksiyasi chaqirilmoqda...`);
         logger.info(`⏳ Task bajarilmoqda: ${task.name}`);
         logger.info(`   🎯 Execute funksiyasi chaqirilmoqda...`);
 
         const result = await task.execute();
+        console.log(`✅ Execute tugadi! phonesFound=${result.phonesFound?.length || 0}`);
 
         logger.info(`✅ Task bajarildi: ${task.name} - ${result.phonesFound?.length || 0} ta raqam`);
 
