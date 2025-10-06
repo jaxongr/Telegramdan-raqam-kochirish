@@ -826,9 +826,13 @@
           localStorage.removeItem('unique_scraping');
           document.getElementById('uniqueProgressContainer').style.display = 'none';
 
-          // Agar raqamlar topilgan bo'lsa
-          if (progress.phonesFound > 0) {
-            alert(`✅ TEZ SKAN tugadi! ${progress.phonesFound} ta raqam topildi.`);
+          // Agar raqamlar topilgan bo'lsa (phonesFound yoki uniquePhones)
+          const totalPhones = progress.phonesFound || progress.uniquePhones || 0;
+          if (totalPhones > 0) {
+            alert(`✅ TEZ SKAN tugadi! ${totalPhones} ta raqam topildi.\n\nFayllar: /history/results sahifasida`);
+            window.location.href = '/history/results';
+          } else {
+            alert('⚠️ TEZ SKAN tugadi, lekin raqam topilmadi.');
             location.reload();
           }
           return;

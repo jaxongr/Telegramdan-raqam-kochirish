@@ -16,6 +16,7 @@ let currentProgress = {
   processedMessages: 0,
   uniqueUsers: 0,
   phonesFound: 0,
+  uniquePhones: 0,
   startTime: null,
   messagesPerMinute: 0
 };

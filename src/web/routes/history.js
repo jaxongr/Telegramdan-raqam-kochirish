@@ -260,9 +260,9 @@ router.get('/results', async (req, res) => {
     if (fs.existsSync(exportDir)) {
       const files = fs.readdirSync(exportDir);
 
-      // Faqat JSON fayllarni olish - metadata ni tez o'qish
+      // Faqat JSON fayllarni olish - metadata ni tez o'qish (history_scrape_ VA unique_users_)
       exportFiles = files
-        .filter(file => file.endsWith('.json') && file.startsWith('history_scrape_'))
+        .filter(file => file.endsWith('.json') && (file.startsWith('history_scrape_') || file.startsWith('unique_users_')))
         .map(file => {
           const filePath = path.join(exportDir, file);
           const stats = fs.statSync(filePath);
@@ -423,8 +423,8 @@ router.delete('/delete/:filename', (req, res) => {
     const filename = req.params.filename;
     const exportDir = path.join(__dirname, '../../../exports');
 
-    // Security check
-    if (!filename.startsWith('history_scrape_')) {
+    // Security check (history_scrape_ VA unique_users_)
+    if (!filename.startsWith('history_scrape_') && !filename.startsWith('unique_users_')) {
       return res.json({ success: false, error: 'Noto\'g\'ri fayl nomi' });
     }
 
