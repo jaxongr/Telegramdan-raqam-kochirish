@@ -840,36 +840,36 @@ async function processQueue() {
 
         logger.info(`✅ Task bajarildi: ${task.name} - ${result.phonesFound?.length || 0} ta raqam`);
 
-      // Unikal raqamlarni hisoblash
-      const uniqueCount = [...new Set(result.phonesFound.map(p => p.phone))].length;
+        // Unikal raqamlarni hisoblash
+        const uniqueCount = [...new Set(result.phonesFound.map(p => p.phone))].length;
 
-      // Natijani saqlash
-      const savedFiles = await saveResultsToFile(result, task.filename);
+        // Natijani saqlash
+        const savedFiles = await saveResultsToFile(result, task.filename);
 
-      logger.info(`\n✅ TUGADI: ${task.name}`);
-      logger.info(`   📊 Topildi: ${result.phonesFound?.length || 0} ta raqam`);
-      logger.info(`   🔢 Unikal: ${uniqueCount} ta`);
-      logger.info(`   📁 Fayllar: ${savedFiles.jsonFile}, ${savedFiles.txtFile}, ${savedFiles.excelFile}`);
-      logger.info(`   ⏰ Task 1 soat saqlanadi\n`);
+        logger.info(`\n✅ TUGADI: ${task.name}`);
+        logger.info(`   📊 Topildi: ${result.phonesFound?.length || 0} ta raqam`);
+        logger.info(`   🔢 Unikal: ${uniqueCount} ta`);
+        logger.info(`   📁 Fayllar: ${savedFiles.jsonFile}, ${savedFiles.txtFile}, ${savedFiles.excelFile}`);
+        logger.info(`   ⏰ Task 1 soat saqlanadi\n`);
 
-      // Resume faylni o'chirish (agar mavjud bo'lsa)
-      if (task.resumeFile) {
-        const { deleteResumeFile } = require('./autoResume');
-        deleteResumeFile(task.resumeFile);
-      }
+        // Resume faylni o'chirish (agar mavjud bo'lsa)
+        if (task.resumeFile) {
+          const { deleteResumeFile } = require('./autoResume');
+          deleteResumeFile(task.resumeFile);
+        }
 
-      // Task natijasini 1 soat saqlash
-      task.completedAt = Date.now();
-      task.result = {
-        totalPhones: result.phonesFound?.length || 0,
-        uniquePhones: uniqueCount,
-        files: savedFiles
-      };
-      completedTasks.push(task);
+        // Task natijasini 1 soat saqlash
+        task.completedAt = Date.now();
+        task.result = {
+          totalPhones: result.phonesFound?.length || 0,
+          uniquePhones: uniqueCount,
+          files: savedFiles
+        };
+        completedTasks.push(task);
 
-      // 1 soatdan eski tasklarni tozalash
-      const oneHourAgo = Date.now() - (60 * 60 * 1000);
-      completedTasks = completedTasks.filter(t => t.completedAt > oneHourAgo);
+        // 1 soatdan eski tasklarni tozalash
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        completedTasks = completedTasks.filter(t => t.completedAt > oneHourAgo);
 
     } catch (error) {
       console.log(`\n❌ TASK XATO: ${task.name} - ${error.message}`);
