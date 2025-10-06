@@ -108,6 +108,7 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
     let continueScanning = true;
     let batchCount = 0;
     let batchSize = 100; // Kichikroq batch - tezroq
+    let batchesWithoutNewPhones = 0; // Yangi raqam topilmagan batch'lar soni
 
     console.log(`\n🚀 Skanerlash boshlandi...\n`);
 
@@ -127,6 +128,9 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
       batchCount++;
       results.totalMessages += messages.length;
       currentProgress.totalMessages = results.totalMessages; // ✅ Progress uchun
+
+      const phonesBefore = results.totalPhones; // Batch boshidagi raqamlar soni
+
       console.log(`🔍 Batch #${batchCount} - ${messages.length} ta xabar`);
 
       // Har bir xabarni ko'rib chiqish
@@ -202,6 +206,23 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
       // Log (har 3 batch - oddiy skanerlashdek)
       if (batchCount % 3 === 0) {
         console.log(`⚡ TEZ SKAN Progress: Batch #${batchCount} | ${results.totalMessages} jami xabar | ${currentProgress.processedMessages} tekshirildi | ${results.uniqueUsers} user | ${results.totalPhones} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min`);
+      }
+
+      // ✅ Batch'da yangi raqam topilganmi tekshirish
+      const phonesAfter = results.totalPhones;
+      if (phonesAfter === phonesBefore) {
+        // Yangi raqam topilmadi
+        batchesWithoutNewPhones++;
+        console.log(`⚠️ Batch #${batchCount}: Yangi raqam topilmadi (${batchesWithoutNewPhones}/10)`);
+
+        if (batchesWithoutNewPhones >= 10) {
+          console.log(`\n🛑 10 ta batch ketma-ket yangi raqam topilmadi - to'xtatilmoqda...`);
+          continueScanning = false;
+          break;
+        }
+      } else {
+        // Yangi raqam topildi - counter reset
+        batchesWithoutNewPhones = 0;
       }
 
       // Sleep (Telegram API rate limit)
