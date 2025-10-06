@@ -539,11 +539,16 @@
       const queueContainer = document.getElementById('queueContainer');
       const queueTableBody = document.getElementById('queueTableBody');
 
+      // Debug
+      console.log('🔍 updateQueueList called:', queueData);
+
       if (!queueData || !queueData.pendingTasks || queueData.pendingTasks.length === 0) {
         queueContainer.style.display = 'none';
+        console.log('⚠️ Navbat bo\'sh yoki yo\'q');
         return;
       }
 
+      console.log('✓ Navbat mavjud:', queueData.pendingTasks.length, 'ta task');
       queueContainer.style.display = 'block';
 
       let html = '';
