@@ -3,7 +3,8 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const { getAllGroups, getActiveGroups } = require('../../database/models');
-const { scrapeGroupHistory, scrapeGroupHistoryByDate, scrapeMultipleGroups, scrapeMultipleGroupsByDate, saveResultsToFile, getProgress, stopScraping, pauseScraping, resumeScraping, addToQueue, getQueueStatus } = require('../../services/historyScraper');
+const { scrapeGroupHistory, scrapeGroupHistoryByDate, scrapeMultipleGroups, scrapeMultipleGroupsByDate, saveResultsToFile, getProgress, stopScraping, pauseScraping, resumeScraping, addToQueue, removeFromQueue, getQueueStatus, checkGroupMessageRange } = require('../../services/historyScraper');
+const { scrapeUniqueUsers, getUniqueProgress } = require('../../services/uniqueUserScraper');
 
 // Tarix skanerlash sahifasi
 router.get('/', async (req, res) => {
@@ -26,7 +27,28 @@ router.post('/scrape-by-date', async (req, res) => {
     const { group_ids, start_date, end_date, export_name } = req.body;
 
     const startDate = new Date(start_date);
-    const endDate = end_date ? new Date(end_date) : new Date();
+
+    // End date ni to'g'ri sozlash
+    let endDate;
+    if (end_date) {
+      endDate = new Date(end_date);
+
+      // Agar bugungi kun tanlangan bo'lsa, hozirgi vaqtni ishlatish
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (endDate.getTime() === today.getTime()) {
+        // Bugungi kun - hozirgi vaqtni ishlatish
+        endDate = new Date();
+      } else {
+        // O'tmish yoki kelajak kun - oxirgi soatni ishlatish (23:59:59)
+        endDate.setHours(23, 59, 59, 999);
+      }
+    } else {
+      // End date berilmagan - hozirgi vaqt
+      endDate = new Date();
+    }
 
     // Guruh ID larni array ga keltirish
     let groupIds = [];
@@ -96,6 +118,79 @@ router.post('/scrape-by-date', async (req, res) => {
   }
 });
 
+// ⚡ TEZ SKAN - Har userdan faqat 1-2 ta raqam
+router.post('/scrape-unique', async (req, res) => {
+  try {
+    const { group_id, start_date, end_date, max_phones_per_user, export_name } = req.body;
+
+    if (!group_id) {
+      return res.json({ success: false, error: 'Guruh tanlanmadi!' });
+    }
+
+    const startDate = new Date(start_date);
+    let endDate;
+    if (end_date) {
+      endDate = new Date(end_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (endDate.getTime() === today.getTime()) {
+        endDate = new Date();
+      } else {
+        endDate.setHours(23, 59, 59, 999);
+      }
+    } else {
+      endDate = new Date();
+    }
+
+    const maxPhonesPerUser = parseInt(max_phones_per_user) || 1;
+    const groupId = parseInt(group_id);
+
+    // Fayl nomi
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+    const timeStamp = Date.now();
+    let customFilename = null;
+
+    if (export_name && export_name.trim()) {
+      const safeName = export_name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      customFilename = `unique_users_${safeName}_${timestamp}_${timeStamp}.json`;
+    } else {
+      customFilename = `unique_users_${timestamp}_${timeStamp}.json`;
+    }
+
+    // Background'da ishga tushirish
+    console.log(`⚡ TEZ SKAN boshlandi: Guruh ID=${groupId}, Max=${maxPhonesPerUser} raqam/user`);
+
+    // Async ravishda ishga tushirish
+    scrapeUniqueUsers(groupId, startDate, endDate, maxPhonesPerUser, customFilename)
+      .then(result => {
+        console.log(`✅ TEZ SKAN tugadi: ${result.totalPhones} raqam topildi`);
+      })
+      .catch(error => {
+        console.error('❌ TEZ SKAN xato:', error);
+      });
+
+    // Darhol javob qaytarish
+    res.json({
+      success: true,
+      message: `⚡ TEZ SKAN boshlandi! Har userdan ${maxPhonesPerUser} ta raqam olinadi.`
+    });
+
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// TEZ SKAN progress API
+router.get('/api/unique-progress', (req, res) => {
+  const progress = getUniqueProgress();
+  res.json(progress);
+});
+
 // Bitta guruhni skanerlash (eski usul)
 router.post('/scrape-single', async (req, res) => {
   try {
@@ -138,6 +233,23 @@ router.get('/api/progress', (req, res) => {
   });
 });
 
+// Guruh xabarlar sanasini tekshirish API
+router.get('/api/check-range/:groupId', async (req, res) => {
+  try {
+    const groupId = parseInt(req.params.groupId);
+    const result = await checkGroupMessageRange(groupId);
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Export fayllarni ko'rish va yuklash
 router.get('/results', async (req, res) => {
   try {
@@ -163,8 +275,13 @@ router.get('/results', async (req, res) => {
           let uniquePhones = 0;
 
           try {
-            // Faylning faqat boshini o'qish - totalPhones va uniquePhones metadata
-            const fileContent = fs.readFileSync(filePath, 'utf8');
+            // Faqat faylning birinchi 2000 baytini o'qish (metadata uchun yetarli)
+            const fd = fs.openSync(filePath, 'r');
+            const buffer = Buffer.alloc(2000);
+            fs.readSync(fd, buffer, 0, 2000, 0);
+            fs.closeSync(fd);
+
+            const fileContent = buffer.toString('utf8');
 
             // JSON faylning boshidan metadata qidirish (regex bilan tez)
             const totalMatch = fileContent.match(/"totalPhones"\s*:\s*(\d+)/);
@@ -172,16 +289,8 @@ router.get('/results', async (req, res) => {
 
             if (totalMatch) totalPhones = parseInt(totalMatch[1]);
             if (uniqueMatch) uniquePhones = parseInt(uniqueMatch[1]);
-
-            // Agar metadata bo'lmasa, to'liq parse qilish (faqat kichik fayllar uchun)
-            if (!totalMatch && stats.size < 5 * 1024 * 1024) {
-              const content = JSON.parse(fileContent);
-              const phones = content.phones || [];
-              totalPhones = phones.length;
-              uniquePhones = [...new Set(phones.map(p => p.phone))].length;
-            }
           } catch (e) {
-            console.error('File read error:', file, e.message);
+            // Agar xato bo'lsa, 0 qoladi
           }
 
           return {
@@ -299,6 +408,13 @@ router.post('/resume', (req, res) => {
     success,
     message: success ? 'Davom ettirildi' : 'Davom ettirib bo\'lmadi'
   });
+});
+
+// Navbatdan taskni o'chirish
+router.delete('/queue/:taskId', (req, res) => {
+  const taskId = req.params.taskId;
+  const result = removeFromQueue(taskId);
+  res.json(result);
 });
 
 // Faylni o'chirish

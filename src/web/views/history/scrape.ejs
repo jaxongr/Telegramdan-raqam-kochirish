@@ -149,7 +149,18 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllGroups()">
                       <i class="bi bi-x"></i> Tozalash
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="checkDateRanges()">
+                      <i class="bi bi-calendar-check"></i> Sana oralig'ini tekshirish
+                    </button>
                   </label>
+
+                  <!-- Sana oralig'i natijasi -->
+                  <div id="dateRangeResults" class="mb-3" style="display: none;">
+                    <div class="alert alert-info">
+                      <h6><i class="bi bi-info-circle"></i> Mavjud xabarlar sana oralig'i:</h6>
+                      <div id="dateRangeContent"></div>
+                    </div>
+                  </div>
                   <div class="row">
                     <% if (groups && groups.length > 0) { %>
                       <% groups.forEach(group => { %>
@@ -257,6 +268,114 @@
                 </div>
               </div>
             </div>
+
+            <!-- Navbat ro'yxati -->
+            <div id="queueContainer" class="mt-4" style="display: none;">
+              <h6 class="mb-3"><i class="bi bi-list-ol"></i> Navbat ro'yxati</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width: 5%">#</th>
+                      <th style="width: 40%">Nom</th>
+                      <th style="width: 20%">Holat</th>
+                      <th style="width: 20%">Qo'shilgan vaqt</th>
+                      <th style="width: 15%">Amal</th>
+                    </tr>
+                  </thead>
+                  <tbody id="queueTableBody">
+                    <!-- JavaScript orqali to'ldiriladi -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ⚡ TEZ SKAN -->
+        <div class="card mb-3">
+          <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> ⚡ TEZ SKAN - Har userdan 1-2 ta raqam (5x tezroq!)</h5>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info mb-3">
+              <i class="bi bi-info-circle"></i>
+              <strong>TEZ SKAN nima?</strong> Har bir userdan faqat 1-2 ta raqam oladi. Bir userning 100 ta xabari bo'lsa ham, faqat 1-2 ta raqam olinadi va keyingi xabarlari skip qilinadi. Natijada 5-10x tezroq ishlaydi!
+            </div>
+            <form id="uniqueScanForm">
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">
+                    <i class="bi bi-collection"></i> Guruhni tanlang
+                  </label>
+                  <select name="group_id" class="form-select" required>
+                    <option value="">-- Guruhni tanlang --</option>
+                    <% if (groups && groups.length > 0) { %>
+                      <% groups.forEach(group => { %>
+                        <option value="<%= group.id %>"><%= group.name %></option>
+                      <% }) %>
+                    <% } %>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Boshlang'ich sana</label>
+                  <input type="date" name="start_date" class="form-control" required>
+                  <small class="text-muted">Qaysi sanadan boshlab</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Tugash sana</label>
+                  <input type="date" name="end_date" class="form-control">
+                  <small class="text-muted">Bo'sh qoldirilsa - bugungi kun</small>
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label class="form-label">Max raqam/user</label>
+                  <select name="max_phones_per_user" class="form-select">
+                    <option value="1">1 ta</option>
+                    <option value="2">2 ta</option>
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Fayl nomi (ixtiyoriy)</label>
+                  <input type="text" name="export_name" class="form-control" placeholder="Tez_skan_2025" maxlength="50">
+                  <small class="text-muted">Arxivni ajratish uchun</small>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-warning btn-lg">
+                <i class="bi bi-lightning-charge-fill"></i> ⚡ TEZ SKAN boshlash
+              </button>
+            </form>
+
+            <!-- Progress display for TEZ SKAN -->
+            <div id="uniqueProgressContainer" style="display: none;" class="mt-4">
+              <div class="alert alert-warning">
+                <h6 class="mb-0">
+                  <i class="bi bi-lightning-charge-fill"></i>
+                  <span id="uniqueStatusText">⚡ TEZ SKAN davom etmoqda...</span>
+                </h6>
+              </div>
+
+              <!-- Progress bar -->
+              <div class="mb-2">
+                <div class="progress" style="height: 25px;">
+                  <div id="uniqueProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%">0%</div>
+                </div>
+              </div>
+
+              <div class="row text-center">
+                <div class="col-md-3">
+                  <strong id="uniqueProcessedCount">0</strong> xabar qayta ishlandi
+                </div>
+                <div class="col-md-3">
+                  <strong id="uniqueUsersCount">0</strong> unikal user
+                </div>
+                <div class="col-md-3">
+                  <strong id="uniquePhonesCount">0</strong> raqam topildi
+                </div>
+                <div class="col-md-3">
+                  <strong id="uniqueSpeedCount">0</strong> xabar/min
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -331,6 +450,117 @@
       document.querySelectorAll('.group-check').forEach(cb => cb.checked = false);
     }
 
+    // Sana oralig'ini tekshirish
+    async function checkDateRanges() {
+      const checkboxes = document.querySelectorAll('.group-check:checked');
+
+      if (checkboxes.length === 0) {
+        alert('⚠️ Avval guruhlarni tanlang!');
+        return;
+      }
+
+      const resultDiv = document.getElementById('dateRangeContent');
+      resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Tekshirilmoqda...</div>';
+      document.getElementById('dateRangeResults').style.display = 'block';
+
+      let html = '<table class="table table-sm table-bordered mb-0"><thead><tr><th>Guruh nomi</th><th>Jami xabarlar</th><th>Eng eski xabar</th><th>Eng yangi xabar</th></tr></thead><tbody>';
+
+      for (const checkbox of checkboxes) {
+        const groupId = checkbox.value;
+        const groupName = checkbox.nextElementSibling.textContent.trim();
+
+        try {
+          const response = await fetch(`/history/api/check-range/${groupId}`);
+          const result = await response.json();
+
+          if (result.success) {
+            const totalMsg = result.totalMessages ? `<span class="badge bg-info">${result.totalMessages.toLocaleString()}</span>` : '<span class="text-muted">-</span>';
+            html += `<tr>
+              <td><strong>${groupName}</strong></td>
+              <td>${totalMsg}</td>
+              <td>${result.oldestDateFormatted}</td>
+              <td>${result.newestDateFormatted}</td>
+            </tr>`;
+          } else {
+            html += `<tr>
+              <td><strong>${groupName}</strong></td>
+              <td colspan="3" class="text-danger">Xato: ${result.error}</td>
+            </tr>`;
+          }
+        } catch (error) {
+          html += `<tr>
+            <td><strong>${groupName}</strong></td>
+            <td colspan="3" class="text-danger">Xato: ${error.message}</td>
+          </tr>`;
+        }
+      }
+
+      html += '</tbody></table>';
+      resultDiv.innerHTML = html;
+    }
+
+    // Navbatdan taskni o'chirish
+    async function removeTask(taskId, taskName) {
+      if (!confirm(`"${taskName}" taskni navbatdan o'chirmoqchimisiz?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/history/queue/${taskId}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ ' + result.message);
+          updateProgress(); // Navbatni yangilash
+        } else {
+          alert('❌ ' + result.message);
+        }
+      } catch (error) {
+        alert('❌ Xato: ' + error.message);
+      }
+    }
+
+    // Navbat ro'yxatini yangilash
+    function updateQueueList(queueData) {
+      const queueContainer = document.getElementById('queueContainer');
+      const queueTableBody = document.getElementById('queueTableBody');
+
+      if (!queueData || !queueData.pendingTasks || queueData.pendingTasks.length === 0) {
+        queueContainer.style.display = 'none';
+        return;
+      }
+
+      queueContainer.style.display = 'block';
+
+      let html = '';
+      queueData.pendingTasks.forEach((task, index) => {
+        const statusBadge = task.position === 1 && queueData.isProcessing
+          ? '<span class="badge bg-success">Bajarilmoqda</span>'
+          : '<span class="badge bg-secondary">Navbatda</span>';
+
+        const deleteBtn = task.position === 1 && queueData.isProcessing
+          ? '<button class="btn btn-sm btn-secondary" disabled>Ishlamoqda</button>'
+          : `<button class="btn btn-sm btn-danger" onclick="removeTask('${task.id}', '${task.name}')">
+               <i class="bi bi-trash"></i> O'chirish
+             </button>`;
+
+        html += `
+          <tr>
+            <td>${task.position}</td>
+            <td><strong>${task.name}</strong></td>
+            <td>${statusBadge}</td>
+            <td><small>${task.addedAt}</small></td>
+            <td>${deleteBtn}</td>
+          </tr>
+        `;
+      });
+
+      queueTableBody.innerHTML = html;
+    }
+
     // Stop/Pause/Resume funksiyalari
     async function stopScraping() {
       if (!confirm('Skanerlashni to\'xtatmoqchimisiz? Jarayon bekor qilinadi.')) return;
@@ -374,6 +604,11 @@
       try {
         const progressRes = await fetch('/history/api/progress');
         const progress = await progressRes.json();
+
+        // Navbat ro'yxatini yangilash (doim)
+        if (progress.queue) {
+          updateQueueList(progress.queue);
+        }
 
         if (!progress.isRunning) {
           if (progressInterval) {
@@ -461,6 +696,11 @@
         const progressRes = await fetch('/history/api/progress');
         const progress = await progressRes.json();
 
+        // Navbatni doim ko'rsatish (agar bor bo'lsa)
+        if (progress.queue) {
+          updateQueueList(progress.queue);
+        }
+
         if (progress.isRunning) {
           // Progress ni ko'rsatish
           localStorage.setItem('history_scraping', 'true');
@@ -517,6 +757,116 @@
         }
       } catch (error) {
         alert('Xato: ' + error.message);
+      }
+    });
+
+    // ⚡ TEZ SKAN form submit
+    let uniqueProgressInterval = null;
+
+    document.getElementById('uniqueScanForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const formData = new FormData(this);
+
+      const data = {
+        group_id: formData.get('group_id'),
+        start_date: formData.get('start_date'),
+        end_date: formData.get('end_date'),
+        max_phones_per_user: formData.get('max_phones_per_user'),
+        export_name: formData.get('export_name') || ''
+      };
+
+      try {
+        const response = await fetch('/history/scrape-unique', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ ' + result.message);
+
+          // Progress ni boshlash
+          localStorage.setItem('unique_scraping', 'true');
+          updateUniqueProgress();
+          uniqueProgressInterval = setInterval(updateUniqueProgress, 2000);
+
+        } else {
+          alert('Xato: ' + result.error);
+        }
+      } catch (error) {
+        alert('Xato: ' + error.message);
+      }
+    });
+
+    // TEZ SKAN progress ni yangilash
+    async function updateUniqueProgress() {
+      try {
+        const response = await fetch('/history/api/unique-progress');
+        const progress = await response.json();
+
+        if (!progress.isRunning) {
+          if (uniqueProgressInterval) {
+            clearInterval(uniqueProgressInterval);
+            uniqueProgressInterval = null;
+          }
+          localStorage.removeItem('unique_scraping');
+          document.getElementById('uniqueProgressContainer').style.display = 'none';
+
+          // Agar raqamlar topilgan bo'lsa
+          if (progress.phonesFound > 0) {
+            alert(`✅ TEZ SKAN tugadi! ${progress.phonesFound} ta raqam topildi.`);
+            location.reload();
+          }
+          return;
+        }
+
+        // Progress container ni ko'rsatish
+        document.getElementById('uniqueProgressContainer').style.display = 'block';
+
+        // Progress bar yangilash
+        const percent = progress.totalMessages > 0
+          ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
+          : 0;
+
+        document.getElementById('uniqueProgressBar').style.width = percent + '%';
+        document.getElementById('uniqueProgressBar').textContent = percent + '%';
+
+        // Statistika
+        document.getElementById('uniqueProcessedCount').textContent = progress.processedMessages || 0;
+        document.getElementById('uniqueUsersCount').textContent = progress.uniqueUsers || 0;
+        document.getElementById('uniquePhonesCount').textContent = progress.phonesFound || 0;
+        document.getElementById('uniqueSpeedCount').textContent = progress.messagesPerMinute || 0;
+
+        // Status text
+        if (progress.groupName) {
+          document.getElementById('uniqueStatusText').textContent = `⚡ TEZ SKAN - ${progress.groupName}`;
+        }
+
+      } catch (error) {
+        console.error('TEZ SKAN progress xato:', error);
+      }
+    }
+
+    // Sahifa yuklanganda TEZ SKAN tekshirish
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // TEZ SKAN progressni tekshirish
+        if (localStorage.getItem('unique_scraping') === 'true') {
+          const response = await fetch('/history/api/unique-progress');
+          const progress = await response.json();
+
+          if (progress.isRunning) {
+            updateUniqueProgress();
+            uniqueProgressInterval = setInterval(updateUniqueProgress, 2000);
+          } else {
+            localStorage.removeItem('unique_scraping');
+          }
+        }
+      } catch (error) {
+        console.error('TEZ SKAN progress tekshirishda xato:', error);
       }
     });
   </script>
