@@ -79,29 +79,39 @@ function updateProgress(updates) {
  */
 async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date(), resumeFile = null, filename = null) {
   try {
+    logger.info(`\n🚀 Skanerlash boshlandi: Guruh ID=${groupId}, Fayl=${filename || 'null'}`);
+
     if (!telegramClient || !telegramClient.connected) {
       throw new Error('Telegram client ulanmagan!');
     }
+    logger.info(`✓ Telegram client ulangan`);
 
     // Guruh ma'lumotlarini olish
     const group = await getGroupById(groupId);
     if (!group) {
       throw new Error('Guruh topilmadi!');
     }
+    logger.info(`✓ Guruh topildi: ${group.name}`);
 
     // Resume ma'lumotlarini yuklash yoki yaratish
     let resumeData = null;
-    if (resumeFile && fs.existsSync(resumeFile)) {
-      resumeData = JSON.parse(fs.readFileSync(resumeFile, 'utf8'));
-      logger.info(`📂 Resume fayli yuklandi: ${resumeData.processedMessages} xabar qayta ishlanadi`);
-    } else if (!resumeFile) {
-      // Yangi resume fayl yaratish
-      const { createResumeFile } = require('./autoResume');
-      resumeFile = createResumeFile(groupId, group.name, {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        filename: filename
-      });
+    try {
+      if (resumeFile && fs.existsSync(resumeFile)) {
+        resumeData = JSON.parse(fs.readFileSync(resumeFile, 'utf8'));
+        logger.info(`📂 Resume fayli yuklandi: ${resumeData.processedMessages} xabar qayta ishlanadi`);
+      } else if (!resumeFile) {
+        // Yangi resume fayl yaratish
+        const { createResumeFile } = require('./autoResume');
+        resumeFile = createResumeFile(groupId, group.name, {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          filename: filename
+        });
+      }
+    } catch (resumeError) {
+      logger.warn(`Resume fayl xatosi (e'tiborsiz qoldirildi): ${resumeError.message}`);
+      resumeData = null;
+      resumeFile = null;
     }
 
     // Kunlar orasidagi farqni hisoblash
@@ -180,25 +190,55 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
       if (!continueScanning) break;
 
-      // Xabarlarni olish (200 ta batch - tezroq ishlash uchun)
+      // Xabarlarni olish (100 ta batch - FLOOD_WAIT oldini olish)
       let messages = [];
-      try {
-        messages = await telegramClient.getMessages(entity, {
-          limit: 200,
-          offsetId: offsetId,
-          offsetDate: offsetDate
-        });
-      } catch (apiError) {
-        // FLOOD_WAIT yoki boshqa API xatolari
-        if (apiError.message && apiError.message.includes('FLOOD_WAIT')) {
-          const waitSeconds = parseInt(apiError.message.match(/\d+/)?.[0] || 60);
-          logger.warn(`⏳ FLOOD_WAIT: ${waitSeconds} soniya kutish kerak`);
-          await sleep(waitSeconds * 1000);
-          continue; // Qaytadan urinish
-        } else {
-          logger.error('❌ API xatosi:', apiError.message);
-          throw apiError; // Boshqa xatolar uchun throw
+      let retryCount = 0;
+      const maxRetries = 10;
+
+      while (retryCount < maxRetries) {
+        try {
+          // Faqat har 10 batch da log yozish
+          if (batchCount % 10 === 0) {
+            logger.info(`🔍 [${group.name}] Batch #${batchCount + 1} - Xabarlar olinmoqda...`);
+          }
+
+          messages = await telegramClient.getMessages(entity, {
+            limit: 100, // Kamroq batch - FLOOD_WAIT kamroq
+            offsetId: offsetId,
+            offsetDate: offsetDate
+          });
+
+          if (batchCount % 10 === 0) {
+            logger.info(`✓ [${group.name}] ${messages.length} ta xabar olindi`);
+          }
+
+          // Muvaffaqiyatli bo'lsa, retry loop dan chiqish
+          break;
+
+        } catch (apiError) {
+          // FLOOD_WAIT yoki boshqa API xatolari
+          if (apiError.message && apiError.message.includes('FLOOD_WAIT')) {
+            const waitSeconds = parseInt(apiError.message.match(/\d+/)?.[0] || 60);
+            logger.warn(`⏳ FLOOD_WAIT (retry ${retryCount + 1}/${maxRetries}): ${waitSeconds} soniya kutish`);
+            await sleep((waitSeconds + 2) * 1000); // +2 soniya qo'shimcha xavfsizlik
+            retryCount++;
+            continue; // Qaytadan urinish
+          } else if (apiError.message && apiError.message.includes('TIMEOUT')) {
+            logger.warn(`⏳ TIMEOUT (retry ${retryCount + 1}/${maxRetries}): 10 soniya kutish`);
+            await sleep(10000);
+            retryCount++;
+            continue; // Qaytadan urinish
+          } else {
+            logger.error(`❌ [${group.name}] API xatosi:`, apiError.message);
+            throw apiError; // Boshqa xatolar uchun throw
+          }
         }
+      }
+
+      // Agar max retry ga yetsa
+      if (retryCount >= maxRetries && messages.length === 0) {
+        logger.error(`❌ [${group.name}] Max retry (${maxRetries}) ga yetdi, skan to'xtatildi`);
+        throw new Error(`FLOOD_WAIT: Max retry (${maxRetries}) ga yetdi`);
       }
 
       if (messages.length === 0) {
@@ -228,7 +268,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             results.messagesWithPhones++;
 
             for (const phone of phones) {
-              // Faqat results'ga qo'shish (database ga saqlamaslik - real-time bilan aralashmasligi uchun)
+              // Faqat results'ga qo'shish (database ga EMAS - tezlik uchun)
               results.phonesFound.push({
                 phone,
                 message: message.text.substring(0, 100),
@@ -280,19 +320,23 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
       // Resume faylni yangilash (har batch - faqat zarur ma'lumotlar)
       if (resumeFile) {
-        const resumeData = {
-          groupId,
-          groupName: group.name,
-          processedMessages: currentProgress.processedMessages,
-          phonesFoundCount: results.phonesFound.length, // Faqat count
-          lastMessageId: offsetId,
-          lastMessageDate: new Date(offsetDate * 1000).toISOString(),
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          filename: filename,
-          timestamp: new Date().toISOString()
-        };
-        fs.writeFileSync(resumeFile, JSON.stringify(resumeData, null, 2));
+        try {
+          const resumeData = {
+            groupId,
+            groupName: group.name,
+            processedMessages: currentProgress.processedMessages,
+            phonesFoundCount: results.phonesFound.length, // Faqat count
+            lastMessageId: offsetId,
+            lastMessageDate: new Date(offsetDate * 1000).toISOString(),
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            filename: filename,
+            timestamp: new Date().toISOString()
+          };
+          fs.writeFileSync(resumeFile, JSON.stringify(resumeData, null, 2));
+        } catch (resumeWriteError) {
+          logger.warn(`Resume faylni yozishda xato (davom etadi): ${resumeWriteError.message}`);
+        }
       }
 
       // Progress log (har batch)
@@ -301,8 +345,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         logger.info(`📊 [${group.name}] Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min`);
       }
 
-      // Telegram API rate limit (1 soniya kutish - tez ishlash uchun)
-      await sleep(1000);
+      // Telegram API rate limit (1200ms kutish - FLOOD_WAIT oldini olish)
+      await sleep(1200);
     }
 
     // Oxirida unikallashtirib, uniquePhones ni yangilash
@@ -708,24 +752,33 @@ function addToQueue(task) {
  */
 async function processQueue() {
   if (isProcessingQueue) {
+    logger.info('⚠️ Queue allaqachon ishlamoqda, kutilmoqda...');
     return;
   }
   if (taskQueue.length === 0) {
+    logger.info('ℹ️ Queue bo\'sh');
     return;
   }
 
   isProcessingQueue = true;
+  logger.info(`\n▶️ Queue ishga tushirildi - ${taskQueue.length} ta task`);
 
-  while (taskQueue.length > 0) {
-    const task = taskQueue.shift();
+  try {
+    while (taskQueue.length > 0) {
+      const task = taskQueue.shift();
 
-    console.log(`🔄 Navbatdan ishga tushirildi: ${task.name}`);
-    logger.info(`\n🔄 Navbatdan ishga tushirildi: ${task.name}`);
-    logger.info(`   📋 Qolgan navbatda: ${taskQueue.length} ta task`);
+      console.log(`🔄 Navbatdan ishga tushirildi: ${task.name}`);
+      logger.info(`\n🔄 Navbatdan ishga tushirildi: ${task.name}`);
+      logger.info(`   📋 Qolgan navbatda: ${taskQueue.length} ta task`);
 
-    try {
-      // Task ni bajarish
-      const result = await task.execute();
+      try {
+        // Task ni bajarish
+        logger.info(`⏳ Task bajarilmoqda: ${task.name}`);
+        logger.info(`   🎯 Execute funksiyasi chaqirilmoqda...`);
+
+        const result = await task.execute();
+
+        logger.info(`✅ Task bajarildi: ${task.name} - ${result.phonesFound?.length || 0} ta raqam`);
 
       // Unikal raqamlarni hisoblash
       const uniqueCount = [...new Set(result.phonesFound.map(p => p.phone))].length;
@@ -768,17 +821,27 @@ async function processQueue() {
       completedTasks.push(task);
     }
 
-    // Har bir task orasida 5 soniya kutish
-    if (taskQueue.length > 0) {
-      logger.info(`⏳ Keyingi task 5 soniyada boshlanadi...\n`);
-      await sleep(5000);
+      // Har bir task orasida 5 soniya kutish
+      if (taskQueue.length > 0) {
+        logger.info(`⏳ Keyingi task 5 soniyada boshlanadi...\n`);
+        await sleep(5000);
+      }
     }
-  }
 
-  // Barcha tasklar tugadi - endi progress ni o'chirish
-  isProcessingQueue = false;
-  updateProgress({ isRunning: false });
-  logger.info('✅ Barcha navbat tugadi!\n');
+    // Barcha tasklar tugadi - endi progress ni o'chirish
+    isProcessingQueue = false;
+    updateProgress({ isRunning: false });
+    logger.info('✅ Barcha navbat tugadi!\n');
+
+  } catch (queueError) {
+    logger.error(`\n💥 Queue jarayonida xato:`);
+    logger.error(queueError);
+    logger.error(queueError.stack);
+
+    // Queue ni reset qilish
+    isProcessingQueue = false;
+    updateProgress({ isRunning: false });
+  }
 }
 
 /**
