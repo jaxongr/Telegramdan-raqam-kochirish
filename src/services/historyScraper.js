@@ -79,6 +79,13 @@ function updateProgress(updates) {
  */
 async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date(), resumeFile = null, filename = null) {
   try {
+    // MUHIM: Sanalarni tekshirish va agar teskari bo'lsa, swap qilish
+    if (startDate > endDate) {
+      console.log(`⚠️ SANA TESKARI: ${startDate.toISOString()} > ${endDate.toISOString()} - Avtomatik swap`);
+      logger.warn(`Sanalar teskari - swap qilindi`);
+      [startDate, endDate] = [endDate, startDate];
+    }
+
     console.log(`\n🚀 Skanerlash boshlandi: Guruh ID=${groupId}, Fayl=${filename || 'null'}`);
     console.log(`📅 Sana: ${startDate.toISOString()} -> ${endDate.toISOString()}`);
     logger.info(`\n🚀 Skanerlash boshlandi: Guruh ID=${groupId}, Fayl=${filename || 'null'}`);
@@ -303,14 +310,29 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         try {
           if (!message || !message.date) continue;
 
-          // BIRINCHI - Sana tekshirish (text bo'lmasa ham!)
+          // MUHIM: offsetId va offsetDate ni DOIM yangilash (loop davom etishi uchun)
+          offsetId = message.id;
+          offsetDate = message.date;
+
+          // Xabar sanasi
           const msgDate = new Date(message.date * 1000);
-          if (msgDate < startDate) {
-            console.log(`⏹️ SANA YETDI: msgDate=${msgDate.toISOString()}, startDate=${startDate.toISOString()}, message.id=${message.id}`);
-            logger.info(`⏹️ Boshlanish sanasiga yetildi: ${startDate.toLocaleDateString()}. Skanerlash to'xtatiladi.`);
-            continueScanning = false;
-            break;
+
+          // MUHIM: processedMessages ni DOIM yangilash (text bo'lmasa ham)
+          const daysProcessed = Math.ceil((endDate - msgDate) / (1000 * 60 * 60 * 24));
+
+          // Har 100 xabarda unikal raqamlarni hisoblash
+          let uniqueCount = currentProgress.uniquePhones;
+          if (currentProgress.processedMessages % 100 === 0) {
+            uniqueCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
           }
+
+          updateProgress({
+            processedMessages: currentProgress.processedMessages + 1,
+            phonesFound: results.phonesFound.length,
+            uniquePhones: uniqueCount,
+            processedDays: daysProcessed,
+            currentDate: msgDate.toISOString()
+          });
 
           // Agar text yo'q bo'lsa, telefon raqam ham yo'q - keyingisiga o'tamiz
           if (!message.text) continue;
@@ -331,24 +353,6 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // Progress yangilash (har 100 xabarda unikallashtirib ko'rsatish)
-          const currentMsgDate = msgDate;
-          const daysProcessed = Math.ceil((endDate - currentMsgDate) / (1000 * 60 * 60 * 24));
-
-          // Har 100 xabarda unikal raqamlarni hisoblash
-          let uniqueCount = currentProgress.uniquePhones;
-          if (currentProgress.processedMessages % 100 === 0) {
-            uniqueCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
-          }
-
-          updateProgress({
-            processedMessages: currentProgress.processedMessages + 1,
-            phonesFound: results.phonesFound.length,
-            uniquePhones: uniqueCount,
-            processedDays: daysProcessed,
-            currentDate: currentMsgDate.toISOString()
-          });
-
           // Har 100 ta raqam topilganda asosiy faylni yangilash (backup emas!)
           if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0) {
             logger.info(`💾 Progress: ${results.phonesFound.length} ta raqam topildi`);
@@ -360,10 +364,6 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // Oxirgi message ID va Date ni saqlash
-          offsetId = message.id;
-          offsetDate = message.date;
-
         } catch (msgError) {
           results.errors.push({
             message: msgError.message,
@@ -371,6 +371,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
           });
         }
       }
+
+      // OLIB TASHLANDI: 30-day check (user eski xabarlarni skanerlashi mumkin)
 
       // Resume faylni yangilash (har batch - faqat zarur ma'lumotlar)
       if (resumeFile) {
@@ -393,10 +395,14 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         }
       }
 
-      // Progress log (har batch)
-      if (batchCount % 1 === 0) {
+      // Progress log (har 3 batch)
+      if (batchCount % 3 === 0) {
         const uniqueNow = [...new Set(results.phonesFound.map(p => p.phone))].length;
-        logger.info(`📊 [${group.name}] Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min`);
+        const queueInfo = getQueueStatus();
+        const navbatText = queueInfo.pendingTasks.length > 0 ? `Navbat: ${queueInfo.pendingTasks.length}` : '';
+        const kunlarText = currentProgress.totalDays > 0 ? `${currentProgress.processedDays}/${currentProgress.totalDays} kun` : '';
+
+        console.log(`📊 Progress: Batch #${batchCount} | ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min | ${kunlarText} ${navbatText}`);
       }
 
       // Telegram API rate limit (ADAPTIVE sleep)
@@ -675,49 +681,74 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Cache uchun global o'zgaruvchilar
+let historyStatsCache = null;
+let historyStatsCacheTime = 0;
+const HISTORY_STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minut
+
 /**
- * Export fayllardan statistikani hisoblash
+ * Export fayllardan statistikani hisoblash (OPTIMIZATSIYA - FAQAT METADATA)
  */
 function getHistoryStats() {
   try {
+    const now = Date.now();
+
+    // Cache tekshirish - 5 minut
+    if (historyStatsCache && (now - historyStatsCacheTime) < HISTORY_STATS_CACHE_DURATION) {
+      return historyStatsCache;
+    }
+
     const exportDir = path.join(__dirname, '../../exports');
 
     if (!fs.existsSync(exportDir)) {
-      return {
+      historyStatsCache = {
         totalExports: 0,
         totalPhones: 0,
         uniquePhones: 0,
         lastScrape: null
       };
+      historyStatsCacheTime = now;
+      return historyStatsCache;
     }
 
     const files = fs.readdirSync(exportDir);
     const jsonFiles = files.filter(file => file.endsWith('.json') && file.startsWith('history_scrape_'));
 
     if (jsonFiles.length === 0) {
-      return {
+      historyStatsCache = {
         totalExports: 0,
         totalPhones: 0,
         uniquePhones: 0,
         lastScrape: null
       };
+      historyStatsCacheTime = now;
+      return historyStatsCache;
     }
 
     let totalPhones = 0;
-    const allPhones = new Set();
+    let uniquePhones = 0;
     let lastModified = null;
 
+    // OPTIMIZATSIYA: Faqat birinchi 2000 bayt o'qish (metadata uchun yetarli)
     jsonFiles.forEach(file => {
       try {
         const filePath = path.join(exportDir, file);
         const stats = fs.statSync(filePath);
-        const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
-        totalPhones += content.totalPhones || 0;
+        // Faqat metadata o'qish (to'liq faylni emas!)
+        const fd = fs.openSync(filePath, 'r');
+        const buffer = Buffer.alloc(2000);
+        fs.readSync(fd, buffer, 0, 2000, 0);
+        fs.closeSync(fd);
 
-        if (content.phones && Array.isArray(content.phones)) {
-          content.phones.forEach(p => allPhones.add(p.phone));
-        }
+        const fileContent = buffer.toString('utf8');
+
+        // Regex bilan metadata qidirish (juda tez!)
+        const totalMatch = fileContent.match(/"totalPhones"\s*:\s*(\d+)/);
+        const uniqueMatch = fileContent.match(/"uniquePhones"\s*:\s*(\d+)/);
+
+        if (totalMatch) totalPhones += parseInt(totalMatch[1]);
+        if (uniqueMatch) uniquePhones += parseInt(uniqueMatch[1]);
 
         if (!lastModified || stats.mtime > lastModified) {
           lastModified = stats.mtime;
@@ -727,12 +758,15 @@ function getHistoryStats() {
       }
     });
 
-    return {
+    historyStatsCache = {
       totalExports: jsonFiles.length,
       totalPhones,
-      uniquePhones: allPhones.size,
+      uniquePhones,
       lastScrape: lastModified ? lastModified.toLocaleDateString('uz-UZ') : null
     };
+    historyStatsCacheTime = now;
+
+    return historyStatsCache;
 
   } catch (error) {
     logger.error('History stats hisoblashda xato:', error);
@@ -785,9 +819,13 @@ function resumeScraping() {
  * Navbatga task qo'shish
  */
 function addToQueue(task) {
+  // Har bir taskga unique ID qo'shish
+  task.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  task.addedAt = Date.now();
+
   taskQueue.push(task);
-  console.log(`📥 Navbatga qo'shildi: ${task.name} (Navbatda: ${taskQueue.length})`);
-  logger.info(`📥 Navbatga qo'shildi: ${task.name} (Navbatda: ${taskQueue.length})`);
+  console.log(`📥 Navbatga qo'shildi: ${task.name} (ID: ${task.id}, Navbatda: ${taskQueue.length})`);
+  logger.info(`📥 Navbatga qo'shildi: ${task.name} (ID: ${task.id}, Navbatda: ${taskQueue.length})`);
 
   // Agar hozir ishlamayotgan bo'lsa, darhol boshlash
   if (!isProcessingQueue) {
@@ -805,7 +843,32 @@ function addToQueue(task) {
 
   return {
     queuePosition: taskQueue.length,
-    queueLength: taskQueue.length
+    queueLength: taskQueue.length,
+    taskId: task.id
+  };
+}
+
+/**
+ * Navbatdan taskni o'chirish
+ */
+function removeFromQueue(taskId) {
+  const index = taskQueue.findIndex(t => t.id === taskId);
+
+  if (index === -1) {
+    logger.warn(`❌ Task topilmadi: ${taskId}`);
+    return {
+      success: false,
+      message: 'Task topilmadi yoki allaqachon ishga tushdi'
+    };
+  }
+
+  const task = taskQueue.splice(index, 1)[0];
+  logger.info(`🗑️ Navbatdan o'chirildi: ${task.name} (ID: ${taskId})`);
+
+  return {
+    success: true,
+    message: `${task.name} navbatdan o'chirildi`,
+    taskName: task.name
   };
 }
 
@@ -932,9 +995,15 @@ function getQueueStatus() {
     isProcessing: isProcessingQueue,
     queueLength: taskQueue.length,
     pendingTasks: taskQueue.map((t, i) => ({
+      id: t.id,
       position: i + 1,
       name: t.name,
-      status: 'navbatda'
+      status: 'navbatda',
+      addedAt: new Date(t.addedAt).toLocaleString('uz-UZ', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
     })),
     completedTasks: completedTasks.map(t => ({
       name: t.name,
@@ -945,6 +1014,108 @@ function getQueueStatus() {
       expiresIn: Math.round((t.completedAt + 60 * 60 * 1000 - Date.now()) / 60000) + ' daqiqa'
     }))
   };
+}
+
+/**
+ * Guruhdagi xabarlar sanasini tekshirish
+ * @param {number} groupId - Database dagi guruh ID
+ * @returns {Object} - Eng eski va eng yangi xabar sanalari
+ */
+async function checkGroupMessageRange(groupId) {
+  try {
+    if (!telegramClient || !telegramClient.connected) {
+      throw new Error('Telegram client ulanmagan!');
+    }
+
+    // Guruh ma'lumotlarini olish
+    const group = await getGroupById(groupId);
+    if (!group) {
+      throw new Error('Guruh topilmadi!');
+    }
+
+    logger.info(`📊 Guruh sanalarini tekshirish: ${group.name} (ID: ${group.telegram_id})`);
+
+    // Telegram entity ni olish
+    const entity = await telegramClient.getEntity(group.telegram_id);
+
+    // Jami xabarlar sonini olish
+    let totalMessages = 0;
+    try {
+      const { Api } = require('telegram/tl');
+      const fullChat = await telegramClient.invoke(
+        new Api.channels.GetFullChannel({ channel: entity })
+      );
+
+      // Total messages count (approximation - some may be deleted)
+      // We'll use the ID of the latest message as a proxy
+      const latestMessages = await telegramClient.getMessages(entity, { limit: 1 });
+      if (latestMessages && latestMessages.length > 0) {
+        totalMessages = latestMessages[0].id;
+      }
+    } catch (e) {
+      logger.warn(`⚠️ Jami xabarlar sonini olishda xato: ${e.message}`);
+    }
+
+    // Eng yangi xabarlarni olish (oxiridan)
+    const recentMessages = await telegramClient.getMessages(entity, {
+      limit: 5
+    });
+
+    // Eng eski xabarlarni olish (boshidan)
+    const oldMessages = await telegramClient.getMessages(entity, {
+      limit: 5,
+      offsetId: 1,
+      reverse: true
+    });
+
+    let oldestDate = null;
+    let newestDate = null;
+
+    // Eng eski sanani topish
+    if (oldMessages && oldMessages.length > 0) {
+      const dates = oldMessages
+        .filter(m => m && m.date)
+        .map(m => new Date(m.date * 1000));
+
+      if (dates.length > 0) {
+        oldestDate = new Date(Math.min(...dates));
+      }
+    }
+
+    // Eng yangi sanani topish
+    if (recentMessages && recentMessages.length > 0) {
+      const dates = recentMessages
+        .filter(m => m && m.date)
+        .map(m => new Date(m.date * 1000));
+
+      if (dates.length > 0) {
+        newestDate = new Date(Math.max(...dates));
+      }
+    }
+
+    const result = {
+      groupId: group.id,
+      groupName: group.name,
+      telegramId: group.telegram_id,
+      oldestMessage: oldestDate ? oldestDate.toISOString() : null,
+      newestMessage: newestDate ? newestDate.toISOString() : null,
+      oldestDateFormatted: oldestDate ? oldestDate.toLocaleDateString('uz-UZ') : 'Noma\'lum',
+      newestDateFormatted: newestDate ? newestDate.toLocaleDateString('uz-UZ') : 'Noma\'lum',
+      totalMessages: totalMessages,
+      messageCount: {
+        recent: recentMessages.length,
+        oldest: oldMessages.length
+      }
+    };
+
+    logger.info(`✓ Sana oralig'i: ${result.oldestDateFormatted} - ${result.newestDateFormatted} | Jami: ~${totalMessages.toLocaleString()} xabar`);
+
+    return result;
+
+  } catch (error) {
+    logger.error('Guruh sanalarini tekshirishda xato:', error);
+    throw error;
+  }
 }
 
 module.exports = {
@@ -960,5 +1131,7 @@ module.exports = {
   pauseScraping,
   resumeScraping,
   addToQueue,
-  getQueueStatus
+  removeFromQueue,
+  getQueueStatus,
+  checkGroupMessageRange
 };
