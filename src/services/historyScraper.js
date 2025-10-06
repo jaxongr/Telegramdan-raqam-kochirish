@@ -777,8 +777,16 @@ function addToQueue(task) {
 
   // Agar hozir ishlamayotgan bo'lsa, darhol boshlash
   if (!isProcessingQueue) {
-    processQueue();
+    logger.info(`🚀 processQueue() chaqirilmoqda...`);
+    // Async funksiya - promise catch qilish
+    processQueue().catch(err => {
+      logger.error(`💥 processQueue() crash:`, err);
+      logger.error(err.stack);
+      // Queue ni reset qilish
+      isProcessingQueue = false;
+    });
   } else {
+    logger.info(`⏳ Queue allaqachon ishlamoqda (isProcessingQueue=true)`);
   }
 
   return {
