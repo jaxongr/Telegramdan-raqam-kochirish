@@ -36,9 +36,9 @@ async function checkAndResumeScans() {
       };
     }).sort((a, b) => b.timestamp - a.timestamp); // Eng yangi birinchi
 
-    console.log(`🔄 Eng yangi resume: ${sortedFiles[0]?.file}`);
+    console.log(`🔄 ${sortedFiles.length} ta resume fayl topildi`);
 
-    // Faqat ENG YANGI resume faylni qayta ishlash, eski fayllarni o'chirish
+    // BARCHA resume fayllarni qayta ishlash
     for (let i = 0; i < sortedFiles.length; i++) {
       const { file, filePath, data: resumeData, timestamp } = sortedFiles[i];
 
@@ -48,13 +48,6 @@ async function checkAndResumeScans() {
 
         if (hoursSince > 24) {
           console.log(`🗑 Eski resume fayl o'chirildi: ${file} (${hoursSince.toFixed(1)} soat oldin)`);
-          fs.unlinkSync(filePath);
-          continue;
-        }
-
-        // Agar bu birinchi (eng yangi) fayl emas bo'lsa, o'chirib yuborish
-        if (i > 0) {
-          console.log(`🗑 Eski resume fayl o'chirildi (yangi bor): ${file}`);
           fs.unlinkSync(filePath);
           continue;
         }

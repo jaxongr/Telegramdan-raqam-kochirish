@@ -33,6 +33,7 @@ let currentProgress = {
 
 // Queue tizimi
 let taskQueue = [];
+let completedTasks = []; // Tugagan tasklar (1 soat saqlanadi)
 let isProcessingQueue = false;
 
 /**
@@ -114,8 +115,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       groupName: group.name,
       totalMessages: 0,
       processedMessages: resumeData ? resumeData.processedMessages : 0,
-      phonesFound: resumeData ? resumeData.phonesFound.length : 0,
-      uniquePhones: 0,
+      phonesFound: resumeData ? (resumeData.phonesFoundCount || 0) : 0,
+      uniquePhones: 0, // Oxirida hisoblanadi
       startTime: Date.now(),
       lastUpdateTime: Date.now(),
       messagesPerMinute: 0,
@@ -142,7 +143,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
     const results = {
       groupName: group.name,
       totalMessages: 0,
-      phonesFound: resumeData ? resumeData.phonesFound : [],
+      phonesFound: [], // Yangi raqamlar uchun
       messagesWithPhones: 0,
       errors: [],
       startDate: startDate.toISOString(),
@@ -150,8 +151,8 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       filename: filename // Fayl nomi
     };
 
-    // Kalit so'zlar
-    const keywords = group.keywords ? group.keywords.split(',').map(k => k.trim()) : [];
+    // BARCHA telefon raqamli xabarlarni olish - kalit so'z tekshiruvi YO'Q
+    logger.info(`📱 [${group.name}] Barcha telefon raqamli xabarlarni skan qilish...`);
 
     // Xabarlarni iteratsiya qilish (offset_date bilan)
     let offsetId = resumeData ? resumeData.lastMessageId : 0;
@@ -179,11 +180,11 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
       if (!continueScanning) break;
 
-      // Xabarlarni olish (100 ta batch)
+      // Xabarlarni olish (200 ta batch - tezroq ishlash uchun)
       let messages = [];
       try {
         messages = await telegramClient.getMessages(entity, {
-          limit: 100,
+          limit: 200,
           offsetId: offsetId,
           offsetDate: offsetDate
         });
@@ -220,21 +221,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             break;
           }
 
-          const messageText = message.text.toLowerCase();
-
-          // Kalit so'zni tekshirish
-          if (keywords.length > 0) {
-            let hasKeyword = false;
-            for (const keyword of keywords) {
-              if (keyword && messageText.includes(keyword.toLowerCase())) {
-                hasKeyword = true;
-                break;
-              }
-            }
-            if (!hasKeyword) continue;
-          }
-
-          // Telefon raqamlarni topish
+          // Telefon raqamlarni topish (kalit so'z tekshiruvisiz - BARCHA xabarlardan)
           const phones = extractPhones(message.text);
 
           if (phones.length > 0) {
@@ -250,15 +237,20 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // Progress yangilash va kunni hisoblash
-          const uniquePhones = [...new Set(results.phonesFound.map(p => p.phone))];
+          // Progress yangilash (har 100 xabarda unikallashtirib ko'rsatish)
           const currentMsgDate = msgDate;
           const daysProcessed = Math.ceil((endDate - currentMsgDate) / (1000 * 60 * 60 * 24));
+
+          // Har 100 xabarda unikal raqamlarni hisoblash
+          let uniqueCount = currentProgress.uniquePhones;
+          if (currentProgress.processedMessages % 100 === 0) {
+            uniqueCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
+          }
 
           updateProgress({
             processedMessages: currentProgress.processedMessages + 1,
             phonesFound: results.phonesFound.length,
-            uniquePhones: uniquePhones.length,
+            uniquePhones: uniqueCount,
             processedDays: daysProcessed,
             currentDate: currentMsgDate.toISOString()
           });
@@ -286,33 +278,38 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         }
       }
 
-      // Resume faylni yangilash (har 100 xabar)
+      // Resume faylni yangilash (har batch - faqat zarur ma'lumotlar)
       if (resumeFile) {
         const resumeData = {
           groupId,
           groupName: group.name,
           processedMessages: currentProgress.processedMessages,
-          phonesFoundCount: results.phonesFound.length, // Faqat count, barcha raqamlar emas!
+          phonesFoundCount: results.phonesFound.length, // Faqat count
           lastMessageId: offsetId,
           lastMessageDate: new Date(offsetDate * 1000).toISOString(),
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
-          filename: filename, // MUHIM: O'sha faylga davom ettirish uchun
+          filename: filename,
           timestamp: new Date().toISOString()
         };
         fs.writeFileSync(resumeFile, JSON.stringify(resumeData, null, 2));
       }
 
-      // Progress log (har 100 xabar)
+      // Progress log (har batch)
       if (batchCount % 1 === 0) {
-        logger.info(`📊 Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam | ${currentProgress.messagesPerMinute} msg/min`);
+        const uniqueNow = [...new Set(results.phonesFound.map(p => p.phone))].length;
+        logger.info(`📊 [${group.name}] Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min`);
       }
 
-      // Telegram API rate limit (2 soniya kutish - xavfsiz)
-      await sleep(2000);
+      // Telegram API rate limit (1 soniya kutish - tez ishlash uchun)
+      await sleep(1000);
     }
 
-    logger.info(`✓ Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi`);
+    // Oxirida unikallashtirib, uniquePhones ni yangilash
+    const uniquePhonesCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
+    updateProgress({ uniquePhones: uniquePhonesCount });
+
+    logger.info(`✓ [${group.name}] Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi (${uniquePhonesCount} unikal)`);
 
     // MUHIM: Progress faqat navbat tizimi tomonidan o'chirilsin!
 
@@ -691,11 +688,13 @@ function resumeScraping() {
  */
 function addToQueue(task) {
   taskQueue.push(task);
+  console.log(`📥 Navbatga qo'shildi: ${task.name} (Navbatda: ${taskQueue.length})`);
   logger.info(`📥 Navbatga qo'shildi: ${task.name} (Navbatda: ${taskQueue.length})`);
 
   // Agar hozir ishlamayotgan bo'lsa, darhol boshlash
   if (!isProcessingQueue) {
     processQueue();
+  } else {
   }
 
   return {
@@ -708,37 +707,70 @@ function addToQueue(task) {
  * Navbatni qayta ishlash
  */
 async function processQueue() {
-  if (isProcessingQueue) return;
-  if (taskQueue.length === 0) return;
+  if (isProcessingQueue) {
+    return;
+  }
+  if (taskQueue.length === 0) {
+    return;
+  }
 
   isProcessingQueue = true;
 
   while (taskQueue.length > 0) {
     const task = taskQueue.shift();
 
-    logger.info(`🔄 Navbatdan ishga tushirildi: ${task.name} (Qolgan: ${taskQueue.length})`);
+    console.log(`🔄 Navbatdan ishga tushirildi: ${task.name}`);
+    logger.info(`\n🔄 Navbatdan ishga tushirildi: ${task.name}`);
+    logger.info(`   📋 Qolgan navbatda: ${taskQueue.length} ta task`);
 
     try {
       // Task ni bajarish
       const result = await task.execute();
 
-      // Natijani saqlash
-      await saveResultsToFile(result, task.filename);
+      // Unikal raqamlarni hisoblash
+      const uniqueCount = [...new Set(result.phonesFound.map(p => p.phone))].length;
 
-      logger.info(`✅ Tugadi: ${task.name} | Topildi: ${result.phonesFound?.length || 0} raqam`);
+      // Natijani saqlash
+      const savedFiles = await saveResultsToFile(result, task.filename);
+
+      logger.info(`\n✅ TUGADI: ${task.name}`);
+      logger.info(`   📊 Topildi: ${result.phonesFound?.length || 0} ta raqam`);
+      logger.info(`   🔢 Unikal: ${uniqueCount} ta`);
+      logger.info(`   📁 Fayllar: ${savedFiles.jsonFile}, ${savedFiles.txtFile}, ${savedFiles.excelFile}`);
+      logger.info(`   ⏰ Task 1 soat saqlanadi\n`);
 
       // Resume faylni o'chirish (agar mavjud bo'lsa)
       if (task.resumeFile) {
         const { deleteResumeFile } = require('./autoResume');
         deleteResumeFile(task.resumeFile);
       }
+
+      // Task natijasini 1 soat saqlash
+      task.completedAt = Date.now();
+      task.result = {
+        totalPhones: result.phonesFound?.length || 0,
+        uniquePhones: uniqueCount,
+        files: savedFiles
+      };
+      completedTasks.push(task);
+
+      // 1 soatdan eski tasklarni tozalash
+      const oneHourAgo = Date.now() - (60 * 60 * 1000);
+      completedTasks = completedTasks.filter(t => t.completedAt > oneHourAgo);
+
     } catch (error) {
-      logger.error(`❌ Xato: ${task.name}`, error.message);
+      logger.error(`\n❌ XATO: ${task.name}`);
+      logger.error(`   💥 Sabab: ${error.message}\n`);
+
+      // Xatoli taskni ham saqlash
+      task.completedAt = Date.now();
+      task.error = error.message;
+      completedTasks.push(task);
     }
 
     // Har bir task orasida 5 soniya kutish
     if (taskQueue.length > 0) {
-      logger.info(`⏳ Keyingi task boshlanishiga 5 soniya...`);
+      logger.info(`⏳ Keyingi task 5 soniyada boshlanadi...\n`);
       await sleep(5000);
     }
   }
@@ -746,19 +778,32 @@ async function processQueue() {
   // Barcha tasklar tugadi - endi progress ni o'chirish
   isProcessingQueue = false;
   updateProgress({ isRunning: false });
-  logger.info('✅ Barcha navbat tugadi!');
+  logger.info('✅ Barcha navbat tugadi!\n');
 }
 
 /**
  * Navbat holatini olish
  */
 function getQueueStatus() {
+  // 1 soatdan eski tasklarni tozalash
+  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+  completedTasks = completedTasks.filter(t => t.completedAt > oneHourAgo);
+
   return {
     isProcessing: isProcessingQueue,
     queueLength: taskQueue.length,
-    tasks: taskQueue.map((t, i) => ({
+    pendingTasks: taskQueue.map((t, i) => ({
       position: i + 1,
-      name: t.name
+      name: t.name,
+      status: 'navbatda'
+    })),
+    completedTasks: completedTasks.map(t => ({
+      name: t.name,
+      status: t.error ? 'xato' : 'tugadi',
+      completedAt: new Date(t.completedAt).toLocaleString('uz-UZ'),
+      result: t.result || null,
+      error: t.error || null,
+      expiresIn: Math.round((t.completedAt + 60 * 60 * 1000 - Date.now()) / 60000) + ' daqiqa'
     }))
   };
 }
