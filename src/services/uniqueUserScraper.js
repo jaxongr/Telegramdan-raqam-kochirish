@@ -184,9 +184,13 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
       const elapsedMinutes = (Date.now() - currentProgress.startTime) / 60000;
       currentProgress.messagesPerMinute = Math.round(currentProgress.processedMessages / elapsedMinutes);
 
-      // Log
-      if (batchCount % 5 === 0) {
-        console.log(`📊 Progress: ${currentProgress.processedMessages} xabar | ${results.uniqueUsers} user | ${results.totalPhones} raqam | ${currentProgress.messagesPerMinute} msg/min`);
+      // Unikal raqamlar soni (har batch)
+      const uniqueNow = [...new Set(results.phones.map(p => p.phone))].length;
+      results.uniquePhones = uniqueNow;
+
+      // Log (har 3 batch - oddiy skanerlashdek)
+      if (batchCount % 3 === 0) {
+        console.log(`⚡ TEZ SKAN Progress: Batch #${batchCount} | ${results.totalMessages} jami xabar | ${currentProgress.processedMessages} tekshirildi | ${results.uniqueUsers} user | ${results.totalPhones} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min`);
       }
 
       // Sleep (Telegram API rate limit)
