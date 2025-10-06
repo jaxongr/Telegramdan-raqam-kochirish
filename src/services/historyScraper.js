@@ -79,11 +79,14 @@ function updateProgress(updates) {
  */
 async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date(), resumeFile = null, filename = null) {
   try {
+    console.log(`\n🚀 Skanerlash boshlandi: Guruh ID=${groupId}, Fayl=${filename || 'null'}`);
+    console.log(`📅 Sana: ${startDate.toISOString()} -> ${endDate.toISOString()}`);
     logger.info(`\n🚀 Skanerlash boshlandi: Guruh ID=${groupId}, Fayl=${filename || 'null'}`);
 
     if (!telegramClient || !telegramClient.connected) {
       throw new Error('Telegram client ulanmagan!');
     }
+    console.log(`✓ Telegram client ulangan`);
     logger.info(`✓ Telegram client ulangan`);
 
     // Guruh ma'lumotlarini olish
@@ -869,8 +872,11 @@ async function processQueue() {
       completedTasks = completedTasks.filter(t => t.completedAt > oneHourAgo);
 
     } catch (error) {
+      console.log(`\n❌ TASK XATO: ${task.name} - ${error.message}`);
+      console.log(error.stack);
       logger.error(`\n❌ XATO: ${task.name}`);
       logger.error(`   💥 Sabab: ${error.message}\n`);
+      logger.error(error.stack);
 
       // Xatoli taskni ham saqlash
       task.completedAt = Date.now();
@@ -891,6 +897,8 @@ async function processQueue() {
     logger.info('✅ Barcha navbat tugadi!\n');
 
   } catch (queueError) {
+    console.log(`\n💥 QUEUE XATO:`, queueError.message);
+    console.log(queueError.stack);
     logger.error(`\n💥 Queue jarayonida xato:`);
     logger.error(queueError);
     logger.error(queueError.stack);
