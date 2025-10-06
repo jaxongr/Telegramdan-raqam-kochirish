@@ -131,45 +131,50 @@ async function scrapeUniqueUsers(groupId, startDate, endDate = new Date(), maxPh
         // offsetId yangilash
         offsetId = message.id;
         offsetDate = message.date;
-        currentProgress.processedMessages++;
 
-        // Sender ID
+        // Sender ID ni AVVAL olish
         const senderId = message.senderId?.value?.toString() || message.fromId?.userId?.value?.toString() || 'unknown';
+
+        // ✅ MUHIM: Bu userdan yetarli oldikmi tekshirish (xabarni ko'rmasdan turib!)
+        const currentCount = userPhoneCount.get(senderId) || 0;
+
+        if (currentCount >= maxPhonesPerUser) {
+          // Bu userdan yetarli raqam oldik - SKIP (xabarni tekshirmaslik)
+          continue;
+        }
+
+        // Faqat kerakli userlar uchun processedMessages ni oshirish
+        currentProgress.processedMessages++;
 
         // Agar text yo'q bo'lsa, skip
         if (!message.text) continue;
 
-        // Telefon raqamlarni topish
+        // Telefon raqamlarni topish (faqat kerakli userlar uchun)
         const phones = extractPhones(message.text);
 
         if (phones.length > 0) {
-          // User raqamlarini tekshirish
-          const currentCount = userPhoneCount.get(senderId) || 0;
+          // Raqamlarni qo'shish
+          const phonesToAdd = phones.slice(0, maxPhonesPerUser - currentCount);
 
-          // Agar limit dan kam bo'lsa, raqamlarni qo'shish
-          if (currentCount < maxPhonesPerUser) {
-            const phonesToAdd = phones.slice(0, maxPhonesPerUser - currentCount);
+          for (const phone of phonesToAdd) {
+            results.phones.push({
+              phone,
+              userId: senderId,
+              group: group.name,
+              message: message.text.substring(0, 100),
+              date: new Date(message.date * 1000).toISOString()
+            });
 
-            for (const phone of phonesToAdd) {
-              results.phones.push({
-                phone,
-                userId: senderId,
-                group: group.name,
-                message: message.text.substring(0, 100),
-                date: new Date(message.date * 1000).toISOString()
-              });
+            results.totalPhones++;
+          }
 
-              results.totalPhones++;
-            }
+          // User count yangilash
+          userPhoneCount.set(senderId, currentCount + phonesToAdd.length);
 
-            // User count yangilash
-            userPhoneCount.set(senderId, currentCount + phonesToAdd.length);
-
-            // Agar yangi user bo'lsa
-            if (currentCount === 0) {
-              results.uniqueUsers++;
-              currentProgress.uniqueUsers++;
-            }
+          // Agar yangi user bo'lsa
+          if (currentCount === 0) {
+            results.uniqueUsers++;
+            currentProgress.uniqueUsers++;
           }
         }
       }
