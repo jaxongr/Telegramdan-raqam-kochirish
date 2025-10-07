@@ -3,7 +3,7 @@ const router = express.Router();
 const { getStatistics, getSMSLogs, getGroupStatistics } = require('../../database/models');
 const { getAllSemySMSPhones } = require('../../database/models');
 const { getClientStatus } = require('../../services/telegramMonitor');
-const { getHistoryStats } = require('../../services/historyScraper');
+const { getHistoryStats, getQueueStatus, getProgress } = require('../../services/historyScraper');
 
 // Cache tizimi (2 minut - dashboard tez yuklash uchun)
 let cachedData = null;
@@ -14,10 +14,16 @@ router.get('/', async (req, res) => {
   try {
     const now = Date.now();
 
+    // Queue status - har doim yangi (cache'siz)
+    const queueStatus = getQueueStatus();
+    const currentProgress = getProgress();
+
     // Cache tekshirish
     if (cachedData && (now - cacheTime) < CACHE_DURATION) {
       return res.render('dashboard', {
         ...cachedData,
+        queueStatus,
+        currentProgress,
         username: req.session.username
       });
     }
@@ -51,6 +57,8 @@ router.get('/', async (req, res) => {
 
     res.render('dashboard', {
       ...cachedData,
+      queueStatus,
+      currentProgress,
       username: req.session.username
     });
   } catch (error) {

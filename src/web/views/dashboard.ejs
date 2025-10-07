@@ -187,6 +187,101 @@
           </div>
         </div>
 
+        <!-- Skanerlash holati va Navbat -->
+        <% if (currentProgress.isScanning || (queueStatus.pendingTasks && queueStatus.pendingTasks.length > 0)) { %>
+        <h4 class="mb-3"><i class="bi bi-hourglass-split"></i> Skanerlash holati</h4>
+
+        <!-- Hozirgi skan -->
+        <% if (currentProgress.isScanning) { %>
+        <div class="alert alert-info mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">
+              <i class="bi bi-activity"></i>
+              <% if (currentProgress.isPaused) { %>
+                ⏸ Pauza (Davom ettirilmoqda...)
+              <% } else { %>
+                🔄 Skanerlash davom etmoqda...
+              <% } %>
+            </h5>
+            <span class="badge bg-primary"><%= currentProgress.groupName || 'N/A' %></span>
+          </div>
+
+          <div class="progress mb-2" style="height: 25px;">
+            <%
+              const percent = currentProgress.totalMessages > 0
+                ? Math.round((currentProgress.processedMessages / currentProgress.totalMessages) * 100)
+                : 0;
+            %>
+            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar"
+                 style="width: <%= percent %>%">
+              <%= percent %>%
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-3">
+              <strong>Xabarlar:</strong> <%= currentProgress.processedMessages || 0 %> / <%= currentProgress.totalMessages || 0 %>
+            </div>
+            <div class="col-md-3">
+              <strong>Raqamlar:</strong> <%= currentProgress.phonesFound || 0 %> ta (<%= currentProgress.uniquePhones || 0 %> unikal)
+            </div>
+            <div class="col-md-3">
+              <strong>Tezlik:</strong> <%= currentProgress.messagesPerMinute || 0 %> msg/min
+            </div>
+            <div class="col-md-3">
+              <strong>Vaqt:</strong> <%= Math.round((Date.now() - (currentProgress.startTime || Date.now())) / 60000) %> daq
+            </div>
+          </div>
+        </div>
+        <% } %>
+
+        <!-- Navbat -->
+        <% if (queueStatus.pendingTasks && queueStatus.pendingTasks.length > 0) { %>
+        <div class="card mb-4">
+          <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+              <i class="bi bi-list-ul"></i> Navbat
+              <span class="badge bg-dark"><%= queueStatus.pendingTasks.length %> ta</span>
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th style="width: 10%">#</th>
+                    <th style="width: 50%">Task nomi</th>
+                    <th style="width: 30%">Fayl</th>
+                    <th style="width: 10%">Amal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% queueStatus.pendingTasks.forEach((task, index) => { %>
+                  <tr>
+                    <td><%= index + 1 %></td>
+                    <td>
+                      <% if (index === 0 && currentProgress.isScanning) { %>
+                        <span class="badge bg-success me-2">Jarayonda</span>
+                      <% } %>
+                      <%= task.name %>
+                    </td>
+                    <td><small class="text-muted"><%= task.filename || 'N/A' %></small></td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-danger" onclick="removeFromQueue('<%= task.id %>')">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <% } %>
+        <% } %>
+
         <!-- Statistika - Historical Scraping -->
         <h4 class="mb-3"><i class="bi bi-clock-history"></i> Eski xabarlardan (Arxiv)</h4>
         <div class="row mb-4">
@@ -355,5 +450,36 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Navbatdan taskni o'chirish
+    function removeFromQueue(taskId) {
+      if (!confirm('Bu taskni navbatdan o\'chirmoqchimisiz?')) {
+        return;
+      }
+
+      fetch(`/history/queue/${taskId}`, {
+        method: 'DELETE'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Task navbatdan o\'chirildi');
+          location.reload();
+        } else {
+          alert('Xato: ' + (data.error || 'Noma\'lum xato'));
+        }
+      })
+      .catch(error => {
+        alert('Xato: ' + error.message);
+      });
+    }
+
+    // Har 10 soniyada avtomatik yangilash (faqat agar skan yoki navbat bo'lsa)
+    <% if (currentProgress.isScanning || (queueStatus.pendingTasks && queueStatus.pendingTasks.length > 0)) { %>
+    setInterval(() => {
+      location.reload();
+    }, 10000); // 10 soniya
+    <% } %>
+  </script>
 </body>
 </html>

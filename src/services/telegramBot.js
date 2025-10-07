@@ -16,6 +16,9 @@ const { Telegraf } = require('telegraf');
 const logger = require('../utils/logger');
 const { getAllGroups } = require('../database/models');
 const { addToBlacklist, getBlacklistStats } = require('../database/blacklist');
+const historyScraper = require('./historyScraper');
+const fs = require('fs');
+const path = require('path');
 
 // Bot token
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8364976076:AAGrM4eI1sAh12VRpQEprBMd9u9fUNQimmg';
@@ -238,17 +241,110 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
 
           await ctx.answerCbQuery('🚀 Skan boshlanmoqda...');
 
-          // Skanerlashni boshlash (hozircha xabar)
+          const messageId = ctx.callbackQuery.message.message_id;
+          const chatId = ctx.callbackQuery.message.chat.id;
+
+          // Boshlang'ich xabar
           await ctx.editMessageText(
-            `🚀 *Skan boshlandi!*\n\n` +
+            `🚀 *Skan boshlanmoqda...*\n\n` +
             `📂 Guruh: ${group.name}\n` +
-            `📊 Status: Navbatga qo'shildi\n\n` +
-            `💡 Web interfeyslarda "Arxiv Skan" sahifasidan kuzatishingiz mumkin:\n` +
-            `http://5.189.141.151:8080/history`,
+            `⏳ Tayyorlanmoqda...`,
             { parse_mode: 'Markdown' }
           );
 
-          // TODO: Real skan boshlash - historyScraper.startHistoryScan() chaqirish
+          try {
+            // Skanerlashni boshlash (oxirgi 30 kun - 1 oy)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+
+            // Background'da ishlatish
+            (async () => {
+              const result = await historyScraper.scrapeGroupHistoryByDate(
+                group.id,
+                startDate,
+                endDate
+              );
+
+              // Progress kuzatish
+              let progressInterval = setInterval(async () => {
+                try {
+                  const progress = historyScraper.getProgress();
+
+                  if (!progress.isScanning) {
+                    clearInterval(progressInterval);
+
+                    // Tugadi - fayl yuborish
+                    if (result && result.filename) {
+                      const filePath = path.join(__dirname, '../../exports', result.filename);
+
+                      if (fs.existsSync(filePath)) {
+                        await bot.telegram.sendDocument(chatId, {
+                          source: fs.createReadStream(filePath),
+                          filename: result.filename
+                        }, {
+                          caption: `✅ *Skan tugadi!*\n\n` +
+                            `📂 Guruh: ${group.name}\n` +
+                            `📊 Xabarlar: ${progress.processedMessages || 0}\n` +
+                            `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
+                            `⏱ Vaqt: ${Math.round((progress.endTime - progress.startTime) / 60000)} daqiqa`,
+                          parse_mode: 'Markdown'
+                        });
+                      } else {
+                        await bot.telegram.editMessageText(
+                          chatId,
+                          messageId,
+                          null,
+                          `✅ *Skan tugadi!*\n\n` +
+                          `📂 Guruh: ${group.name}\n` +
+                          `📊 Xabarlar: ${progress.processedMessages || 0}\n` +
+                          `📱 Raqamlar: ${progress.phonesFound || 0} ta\n\n` +
+                          `⚠️ Fayl topilmadi. Web interfeys'dan yuklab oling.`,
+                          { parse_mode: 'Markdown' }
+                        );
+                      }
+                    }
+                    return;
+                  }
+
+                  // Progress yangilash
+                  const percent = progress.totalMessages > 0
+                    ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
+                    : 0;
+
+                  const progressBar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
+
+                  await bot.telegram.editMessageText(
+                    chatId,
+                    messageId,
+                    null,
+                    `📊 *Skan davom etmoqda...*\n\n` +
+                    `📂 Guruh: ${group.name}\n` +
+                    `${progressBar} ${percent}%\n\n` +
+                    `📨 Xabarlar: ${progress.processedMessages || 0}\n` +
+                    `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
+                    `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min`,
+                    { parse_mode: 'Markdown' }
+                  ).catch(() => {}); // Ignore edit errors (too many requests)
+                } catch (err) {
+                  logger.error('Progress update error:', err);
+                }
+              }, 15000); // Har 15 soniyada yangilash
+
+            })();
+
+            logger.info(`📱 Bot scan started: ${group.name} by user ${ctx.from.id}`);
+
+          } catch (scanError) {
+            logger.error('Scan start error:', scanError);
+            await bot.telegram.editMessageText(
+              chatId,
+              messageId,
+              null,
+              `❌ *Xato yuz berdi!*\n\n${scanError.message}`,
+              { parse_mode: 'Markdown' }
+            );
+          }
         }
       } catch (error) {
         logger.error('Callback query error:', error);
