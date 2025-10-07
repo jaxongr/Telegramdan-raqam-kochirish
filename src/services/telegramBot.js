@@ -302,10 +302,14 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
             // Progress kuzatish (background'da)
             let lastUpdate = Date.now();
             let lastStatus = 'waiting'; // waiting, scanning, done
+            logger.info(`🤖 BOT: Progress interval started for ${customFilename}`);
+
             const progressInterval = setInterval(async () => {
               try {
                 const queueStatus = historyScraper.getQueueStatus();
                 const filePath = path.join(__dirname, '../../exports', customFilename);
+
+                logger.info(`🤖 BOT: Checking progress - Queue: ${queueStatus.pendingTasks.length}, File exists: ${fs.existsSync(filePath)}`);
 
                 // Agar bu task navbatda bo'lsa
                 const taskInQueue = queueStatus.pendingTasks.find(t => t.filename === customFilename);
@@ -334,6 +338,8 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                       const currentDate = new Date(progress.currentDate);
                       dateInfo = `\n📅 Sana: ${currentDate.getDate()}/${currentDate.getMonth()+1}/${currentDate.getFullYear()}`;
                     }
+
+                    logger.info(`🤖 BOT: Updating progress - ${percent}%, ${progress.processedMessages}/${progress.totalMessages}`);
 
                     await bot.telegram.editMessageText(
                       chatId,
