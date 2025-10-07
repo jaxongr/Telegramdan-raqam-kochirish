@@ -36,50 +36,6 @@ let taskQueue = [];
 let completedTasks = []; // Tugagan tasklar (1 soat saqlanadi)
 let isProcessingQueue = false;
 
-// Navbatni faylga saqlash uchun (persistence)
-const queueFilePath = path.join(__dirname, '../../data/queue.json');
-
-// Navbatni yuklash
-function loadQueue() {
-  try {
-    if (fs.existsSync(queueFilePath)) {
-      const data = JSON.parse(fs.readFileSync(queueFilePath, 'utf8'));
-      logger.info(`✓ Navbat fayldan yuklandi: ${data.pending?.length || 0} ta task`);
-
-      // MUHIM: execute funksiyasini qayta yaratish (JSON'da saqlanmaydi)
-      // Restart'dan keyin tasklar yo'qoladi - faqat info ko'rsatish uchun
-      // Real implementation: Resume tizimi yordamida
-    }
-  } catch (error) {
-    logger.warn('Navbatni yuklashda xato:', error.message);
-  }
-}
-
-// Navbatni saqlash
-function saveQueue() {
-  try {
-    const dataDir = path.join(__dirname, '../../data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    // Faqat task metadata'ni saqlash (execute funksiyasiz)
-    const queueData = taskQueue.map(t => ({
-      id: t.id,
-      name: t.name,
-      filename: t.filename,
-      addedAt: t.addedAt
-    }));
-
-    fs.writeFileSync(queueFilePath, JSON.stringify({
-      pending: queueData,
-      savedAt: new Date().toISOString()
-    }, null, 2));
-  } catch (error) {
-    logger.warn('Navbatni saqlashda xato:', error.message);
-  }
-}
-
 /**
  * Client ni o'rnatish
  */
@@ -123,13 +79,6 @@ function updateProgress(updates) {
  */
 async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date(), resumeFile = null, filename = null) {
   try {
-    // MUHIM: Sanalarni tekshirish va agar teskari bo'lsa, swap qilish
-    if (startDate > endDate) {
-      console.log(`⚠️ SANA TESKARI: ${startDate.toISOString()} > ${endDate.toISOString()} - Avtomatik swap`);
-      logger.warn(`Sanalar teskari - swap qilindi`);
-      [startDate, endDate] = [endDate, startDate];
-    }
-
     console.log(`\n🚀 Skanerlash boshlandi: Guruh ID=${groupId}, Fayl=${filename || 'null'}`);
     console.log(`📅 Sana: ${startDate.toISOString()} -> ${endDate.toISOString()}`);
     logger.info(`\n🚀 Skanerlash boshlandi: Guruh ID=${groupId}, Fayl=${filename || 'null'}`);
@@ -354,29 +303,14 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         try {
           if (!message || !message.date) continue;
 
-          // MUHIM: offsetId va offsetDate ni DOIM yangilash (loop davom etishi uchun)
-          offsetId = message.id;
-          offsetDate = message.date;
-
-          // Xabar sanasi
+          // BIRINCHI - Sana tekshirish (text bo'lmasa ham!)
           const msgDate = new Date(message.date * 1000);
-
-          // MUHIM: processedMessages ni DOIM yangilash (text bo'lmasa ham)
-          const daysProcessed = Math.ceil((endDate - msgDate) / (1000 * 60 * 60 * 24));
-
-          // Har 100 xabarda unikal raqamlarni hisoblash
-          let uniqueCount = currentProgress.uniquePhones;
-          if (currentProgress.processedMessages % 100 === 0) {
-            uniqueCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
+          if (msgDate < startDate) {
+            console.log(`⏹️ SANA YETDI: msgDate=${msgDate.toISOString()}, startDate=${startDate.toISOString()}, message.id=${message.id}`);
+            logger.info(`⏹️ Boshlanish sanasiga yetildi: ${startDate.toLocaleDateString()}. Skanerlash to'xtatiladi.`);
+            continueScanning = false;
+            break;
           }
-
-          updateProgress({
-            processedMessages: currentProgress.processedMessages + 1,
-            phonesFound: results.phonesFound.length,
-            uniquePhones: uniqueCount,
-            processedDays: daysProcessed,
-            currentDate: msgDate.toISOString()
-          });
 
           // Agar text yo'q bo'lsa, telefon raqam ham yo'q - keyingisiga o'tamiz
           if (!message.text) continue;
@@ -397,6 +331,24 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
+          // Progress yangilash (har 100 xabarda unikallashtirib ko'rsatish)
+          const currentMsgDate = msgDate;
+          const daysProcessed = Math.ceil((endDate - currentMsgDate) / (1000 * 60 * 60 * 24));
+
+          // Har 100 xabarda unikal raqamlarni hisoblash
+          let uniqueCount = currentProgress.uniquePhones;
+          if (currentProgress.processedMessages % 100 === 0) {
+            uniqueCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
+          }
+
+          updateProgress({
+            processedMessages: currentProgress.processedMessages + 1,
+            phonesFound: results.phonesFound.length,
+            uniquePhones: uniqueCount,
+            processedDays: daysProcessed,
+            currentDate: currentMsgDate.toISOString()
+          });
+
           // Har 100 ta raqam topilganda asosiy faylni yangilash (backup emas!)
           if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0) {
             logger.info(`💾 Progress: ${results.phonesFound.length} ta raqam topildi`);
@@ -408,6 +360,10 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
+          // Oxirgi message ID va Date ni saqlash
+          offsetId = message.id;
+          offsetDate = message.date;
+
         } catch (msgError) {
           results.errors.push({
             message: msgError.message,
@@ -415,8 +371,6 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
           });
         }
       }
-
-      // OLIB TASHLANDI: 30-day check (user eski xabarlarni skanerlashi mumkin)
 
       // Resume faylni yangilash (har batch - faqat zarur ma'lumotlar)
       if (resumeFile) {
@@ -439,14 +393,10 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         }
       }
 
-      // Progress log (har 3 batch)
-      if (batchCount % 3 === 0) {
+      // Progress log (har batch)
+      if (batchCount % 1 === 0) {
         const uniqueNow = [...new Set(results.phonesFound.map(p => p.phone))].length;
-        const queueInfo = getQueueStatus();
-        const navbatText = queueInfo.pendingTasks.length > 0 ? `Navbat: ${queueInfo.pendingTasks.length}` : '';
-        const kunlarText = currentProgress.totalDays > 0 ? `${currentProgress.processedDays}/${currentProgress.totalDays} kun` : '';
-
-        console.log(`📊 Progress: Batch #${batchCount} | ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min | ${kunlarText} ${navbatText}`);
+        logger.info(`📊 [${group.name}] Progress: ${currentProgress.processedMessages} xabar | ${results.phonesFound.length} raqam (${uniqueNow} unikal) | ${currentProgress.messagesPerMinute} msg/min`);
       }
 
       // Telegram API rate limit (ADAPTIVE sleep)
@@ -871,9 +821,6 @@ function addToQueue(task) {
   console.log(`📥 Navbatga qo'shildi: ${task.name} (ID: ${task.id}, Navbatda: ${taskQueue.length})`);
   logger.info(`📥 Navbatga qo'shildi: ${task.name} (ID: ${task.id}, Navbatda: ${taskQueue.length})`);
 
-  // Navbatni faylga saqlash
-  saveQueue();
-
   // Agar hozir ishlamayotgan bo'lsa, darhol boshlash
   if (!isProcessingQueue) {
     logger.info(`🚀 processQueue() chaqirilmoqda...`);
@@ -912,9 +859,6 @@ function removeFromQueue(taskId) {
   const task = taskQueue.splice(index, 1)[0];
   logger.info(`🗑️ Navbatdan o'chirildi: ${task.name} (ID: ${taskId})`);
 
-  // Navbatni faylga saqlash
-  saveQueue();
-
   return {
     success: true,
     message: `${task.name} navbatdan o'chirildi`,
@@ -947,9 +891,6 @@ async function processQueue() {
   try {
     while (taskQueue.length > 0) {
       const task = taskQueue.shift();
-
-      // Navbatni faylga saqlash (task olingandan keyin)
-      saveQueue();
 
       console.log(`🔄 Navbatdan ishga tushirildi: ${task.name}`);
       logger.info(`\n🔄 Navbatdan ishga tushirildi: ${task.name}`);
@@ -1091,24 +1032,6 @@ async function checkGroupMessageRange(groupId) {
     // Telegram entity ni olish
     const entity = await telegramClient.getEntity(group.telegram_id);
 
-    // Jami xabarlar sonini olish
-    let totalMessages = 0;
-    try {
-      const { Api } = require('telegram/tl');
-      const fullChat = await telegramClient.invoke(
-        new Api.channels.GetFullChannel({ channel: entity })
-      );
-
-      // Total messages count (approximation - some may be deleted)
-      // We'll use the ID of the latest message as a proxy
-      const latestMessages = await telegramClient.getMessages(entity, { limit: 1 });
-      if (latestMessages && latestMessages.length > 0) {
-        totalMessages = latestMessages[0].id;
-      }
-    } catch (e) {
-      logger.warn(`⚠️ Jami xabarlar sonini olishda xato: ${e.message}`);
-    }
-
     // Eng yangi xabarlarni olish (oxiridan)
     const recentMessages = await telegramClient.getMessages(entity, {
       limit: 5
@@ -1154,14 +1077,13 @@ async function checkGroupMessageRange(groupId) {
       newestMessage: newestDate ? newestDate.toISOString() : null,
       oldestDateFormatted: oldestDate ? oldestDate.toLocaleDateString('uz-UZ') : 'Noma\'lum',
       newestDateFormatted: newestDate ? newestDate.toLocaleDateString('uz-UZ') : 'Noma\'lum',
-      totalMessages: totalMessages,
       messageCount: {
         recent: recentMessages.length,
         oldest: oldMessages.length
       }
     };
 
-    logger.info(`✓ Sana oralig'i: ${result.oldestDateFormatted} - ${result.newestDateFormatted} | Jami: ~${totalMessages.toLocaleString()} xabar`);
+    logger.info(`✓ Sana oralig'i: ${result.oldestDateFormatted} - ${result.newestDateFormatted}`);
 
     return result;
 
@@ -1170,9 +1092,6 @@ async function checkGroupMessageRange(groupId) {
     throw error;
   }
 }
-
-// Modul yuklanganda navbatni tiklash
-loadQueue();
 
 module.exports = {
   setClient,

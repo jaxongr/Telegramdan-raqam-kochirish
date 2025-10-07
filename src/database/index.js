@@ -78,21 +78,39 @@ async function query(sql, params = []) {
       return [{ count }];
     }
     if (sqlUpper.includes('FROM PHONES')) {
+      let filtered = db.phones;
+
+      // WHERE group_id = ? filtri
+      if (sqlUpper.includes('WHERE GROUP_ID')) {
+        filtered = filtered.filter(p => p.group_id == params[0]);
+      }
+
       if (sqlUpper.includes('DISTINCT')) {
-        const uniquePhones = new Set(db.phones.map(p => p.phone));
+        const uniquePhones = new Set(filtered.map(p => p.phone));
         return [{ count: uniquePhones.size }];
       }
-      return [{ count: db.phones.length }];
+      return [{ count: filtered.length }];
     }
     if (sqlUpper.includes('FROM SMS_LOGS')) {
       let filtered = db.sms_logs;
-      if (sqlUpper.includes("WHERE STATUS = ?")) {
-        filtered = filtered.filter(s => s.status === params[0]);
+      let paramIndex = 0;
+
+      // WHERE group_id = ? filtri
+      if (sqlUpper.includes('WHERE GROUP_ID')) {
+        filtered = filtered.filter(s => s.group_id == params[paramIndex]);
+        paramIndex++;
       }
-      if (sqlUpper.includes('WHERE DATE(SENT_AT)')) {
+
+      if (sqlUpper.includes("AND STATUS = ?") || sqlUpper.includes("WHERE STATUS = ?")) {
+        filtered = filtered.filter(s => s.status === params[paramIndex]);
+        paramIndex++;
+      }
+
+      if (sqlUpper.includes('WHERE DATE(SENT_AT)') || sqlUpper.includes('AND DATE(SENT_AT)')) {
         const today = new Date().toISOString().split('T')[0];
         filtered = filtered.filter(s => s.sent_at && s.sent_at.split('T')[0] === today);
       }
+
       return [{ count: filtered.length }];
     }
     if (sqlUpper.includes('FROM SEMYSMS_PHONES')) {

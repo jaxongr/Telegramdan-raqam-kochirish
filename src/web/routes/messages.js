@@ -5,6 +5,7 @@ const { sendMessageToGroup, scheduleMessage, stopScheduledMessage, getScheduledM
 
 // Production yoki Demo rejimga qarab to'g'ri service'ni tanlash
 const MODE = process.env.MODE || 'demo';
+const isServerMode = (MODE === 'server' || MODE === 'production');
 
 let telegramClient = null;
 
@@ -40,7 +41,7 @@ router.post('/send-once', async (req, res) => {
       throw new Error('Guruh va xabar matnini kiriting!');
     }
 
-    if (MODE !== 'server') {
+    if (!isServerMode) {
       throw new Error('Xabar yuborish faqat server rejimida ishlaydi!');
     }
 
@@ -100,7 +101,7 @@ router.post('/schedule', async (req, res) => {
       throw new Error('Barcha maydonlarni to\'ldiring!');
     }
 
-    if (MODE !== 'server') {
+    if (!isServerMode) {
       throw new Error('Xabar yuborish faqat server rejimida ishlaydi!');
     }
 

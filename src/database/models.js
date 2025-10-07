@@ -231,6 +231,81 @@ async function getStatistics() {
   return stats;
 }
 
+// GROUP STATISTICS - Har bir guruh uchun alohida statistika (OPTIMIZED)
+async function getGroupStatistics() {
+  try {
+    const groups = await getAllGroups();
+
+    // Barcha guruhlarga phone statistikasini bitta query bilan olish
+    const phoneStats = await query(`
+      SELECT
+        group_id,
+        COUNT(DISTINCT phone) as unique_phones,
+        COUNT(*) as total_phones
+      FROM phones
+      GROUP BY group_id
+    `);
+
+    // Barcha guruhlarga SMS statistikasini bitta query bilan olish
+    const smsStats = await query(`
+      SELECT
+        group_id,
+        COUNT(*) as sms_sent,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as sms_success
+      FROM sms_logs
+      GROUP BY group_id
+    `);
+
+    // Map yasash (tez qidirish uchun)
+    const phoneStatsMap = {};
+    phoneStats.forEach(stat => {
+      phoneStatsMap[stat.group_id] = {
+        unique_phones: stat.unique_phones || stat.UNIQUE_PHONES || 0,
+        total_phones: stat.total_phones || stat.TOTAL_PHONES || 0
+      };
+    });
+
+    const smsStatsMap = {};
+    smsStats.forEach(stat => {
+      smsStatsMap[stat.group_id] = {
+        sms_sent: stat.sms_sent || stat.SMS_SENT || 0,
+        sms_success: stat.sms_success || stat.SMS_SUCCESS || 0
+      };
+    });
+
+    // Guruhlar uchun statistikani tuzish
+    const groupStats = groups.map(group => {
+      const phoneStat = phoneStatsMap[group.id] || { unique_phones: 0, total_phones: 0 };
+      const smsStat = smsStatsMap[group.id] || { sms_sent: 0, sms_success: 0 };
+
+      const successRate = smsStat.sms_sent > 0
+        ? ((smsStat.sms_success / smsStat.sms_sent) * 100).toFixed(1)
+        : 0;
+
+      return {
+        id: group.id,
+        name: group.name,
+        telegram_id: group.telegram_id,
+        active: group.active,
+        unique_phones: phoneStat.unique_phones,
+        total_phones: phoneStat.total_phones,
+        repeat_count: phoneStat.total_phones - phoneStat.unique_phones,
+        sms_sent: smsStat.sms_sent,
+        sms_success: smsStat.sms_success,
+        success_rate: successRate
+      };
+    });
+
+    // Guruhlarni unique_phones bo'yicha sortlash (ko'pdan kamga)
+    groupStats.sort((a, b) => b.unique_phones - a.unique_phones);
+
+    return groupStats;
+  } catch (error) {
+    console.error('getGroupStatistics error:', error);
+    return [];
+  }
+}
+
 module.exports = {
   // Groups
   getAllGroups,
@@ -265,5 +340,6 @@ module.exports = {
   setSetting,
 
   // Statistics
-  getStatistics
+  getStatistics,
+  getGroupStatistics
 };

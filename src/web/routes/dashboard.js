@@ -1,14 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const { getStatistics, getSMSLogs } = require('../../database/models');
+const { getStatistics, getSMSLogs, getGroupStatistics } = require('../../database/models');
 const { getAllSemySMSPhones } = require('../../database/models');
 const { getClientStatus } = require('../../services/telegramMonitor');
 const { getHistoryStats } = require('../../services/historyScraper');
 
+// Cache tizimi (2 minut - dashboard tez yuklash uchun)
+let cachedData = null;
+let cacheTime = 0;
+const CACHE_DURATION = 120000; // 2 minut
+
 router.get('/', async (req, res) => {
   try {
+    const now = Date.now();
+
+    // Cache tekshirish
+    if (cachedData && (now - cacheTime) < CACHE_DURATION) {
+      return res.render('dashboard', {
+        ...cachedData,
+        username: req.session.username
+      });
+    }
+
+    // Yangi ma'lumot olish
     const stats = await getStatistics();
-    const recentSMS = await getSMSLogs({ limit: 10 });
+    const recentSMS = await getSMSLogs({ limit: 5 }); // Faqat 5 ta (tezlik uchun)
     const semysmsPhones = await getAllSemySMSPhones();
     const telegramStatus = getClientStatus();
 
@@ -18,13 +34,23 @@ router.get('/', async (req, res) => {
     // Eski xabarlar statistikasi
     const historyStats = getHistoryStats();
 
-    res.render('dashboard', {
+    // Guruh bo'yicha statistika
+    const groupStats = await getGroupStatistics();
+
+    // Cache ga saqlash
+    cachedData = {
       stats,
       recentSMS,
       totalBalance,
       semysmsPhonesCount: semysmsPhones.length,
       telegramStatus,
       historyStats,
+      groupStats
+    };
+    cacheTime = now;
+
+    res.render('dashboard', {
+      ...cachedData,
       username: req.session.username
     });
   } catch (error) {

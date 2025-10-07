@@ -1,4 +1,5 @@
 const { TelegramClient } = require('telegram');
+const { Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 const input = require('input');
 const { extractPhones } = require('./phoneExtractor');

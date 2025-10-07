@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Guruhlar - Telegram SMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+</head>
+<body>
+    <%- include('../partials/sidebar', { username }) %>
+
+    <div class="container-fluid" style="margin-left: 250px; padding: 20px;">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h2><i class="bi bi-telegram"></i> Telegram Guruhlar Ro'yxati</h2>
+                <p class="text-muted">Telegramda a'zo bo'lgan barcha guruhlar va kanallar</p>
+            </div>
+        </div>
+
+        <% if (error) { %>
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> <%= error %>
+            </div>
+        <% } %>
+
+        <% if (telegramGroups.length === 0 && !error) { %>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Telegram guruhlar topilmadi
+            </div>
+        <% } else { %>
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-list-ul"></i> Barcha guruhlar (<%= telegramGroups.length %>)
+                    <span class="badge bg-success"><%= monitoredIds.length %> kuzatilmoqda</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Guruh nomi</th>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>A'zolar</th>
+                                    <th>Holat</th>
+                                    <th>Amallar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% telegramGroups.forEach(group => { %>
+                                    <tr>
+                                        <td>
+                                            <strong><%= group.title %></strong>
+                                        </td>
+                                        <td>
+                                            <code><%= group.id %></code>
+                                        </td>
+                                        <td>
+                                            <% if (group.username) { %>
+                                                <span class="badge bg-info">@<%= group.username %></span>
+                                            <% } else { %>
+                                                <span class="text-muted">-</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <%= group.participantsCount.toLocaleString() %>
+                                        </td>
+                                        <td>
+                                            <% if (group.isMonitored) { %>
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i> Kuzatilmoqda
+                                                </span>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary">
+                                                    <i class="bi bi-dash-circle"></i> Kuzatilmaydi
+                                                </span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <% if (!group.isMonitored) { %>
+                                                <button class="btn btn-sm btn-primary" onclick="addToMonitoring('<%= group.id %>', '<%= group.title.replace(/'/g, "\\'") %>')">
+                                                    <i class="bi bi-plus-circle"></i> Monitoring'ga qo'shish
+                                                </button>
+                                            <% } else { %>
+                                                <a href="/groups" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-gear"></i> Sozlamalar
+                                                </a>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+
+        <div class="mt-3">
+            <a href="/groups" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Orqaga
+            </a>
+            <a href="/groups/add" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Qo'lda qo'shish
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function addToMonitoring(telegramId, title) {
+            if (confirm(`"${title}" guruhini monitoring'ga qo'shilsinmi?`)) {
+                // Form yaratish va yuborish
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/groups/add';
+
+                const inputs = {
+                    name: title,
+                    telegram_id: telegramId,
+                    keywords: '',
+                    sms_template: 'Assalomu alaykum! Men {{group}} guruhida ko\'rdim...'
+                };
+
+                for (const [key, value] of Object.entries(inputs)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
+</body>
+</html>

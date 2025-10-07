@@ -99,6 +99,11 @@ DATABASE_TYPE=sqlite
 WEB_PORT=3000
 WEB_USERNAME=admin
 WEB_PASSWORD=admin123
+# yoki xavfsizroq:
+# WEB_PASSWORD_HASH=<bcrypt_hash>
+
+# Rejim: demo | server | production
+MODE=server
 ```
 
 ## 🏃 ISHGA TUSHIRISH
