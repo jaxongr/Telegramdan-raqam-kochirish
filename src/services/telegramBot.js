@@ -311,76 +311,48 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
             const progressInterval = setInterval(async () => {
               console.log(`✅ CHECKPOINT 5: Progress interval tick for ${customFilename}`);
               try {
-                const queueStatus = historyScraper.getQueueStatus();
+                const progress = historyScraper.getProgress();
                 const filePath = path.join(__dirname, '../../exports', customFilename);
 
-                logger.info(`🤖 BOT: Checking progress - Queue: ${queueStatus.pendingTasks.length}, File exists: ${fs.existsSync(filePath)}`);
+                logger.info(`🤖 BOT: Checking progress - isScanning: ${progress.isScanning}, File exists: ${fs.existsSync(filePath)}`);
 
-                // Agar bu task navbatda bo'lsa
-                const taskInQueue = queueStatus.pendingTasks.find(t => t.filename === customFilename);
-
-                if (taskInQueue) {
-                  // Hali o'z navbatiga kelmagan yoki hozir ishlayapti
-                  const progress = historyScraper.getProgress();
-                  const taskPosition = queueStatus.pendingTasks.findIndex(t => t.filename === customFilename) + 1;
-
-                  if (taskPosition === 1 && progress.isScanning) {
-                    // Bu task hozir ishlayapti
-                    if (lastStatus !== 'scanning') {
-                      lastStatus = 'scanning';
-                      logger.info(`🤖 BOT: Task boshlandi - ${customFilename}`);
-                    }
-
-                    const percent = progress.totalMessages > 0
-                      ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
-                      : 0;
-
-                    const progressBar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
-
-                    // Sana formatini yaratish
-                    let dateInfo = '';
-                    if (progress.currentDate) {
-                      const currentDate = new Date(progress.currentDate);
-                      dateInfo = `\n📅 Sana: ${currentDate.getDate()}/${currentDate.getMonth()+1}/${currentDate.getFullYear()}`;
-                    }
-
-                    logger.info(`🤖 BOT: Updating progress - ${percent}%, ${progress.processedMessages}/${progress.totalMessages}`);
-
-                    await bot.telegram.editMessageText(
-                      chatId,
-                      messageId,
-                      null,
-                      `📊 *Skan davom etmoqda...*\n\n` +
-                      `📂 Guruh: ${group.name}\n` +
-                      `${progressBar} ${percent}%\n\n` +
-                      `📨 Xabarlar: ${progress.processedMessages || 0} / ${progress.totalMessages || '?'}\n` +
-                      `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
-                      `✨ Unikal: ${progress.uniquePhones || 0} ta\n` +
-                      `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min` +
-                      dateInfo,
-                      { parse_mode: 'Markdown' }
-                    ).catch(() => {});
-                  } else {
-                    // Hali navbatda kutmoqda
-                    if (lastStatus !== 'waiting') {
-                      lastStatus = 'waiting';
-                    }
-
-                    const now = Date.now();
-                    if (now - lastUpdate > 30000) { // Har 30 soniyada yangilash
-                      lastUpdate = now;
-                      await bot.telegram.editMessageText(
-                        chatId,
-                        messageId,
-                        null,
-                        `⏳ *Navbatda kutilmoqda...*\n\n` +
-                        `📂 Guruh: ${group.name}\n` +
-                        `🔢 Navbatda: ${taskPosition}-o'rinda\n` +
-                        `📊 Jami navbat: ${queueStatus.pendingTasks.length} ta`,
-                        { parse_mode: 'Markdown' }
-                      ).catch(() => {});
-                    }
+                // Agar skanerlash davom etayotgan bo'lsa
+                if (progress.isScanning) {
+                  // Skanerlash ishlayapti - progress ko'rsatish
+                  if (lastStatus !== 'scanning') {
+                    lastStatus = 'scanning';
+                    logger.info(`🤖 BOT: Task boshlandi - ${customFilename}`);
                   }
+
+                  const percent = progress.totalMessages > 0
+                    ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
+                    : 0;
+
+                  const progressBar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
+
+                  // Sana formatini yaratish
+                  let dateInfo = '';
+                  if (progress.currentDate) {
+                    const currentDate = new Date(progress.currentDate);
+                    dateInfo = `\n📅 Sana: ${currentDate.getDate()}/${currentDate.getMonth()+1}/${currentDate.getFullYear()}`;
+                  }
+
+                  logger.info(`🤖 BOT: Updating progress - ${percent}%, ${progress.processedMessages}/${progress.totalMessages}`);
+
+                  await bot.telegram.editMessageText(
+                    chatId,
+                    messageId,
+                    null,
+                    `📊 *Skan davom etmoqda...*\n\n` +
+                    `📂 Guruh: ${group.name}\n` +
+                    `${progressBar} ${percent}%\n\n` +
+                    `📨 Xabarlar: ${progress.processedMessages || 0} / ${progress.totalMessages || '?'}\n` +
+                    `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
+                    `✨ Unikal: ${progress.uniquePhones || 0} ta\n` +
+                    `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min` +
+                    dateInfo,
+                    { parse_mode: 'Markdown' }
+                  ).catch(() => {});
                 } else {
                   // Task navbatda yo'q - tugagan bo'lishi mumkin
                   if (fs.existsSync(filePath)) {
