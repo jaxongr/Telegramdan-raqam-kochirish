@@ -10,6 +10,15 @@ const resumeDir = path.join(__dirname, '../../data/resume');
  */
 async function checkAndResumeScans() {
   try {
+    // .env'dan AUTO_RESUME_ENABLED tekshirish
+    const autoResumeEnabled = process.env.AUTO_RESUME_ENABLED !== 'false';
+
+    if (!autoResumeEnabled) {
+      console.log('⚠️  AUTO_RESUME o\'chirilgan (.env: AUTO_RESUME_ENABLED=false)');
+      console.log('   Resume fayllar mavjud bo\'lsa, web interface\'dan qo\'lda davom ettiring.');
+      return;
+    }
+
     if (!fs.existsSync(resumeDir)) {
       return;
     }
@@ -139,8 +148,77 @@ function deleteResumeFile(filePath) {
   }
 }
 
+/**
+ * Barcha resume fayllarni ro'yxatini olish
+ */
+function getResumeFiles() {
+  try {
+    if (!fs.existsSync(resumeDir)) {
+      return [];
+    }
+
+    const files = fs.readdirSync(resumeDir);
+    const resumeFiles = files.filter(f => f.startsWith('resume_') && f.endsWith('.json'));
+
+    return resumeFiles.map(file => {
+      const filePath = path.join(resumeDir, file);
+      try {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const stats = fs.statSync(filePath);
+
+        return {
+          filename: file,
+          filePath,
+          groupId: data.groupId,
+          groupName: data.groupName,
+          processedMessages: data.processedMessages || 0,
+          phonesCount: data.phonesFoundCount || (data.phonesFound ? data.phonesFound.length : 0),
+          timestamp: data.timestamp,
+          fileSize: stats.size,
+          age: Date.now() - new Date(data.timestamp).getTime()
+        };
+      } catch (error) {
+        logger.error(`Resume fayl o'qishda xato: ${file}`, error);
+        return null;
+      }
+    }).filter(f => f !== null);
+  } catch (error) {
+    logger.error('Resume fayllar ro\'yxatini olishda xato:', error);
+    return [];
+  }
+}
+
+/**
+ * Barcha resume fayllarni o'chirish
+ */
+function clearAllResumeFiles() {
+  try {
+    if (!fs.existsSync(resumeDir)) {
+      return { success: true, deleted: 0 };
+    }
+
+    const files = fs.readdirSync(resumeDir);
+    const resumeFiles = files.filter(f => f.startsWith('resume_') && f.endsWith('.json'));
+
+    let deleted = 0;
+    resumeFiles.forEach(file => {
+      const filePath = path.join(resumeDir, file);
+      fs.unlinkSync(filePath);
+      deleted++;
+    });
+
+    logger.info(`🗑 ${deleted} ta resume fayl o'chirildi`);
+    return { success: true, deleted };
+  } catch (error) {
+    logger.error('Resume fayllarni o\'chirishda xato:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   checkAndResumeScans,
   createResumeFile,
-  deleteResumeFile
+  deleteResumeFile,
+  getResumeFiles,
+  clearAllResumeFiles
 };
