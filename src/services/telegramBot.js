@@ -232,7 +232,7 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
         const data = ctx.callbackQuery.data;
 
         // Stop tugmasi bosilganda
-        if (data.startsWith('stop_')) {
+        if (data === 'stop_scan') {
           await ctx.answerCbQuery('🛑 To\'xtatilmoqda...');
 
           stopScraping();
@@ -370,7 +370,7 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                         parse_mode: 'Markdown',
                         reply_markup: {
                           inline_keyboard: [[
-                            { text: '🛑 To\'xtatish', callback_data: `stop_${customFilename}` }
+                            { text: '🛑 To\'xtatish', callback_data: 'stop_scan' }
                           ]]
                         }
                       }
