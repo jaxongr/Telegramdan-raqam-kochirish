@@ -313,11 +313,11 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                 const progress = historyScraper.getProgress();
                 const filePath = path.join(__dirname, '../../exports', customFilename);
 
-                console.log(`🔍 BOT: isScanning=${progress.isScanning}, file=${fs.existsSync(filePath)}`);
+                console.log(`🔍 BOT: isRunning=${progress.isRunning}, file=${fs.existsSync(filePath)}`);
 
                 // Agar skanerlash davom etayotgan bo'lsa
-                if (progress.isScanning) {
-                  console.log(`✅ isScanning=true, updating progress...`);
+                if (progress.isRunning) {
+                  console.log(`✅ isRunning=true, updating progress...`);
                   // Skanerlash ishlayapti - progress ko'rsatish
                   if (lastStatus !== 'scanning') {
                     lastStatus = 'scanning';
