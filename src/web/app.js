@@ -114,23 +114,29 @@ app.post('/login', async (req, res) => {
   const validPassword = process.env.WEB_PASSWORD || 'admin123';
   const passwordHash = process.env.WEB_PASSWORD_HASH || '';
 
+  console.log('🔐 Login attempt:', { username, passwordLength: password?.length, validUsername, hasHash: !!passwordHash });
+
   try {
     let ok = false;
     if (passwordHash) {
       ok = (username === validUsername) && (await bcrypt.compare(password, passwordHash));
+      console.log('🔑 Hash check:', { ok, usernameMatch: username === validUsername });
     } else {
       ok = (username === validUsername) && (password === validPassword);
+      console.log('🔑 Plain check:', { ok, usernameMatch: username === validUsername, passwordMatch: password === validPassword });
     }
 
     if (ok) {
       req.session.isAuthenticated = true;
       req.session.username = username;
+      console.log('✅ Login success, session:', req.session.id);
       return res.redirect('/');
     }
   } catch (e) {
-    console.error('Login check error:', e);
+    console.error('❌ Login check error:', e);
   }
 
+  console.log('❌ Login failed');
   res.render('login', { error: 'Login yoki parol noto\'g\'ri' });
 });
 
