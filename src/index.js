@@ -143,7 +143,7 @@ async function main() {
 
     // 4) Web server
     console.log('[4/4] Web dashboard ishga tushirilmoqda...');
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Web dashboard: http://localhost:${PORT}`);
       console.log("\n=== Tizim to'liq ishga tushdi ===\n");
 
