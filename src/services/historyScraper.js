@@ -1,6 +1,6 @@
 const { TelegramClient } = require('telegram');
 const { extractPhones } = require('./phoneExtractor');
-const { savePhone, getGroupById } = require('../database/models');
+const { savePhone, getGroupById, savePhonesInBatch } = require('../database/models');
 const logger = require('../utils/logger');
 const fs = require('fs');
 const path = require('path');
@@ -401,8 +401,6 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
           // HAR 100 TA RAQAMDA: Faqat YANGI UNIKAL raqamlarni database ga saqlash!
           if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0) {
-            const { savePhonesInBatch } = require('../database/models');
-
             // Oxirgi 100 ta raqamni olish
             const lastBatch = results.phonesFound.slice(-100);
 
