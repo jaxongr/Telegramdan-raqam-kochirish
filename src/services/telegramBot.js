@@ -18,6 +18,8 @@ const { getAllGroups } = require('../database/models');
 const { addToBlacklist, getBlacklistStats } = require('../database/blacklist');
 const historyScraper = require('./historyScraper');
 const { stopScraping, pauseScraping, resumeScraping } = require('./historyScraper');
+const { saveToArchive } = require('../database/archiveResults');
+const XLSX = require('xlsx');
 const fs = require('fs');
 const path = require('path');
 
@@ -384,6 +386,7 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                       logger.error('Fayl o\'qishda xato:', e);
                     }
 
+                    // JSON fayl yuborish
                     await bot.telegram.sendDocument(chatId, {
                       source: fs.createReadStream(filePath),
                       filename: customFilename
@@ -393,6 +396,50 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                         `📱 Raqamlar: ${totalPhones} ta (${uniquePhones} unikal)`,
                       parse_mode: 'Markdown'
                     });
+
+                    // Excel fayl yaratish va yuborish
+                    try {
+                      const fileContent = fs.readFileSync(filePath, 'utf8');
+                      const data = JSON.parse(fileContent);
+
+                      if (data.phonesFound && data.phonesFound.length > 0) {
+                        const excelData = data.phonesFound.map(item => ({
+                          'Telefon': item.phone,
+                          'Xabar': item.message || '',
+                          'Sana': item.date ? new Date(item.date).toLocaleString('uz-UZ') : ''
+                        }));
+
+                        const ws = XLSX.utils.json_to_sheet(excelData);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Raqamlar');
+
+                        const excelFilename = customFilename.replace('.json', '.xlsx');
+                        const excelPath = path.join(__dirname, '../../exports', excelFilename);
+                        XLSX.writeFile(wb, excelPath);
+
+                        await bot.telegram.sendDocument(chatId, {
+                          source: fs.createReadStream(excelPath),
+                          filename: excelFilename
+                        }, {
+                          caption: `📊 *Excel format*\n\n${totalPhones} ta raqam`,
+                          parse_mode: 'Markdown'
+                        });
+
+                        // Excel faylni o'chirish
+                        fs.unlinkSync(excelPath);
+                      }
+
+                      // Arxivga saqlash
+                      await saveToArchive({
+                        groupId: group.id,
+                        filename: customFilename,
+                        totalPhones,
+                        uniquePhones
+                      });
+
+                    } catch (excelError) {
+                      logger.error('Excel yaratishda xato:', excelError);
+                    }
                   } else {
                     // Fayl yo'q va navbatda yo'q - muammo bo'lishi mumkin
                     // Yana bir oz kutamiz
