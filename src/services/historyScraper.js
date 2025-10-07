@@ -399,9 +399,19 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // FAYL SAQLASH YO'Q - Faqat progress log (JUDA TEZ!)
-          if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0) {
-            logger.info(`📊 Progress: ${results.phonesFound.length} ta raqam (${[...new Set(results.phonesFound.map(p => p.phone))].length} unikal)`);
+          // HAR 1000 TA RAQAMDA FAYLGA SAQLASH (server o'chsa tiklanadi!)
+          if (results.phonesFound.length > 0 && results.phonesFound.length % 1000 === 0) {
+            logger.info(`💾 BACKUP: ${results.phonesFound.length} ta raqam faylga saqlandi`);
+
+            if (results.filename) {
+              await saveResultsToFile(results, results.filename);
+              logger.info(`✅ Auto-save: ${results.filename}`);
+            }
+          }
+
+          // HAR 100 TA RAQAMDA FAQAT LOG (juda tez!)
+          if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0 && results.phonesFound.length % 1000 !== 0) {
+            logger.info(`📊 Progress: ${results.phonesFound.length} ta raqam`);
           }
 
         } catch (msgError) {
