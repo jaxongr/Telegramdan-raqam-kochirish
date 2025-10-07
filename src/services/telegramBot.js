@@ -301,89 +301,104 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
 
             // Progress kuzatish (background'da)
             let lastUpdate = Date.now();
+            let lastStatus = 'waiting'; // waiting, scanning, done
             const progressInterval = setInterval(async () => {
               try {
-                const progress = historyScraper.getProgress();
                 const queueStatus = historyScraper.getQueueStatus();
+                const filePath = path.join(__dirname, '../../exports', customFilename);
 
                 // Agar bu task navbatda bo'lsa
                 const taskInQueue = queueStatus.pendingTasks.find(t => t.filename === customFilename);
-                if (taskInQueue && !progress.isScanning) {
-                  // Hali o'z navbatiga kelmagan
-                  const now = Date.now();
-                  if (now - lastUpdate > 30000) { // Har 30 soniyada yangilash
-                    lastUpdate = now;
+
+                if (taskInQueue) {
+                  // Hali o'z navbatiga kelmagan yoki hozir ishlayapti
+                  const progress = historyScraper.getProgress();
+                  const taskPosition = queueStatus.pendingTasks.findIndex(t => t.filename === customFilename) + 1;
+
+                  if (taskPosition === 1 && progress.isScanning) {
+                    // Bu task hozir ishlayapti
+                    if (lastStatus !== 'scanning') {
+                      lastStatus = 'scanning';
+                      logger.info(`🤖 BOT: Task boshlandi - ${customFilename}`);
+                    }
+
+                    const percent = progress.totalMessages > 0
+                      ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
+                      : 0;
+
+                    const progressBar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
+
                     await bot.telegram.editMessageText(
                       chatId,
                       messageId,
                       null,
-                      `⏳ *Navbatda kutilmoqda...*\n\n` +
+                      `📊 *Skan davom etmoqda...*\n\n` +
                       `📂 Guruh: ${group.name}\n` +
-                      `🔢 Navbatda: ${queueStatus.pendingTasks.findIndex(t => t.filename === customFilename) + 1}-o'rinda\n` +
-                      `📊 Jami navbat: ${queueStatus.pendingTasks.length} ta`,
+                      `${progressBar} ${percent}%\n\n` +
+                      `📨 Xabarlar: ${progress.processedMessages || 0}\n` +
+                      `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
+                      `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min`,
                       { parse_mode: 'Markdown' }
                     ).catch(() => {});
+                  } else {
+                    // Hali navbatda kutmoqda
+                    if (lastStatus !== 'waiting') {
+                      lastStatus = 'waiting';
+                    }
+
+                    const now = Date.now();
+                    if (now - lastUpdate > 30000) { // Har 30 soniyada yangilash
+                      lastUpdate = now;
+                      await bot.telegram.editMessageText(
+                        chatId,
+                        messageId,
+                        null,
+                        `⏳ *Navbatda kutilmoqda...*\n\n` +
+                        `📂 Guruh: ${group.name}\n` +
+                        `🔢 Navbatda: ${taskPosition}-o'rinda\n` +
+                        `📊 Jami navbat: ${queueStatus.pendingTasks.length} ta`,
+                        { parse_mode: 'Markdown' }
+                      ).catch(() => {});
+                    }
                   }
-                  return;
-                }
-
-                // Agar bu task hozir ishlayotgan bo'lsa
-                if (progress.isScanning && progress.filename === customFilename) {
-                  const percent = progress.totalMessages > 0
-                    ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
-                    : 0;
-
-                  const progressBar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
-
-                  await bot.telegram.editMessageText(
-                    chatId,
-                    messageId,
-                    null,
-                    `📊 *Skan davom etmoqda...*\n\n` +
-                    `📂 Guruh: ${group.name}\n` +
-                    `${progressBar} ${percent}%\n\n` +
-                    `📨 Xabarlar: ${progress.processedMessages || 0}\n` +
-                    `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
-                    `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min`,
-                    { parse_mode: 'Markdown' }
-                  ).catch(() => {});
-                  return;
-                }
-
-                // Agar task tugagan bo'lsa
-                if (!progress.isScanning && !taskInQueue) {
-                  clearInterval(progressInterval);
-
-                  // Fayl yuborish
-                  const filePath = path.join(__dirname, '../../exports', customFilename);
-
+                } else {
+                  // Task navbatda yo'q - tugagan bo'lishi mumkin
                   if (fs.existsSync(filePath)) {
+                    // Fayl mavjud - tugagan!
+                    clearInterval(progressInterval);
+                    lastStatus = 'done';
+                    logger.info(`🤖 BOT: Task tugadi, fayl yuborilmoqda - ${customFilename}`);
+
+                    // Fayldan statistika o'qish
+                    let totalPhones = 0;
+                    let uniquePhones = 0;
+                    try {
+                      const fileContent = fs.readFileSync(filePath, 'utf8');
+                      const data = JSON.parse(fileContent);
+                      totalPhones = data.totalPhones || 0;
+                      uniquePhones = data.uniquePhones || 0;
+                    } catch (e) {
+                      logger.error('Fayl o\'qishda xato:', e);
+                    }
+
                     await bot.telegram.sendDocument(chatId, {
                       source: fs.createReadStream(filePath),
                       filename: customFilename
                     }, {
                       caption: `✅ *Skan tugadi!*\n\n` +
                         `📂 Guruh: ${group.name}\n` +
-                        `📊 Xabarlar: ${progress.processedMessages || 0}\n` +
-                        `📱 Raqamlar: ${progress.phonesFound || 0} ta`,
+                        `📱 Raqamlar: ${totalPhones} ta (${uniquePhones} unikal)`,
                       parse_mode: 'Markdown'
                     });
                   } else {
-                    await bot.telegram.editMessageText(
-                      chatId,
-                      messageId,
-                      null,
-                      `✅ *Skan tugadi!*\n\n` +
-                      `📂 Guruh: ${group.name}\n\n` +
-                      `⚠️ Fayl topilmadi. Web interfeys'dan yuklab oling.`,
-                      { parse_mode: 'Markdown' }
-                    );
+                    // Fayl yo'q va navbatda yo'q - muammo bo'lishi mumkin
+                    // Yana bir oz kutamiz
                   }
                 }
               } catch (err) {
                 logger.error('🤖 BOT Progress update error:', err);
               }
-            }, 15000); // Har 15 soniyada
+            }, 10000); // Har 10 soniyada
 
           } catch (scanError) {
             logger.error('Scan start error:', scanError);
