@@ -399,7 +399,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // Har 100 ta raqam topilganda asosiy faylni yangilash VA database ga saqlash
+          // Har 100 ta raqam topilganda faqat FAYLGA saqlash (database emas - tezlik uchun!)
           if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0) {
             logger.info(`💾 Progress: ${results.phonesFound.length} ta raqam topildi`);
 
@@ -407,21 +407,6 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             if (results.filename) {
               await saveResultsToFile(results, results.filename);
               logger.info(`✅ Auto-save: ${results.filename}`);
-            }
-
-            // DATABASE GA BATCH SAQLASH (har 100 ta raqam)
-            try {
-              const { savePhonesInBatch } = require('../database/models');
-              const lastBatch = results.phonesFound.slice(-100); // Oxirgi 100 ta
-              const dbResult = await savePhonesInBatch(lastBatch.map(p => ({
-                phone: p.phone,
-                group_id: groupId,
-                message: p.message,
-                date: p.date
-              })));
-              logger.info(`✅ Database: ${dbResult.inserted} yangi, ${dbResult.updated} yangilandi`);
-            } catch (dbError) {
-              logger.error(`❌ Database batch save error: ${dbError.message}`);
             }
           }
 
@@ -477,24 +462,37 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
     logger.info(`✓ [${group.name}] Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi (${uniquePhonesCount} unikal)`);
 
-    // OXIRIDA BARCHA QOLGAN RAQAMLARNI DATABASE GA SAQLASH
+    // OXIRIDA BARCHA RAQAMLARNI DATABASE GA SAQLASH (1000 ta birdaniga - katta batch!)
     if (results.phonesFound.length > 0) {
       try {
+        logger.info(`💾 Database ga saqlash boshlandi: ${results.phonesFound.length} ta raqam...`);
         const { savePhonesInBatch } = require('../database/models');
-        const remainingStart = Math.floor(results.phonesFound.length / 100) * 100;
-        const remainingPhones = results.phonesFound.slice(remainingStart);
 
-        if (remainingPhones.length > 0) {
-          const dbResult = await savePhonesInBatch(remainingPhones.map(p => ({
+        // 1000 talik batchlarga bo'lib saqlash (tez va xavfsiz)
+        const BATCH_SIZE = 1000;
+        let totalInserted = 0;
+        let totalUpdated = 0;
+
+        for (let i = 0; i < results.phonesFound.length; i += BATCH_SIZE) {
+          const batch = results.phonesFound.slice(i, i + BATCH_SIZE);
+          const dbResult = await savePhonesInBatch(batch.map(p => ({
             phone: p.phone,
             group_id: groupId,
             message: p.message,
             date: p.date
           })));
-          logger.info(`✅ Final database save: ${dbResult.inserted} yangi, ${dbResult.updated} yangilandi (${remainingPhones.length} ta raqam)`);
+
+          totalInserted += dbResult.inserted || 0;
+          totalUpdated += dbResult.updated || 0;
+
+          if (i + BATCH_SIZE < results.phonesFound.length) {
+            logger.info(`  → ${i + batch.length}/${results.phonesFound.length} saqlandi...`);
+          }
         }
+
+        logger.info(`✅ Database saqlash tugadi: ${totalInserted} yangi, ${totalUpdated} yangilandi`);
       } catch (dbError) {
-        logger.error(`❌ Final database save error: ${dbError.message}`);
+        logger.error(`❌ Database save error: ${dbError.message}`);
       }
     }
 
