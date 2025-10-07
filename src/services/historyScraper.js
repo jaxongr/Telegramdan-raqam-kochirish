@@ -456,25 +456,38 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       await sleep(currentSleepMs);
     }
 
-    // Oxirida unikallashtirib, uniquePhones ni yangilash
-    const uniquePhonesCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
+    // UNIKALLASH: Faqat birinchi ko'rinishini saqlash (Map bilan - tezroq!)
+    logger.info(`🔍 Dublikatlarni chiqarilmoqda: ${results.phonesFound.length} ta raqam...`);
+
+    const uniquePhonesMap = new Map();
+    for (const phoneData of results.phonesFound) {
+      if (!uniquePhonesMap.has(phoneData.phone)) {
+        uniquePhonesMap.set(phoneData.phone, phoneData);
+      }
+    }
+
+    const uniquePhones = Array.from(uniquePhonesMap.values());
+    const uniquePhonesCount = uniquePhones.length;
+    const duplicateCount = results.phonesFound.length - uniquePhonesCount;
+
     updateProgress({ uniquePhones: uniquePhonesCount });
 
-    logger.info(`✓ [${group.name}] Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi (${uniquePhonesCount} unikal)`);
+    logger.info(`✓ [${group.name}] Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi`);
+    logger.info(`  → ${uniquePhonesCount} unikal, ${duplicateCount} dublikat (chiqarildi)`);
 
-    // OXIRIDA BARCHA RAQAMLARNI DATABASE GA SAQLASH (1000 ta birdaniga - katta batch!)
-    if (results.phonesFound.length > 0) {
+    // OXIRIDA FAQAT UNIKAL RAQAMLARNI DATABASE GA SAQLASH (JUDA TEZ!)
+    if (uniquePhones.length > 0) {
       try {
-        logger.info(`💾 Database ga saqlash boshlandi: ${results.phonesFound.length} ta raqam...`);
+        logger.info(`💾 Database ga saqlash boshlandi: ${uniquePhones.length} ta UNIKAL raqam...`);
         const { savePhonesInBatch } = require('../database/models');
 
-        // 1000 talik batchlarga bo'lib saqlash (tez va xavfsiz)
+        // 1000 talik batchlarga bo'lib saqlash
         const BATCH_SIZE = 1000;
         let totalInserted = 0;
         let totalUpdated = 0;
 
-        for (let i = 0; i < results.phonesFound.length; i += BATCH_SIZE) {
-          const batch = results.phonesFound.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < uniquePhones.length; i += BATCH_SIZE) {
+          const batch = uniquePhones.slice(i, i + BATCH_SIZE);
           const dbResult = await savePhonesInBatch(batch.map(p => ({
             phone: p.phone,
             group_id: groupId,
@@ -485,12 +498,13 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
           totalInserted += dbResult.inserted || 0;
           totalUpdated += dbResult.updated || 0;
 
-          if (i + BATCH_SIZE < results.phonesFound.length) {
-            logger.info(`  → ${i + batch.length}/${results.phonesFound.length} saqlandi...`);
+          if (i + BATCH_SIZE < uniquePhones.length) {
+            logger.info(`  → ${i + batch.length}/${uniquePhones.length} saqlandi...`);
           }
         }
 
         logger.info(`✅ Database saqlash tugadi: ${totalInserted} yangi, ${totalUpdated} yangilandi`);
+        logger.info(`⚡ Optimizatsiya: ${duplicateCount} ta dublikat o'tkazib yuborildi (${Math.round(duplicateCount/results.phonesFound.length*100)}% tejov)`);
       } catch (dbError) {
         logger.error(`❌ Database save error: ${dbError.message}`);
       }
