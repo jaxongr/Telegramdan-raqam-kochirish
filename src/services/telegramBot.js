@@ -283,9 +283,11 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
             };
 
             const queueInfo = addToQueue(task);
+            console.log(`✅ CHECKPOINT 1: Queue info`, queueInfo);
             logger.info(`📱 Bot scan queued: ${group.name} by user ${ctx.from.id}, position: ${queueInfo.queuePosition}`);
 
             // Navbat ma'lumotini ko'rsatish
+            console.log(`✅ CHECKPOINT 2: Before editMessageText`, { chatId, messageId });
             await bot.telegram.editMessageText(
               chatId,
               messageId,
@@ -298,13 +300,16 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
               `📱 Tugagach bu yerda fayl yuboriladi.`,
               { parse_mode: 'Markdown' }
             );
+            console.log(`✅ CHECKPOINT 3: After editMessageText`);
 
             // Progress kuzatish (background'da)
             let lastUpdate = Date.now();
             let lastStatus = 'waiting'; // waiting, scanning, done
+            console.log(`✅ CHECKPOINT 4: About to start progress interval for ${customFilename}`);
             logger.info(`🤖 BOT: Progress interval started for ${customFilename}`);
 
             const progressInterval = setInterval(async () => {
+              console.log(`✅ CHECKPOINT 5: Progress interval tick for ${customFilename}`);
               try {
                 const queueStatus = historyScraper.getQueueStatus();
                 const filePath = path.join(__dirname, '../../exports', customFilename);
