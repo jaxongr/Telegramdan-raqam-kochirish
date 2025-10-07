@@ -231,6 +231,19 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
       try {
         const data = ctx.callbackQuery.data;
 
+        // Stop tugmasi bosilganda
+        if (data.startsWith('stop_')) {
+          await ctx.answerCbQuery('🛑 To\'xtatilmoqda...');
+
+          stopScraping();
+
+          await ctx.editMessageText(
+            '🛑 *Skan to\'xtatildi*\n\nNatijalar tayyor bo\'lganda yuboriladi.',
+            { parse_mode: 'Markdown' }
+          );
+          return;
+        }
+
         if (data.startsWith('scan_')) {
           const groupId = parseInt(data.replace('scan_', ''));
           const groups = await getAllGroups();
@@ -352,7 +365,14 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                     `✨ Unikal: ${progress.uniquePhones || 0} ta\n` +
                     `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min` +
                     dateInfo,
-                    { parse_mode: 'Markdown' }
+                    {
+                      parse_mode: 'Markdown',
+                      reply_markup: {
+                        inline_keyboard: [[
+                          { text: '🛑 To\'xtatish', callback_data: `stop_${customFilename}` }
+                        ]]
+                      }
+                    }
                   ).catch(() => {});
                 } else {
                   // Task navbatda yo'q - tugagan bo'lishi mumkin
@@ -427,6 +447,14 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                         // Excel faylni o'chirish
                         fs.unlinkSync(excelPath);
                       }
+
+                      // Arxivga saqlash - exports faylini kopyalash
+                      const archivePath = path.join(__dirname, '../../data/archive');
+                      if (!fs.existsSync(archivePath)) {
+                        fs.mkdirSync(archivePath, { recursive: true });
+                      }
+                      fs.copyFileSync(filePath, path.join(archivePath, customFilename));
+                      logger.info(`📦 Arxivga saqlandi: ${customFilename}`);
 
                     } catch (excelError) {
                       logger.error('Excel yaratishda xato:', excelError);
