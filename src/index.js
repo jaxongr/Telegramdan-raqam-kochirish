@@ -127,8 +127,14 @@ async function main() {
       console.log('[3/4] Telegram bot ishga tushirilmoqda...');
       try {
         const { startBot } = require('./services/telegramBot');
-        await startBot();
-        console.log('Telegram bot tayyor');
+        // Bot'ni background'da ishga tushirish (await qilmasdan)
+        startBot().then(() => {
+          console.log('✅ Telegram bot tayyor');
+        }).catch((botError) => {
+          console.error('Telegram bot xatosi:', botError.message);
+          console.log('Bot o\'chirilgan - davom etadi...');
+        });
+        console.log('Telegram bot yuklanmoqda...');
       } catch (botError) {
         console.error('Telegram bot xatosi:', botError.message);
         console.log('Bot o\'chirilgan - davom etadi...');
