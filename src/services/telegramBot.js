@@ -502,10 +502,14 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
       ctx.reply('❌ Ichki xato yuz berdi. Admin bilan bog\'laning.');
     });
 
-    // Launch bot
-    await bot.launch();
-    isRunning = true;
+    // Launch bot (non-blocking)
+    bot.launch().then(() => {
+      logger.info('✅ Telegram bot polling started');
+    }).catch(err => {
+      logger.error('Bot launch error:', err);
+    });
 
+    isRunning = true;
     logger.info('✅ Telegram bot ishga tushdi');
 
     // Graceful shutdown
