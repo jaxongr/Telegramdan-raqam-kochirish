@@ -364,7 +364,18 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                 } else {
                   // Task navbatda yo'q - tugagan bo'lishi mumkin
                   if (fs.existsSync(filePath)) {
-                    // Fayl mavjud - tugagan!
+                    // Faylning yoshini tekshirish - faqat yangi fayl (oxirgi 2 daqiqa)
+                    const fileStats = fs.statSync(filePath);
+                    const fileAge = Date.now() - fileStats.mtimeMs;
+                    const maxAge = 120000; // 2 daqiqa
+
+                    if (fileAge > maxAge) {
+                      // Eski fayl - bu bizning faylimiz emas
+                      logger.warn(`🤖 BOT: Eski fayl topildi (${Math.round(fileAge/1000)}s oldin) - kutilmoqda...`);
+                      return;
+                    }
+
+                    // Fayl yangi - tugagan!
                     clearInterval(progressInterval);
                     lastStatus = 'done';
                     logger.info(`🤖 BOT: Task tugadi, fayl yuborilmoqda - ${customFilename}`);
