@@ -17,6 +17,7 @@ const logger = require('../utils/logger');
 const { getAllGroups } = require('../database/models');
 const { addToBlacklist, getBlacklistStats } = require('../database/blacklist');
 const historyScraper = require('./historyScraper');
+const { stopScraping, pauseScraping, resumeScraping } = require('./historyScraper');
 const fs = require('fs');
 const path = require('path');
 
@@ -429,9 +430,17 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
     // /pause - To'xtatish
     bot.command('pause', async (ctx) => {
       try {
-        // TODO: Pause funksiyasi
-        await ctx.reply('⏸ Pause funksiyasi hozircha ishlamaydi. Web interfeysdan foydalaning.');
+        const success = pauseScraping();
+        if (success) {
+          await ctx.reply('⏸ *Pauza qilindi*\n\nSkanerlash pauza qilindi. Davom ettirish uchun /resume ni bosing.', {
+            parse_mode: 'Markdown'
+          });
+          logger.info(`⏸️ Bot: Pause by user ${ctx.from.id}`);
+        } else {
+          await ctx.reply('⚠️ Hech qanday skanerlash jarayoni ishlamayapti yoki allaqachon pauzada.');
+        }
       } catch (error) {
+        logger.error('Pause command error:', error);
         await ctx.reply('❌ Xato: ' + error.message);
       }
     });
@@ -439,9 +448,35 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
     // /resume - Davom ettirish
     bot.command('resume', async (ctx) => {
       try {
-        // TODO: Resume funksiyasi
-        await ctx.reply('▶️ Resume funksiyasi hozircha ishlamaydi. Web interfeysdan foydalaning.');
+        const success = resumeScraping();
+        if (success) {
+          await ctx.reply('▶️ *Davom ettirildi*\n\nSkanerlash qayta boshlandi.', {
+            parse_mode: 'Markdown'
+          });
+          logger.info(`▶️ Bot: Resume by user ${ctx.from.id}`);
+        } else {
+          await ctx.reply('⚠️ Pauza qilingan jarayon yo\'q.');
+        }
       } catch (error) {
+        logger.error('Resume command error:', error);
+        await ctx.reply('❌ Xato: ' + error.message);
+      }
+    });
+
+    // /stop - To'xtatish (butunlay)
+    bot.command('stop', async (ctx) => {
+      try {
+        const success = stopScraping();
+        if (success) {
+          await ctx.reply('🛑 *To\'xtatish buyrug\'i berildi*\n\nSkanerlash to\'xtatilmoqda...', {
+            parse_mode: 'Markdown'
+          });
+          logger.info(`🛑 Bot: Stop by user ${ctx.from.id}`);
+        } else {
+          await ctx.reply('⚠️ Hech qanday skanerlash jarayoni ishlamayapti.');
+        }
+      } catch (error) {
+        logger.error('Stop command error:', error);
         await ctx.reply('❌ Xato: ' + error.message);
       }
     });
