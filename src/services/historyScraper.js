@@ -399,15 +399,9 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // Har 100 ta raqam topilganda faqat FAYLGA saqlash (database emas - tezlik uchun!)
+          // FAYL SAQLASH YO'Q - Faqat progress log (JUDA TEZ!)
           if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0) {
-            logger.info(`💾 Progress: ${results.phonesFound.length} ta raqam topildi`);
-
-            // Agar filename bo'lsa, shu faylni yangilash
-            if (results.filename) {
-              await saveResultsToFile(results, results.filename);
-              logger.info(`✅ Auto-save: ${results.filename}`);
-            }
+            logger.info(`📊 Progress: ${results.phonesFound.length} ta raqam (${[...new Set(results.phonesFound.map(p => p.phone))].length} unikal)`);
           }
 
         } catch (msgError) {
