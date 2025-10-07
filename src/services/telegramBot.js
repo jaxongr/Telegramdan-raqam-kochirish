@@ -353,27 +353,32 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
 
                   console.log(`📊 Sending progress: ${percent}%, ${progress.processedMessages}/${progress.totalMessages}`);
 
-                  await bot.telegram.editMessageText(
-                    chatId,
-                    messageId,
-                    null,
-                    `📊 *Skan davom etmoqda...*\n\n` +
-                    `📂 Guruh: ${group.name}\n` +
-                    `${progressBar} ${percent}%\n\n` +
-                    `📨 Xabarlar: ${progress.processedMessages || 0} / ${progress.totalMessages || '?'}\n` +
-                    `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
-                    `✨ Unikal: ${progress.uniquePhones || 0} ta\n` +
-                    `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min` +
-                    dateInfo,
-                    {
-                      parse_mode: 'Markdown',
-                      reply_markup: {
-                        inline_keyboard: [[
-                          { text: '🛑 To\'xtatish', callback_data: `stop_${customFilename}` }
-                        ]]
+                  try {
+                    await bot.telegram.editMessageText(
+                      chatId,
+                      messageId,
+                      null,
+                      `📊 *Skan davom etmoqda...*\n\n` +
+                      `📂 Guruh: ${group.name}\n` +
+                      `${progressBar} ${percent}%\n\n` +
+                      `📨 Xabarlar: ${progress.processedMessages || 0} / ${progress.totalMessages || '?'}\n` +
+                      `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
+                      `✨ Unikal: ${progress.uniquePhones || 0} ta\n` +
+                      `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min` +
+                      dateInfo,
+                      {
+                        parse_mode: 'Markdown',
+                        reply_markup: {
+                          inline_keyboard: [[
+                            { text: '🛑 To\'xtatish', callback_data: `stop_${customFilename}` }
+                          ]]
+                        }
                       }
-                    }
-                  ).catch(() => {});
+                    );
+                    console.log(`✅ Progress updated successfully`);
+                  } catch (editError) {
+                    console.log(`⚠️ editMessageText error: ${editError.message}`);
+                  }
                 } else {
                   // Task navbatda yo'q - tugagan bo'lishi mumkin
                   if (fs.existsSync(filePath)) {
