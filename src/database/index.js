@@ -7,7 +7,8 @@ let db = {
   phones: [],
   sms_logs: [],
   semysms_phones: [],
-  settings: []
+  settings: [],
+  blacklist: [] // Qora ro'yxat
 };
 
 const dbPath = path.join(__dirname, '../../data/database.json');
@@ -33,7 +34,8 @@ async function initDatabase() {
             phones: Array.isArray(parsed.phones) ? parsed.phones : [],
             sms_logs: Array.isArray(parsed.sms_logs) ? parsed.sms_logs : [],
             semysms_phones: Array.isArray(parsed.semysms_phones) ? parsed.semysms_phones : [],
-            settings: Array.isArray(parsed.settings) ? parsed.settings : []
+            settings: Array.isArray(parsed.settings) ? parsed.settings : [],
+            blacklist: Array.isArray(parsed.blacklist) ? parsed.blacklist : []
           };
         } else {
           console.warn('Invalid database structure, reinitializing...');
@@ -409,5 +411,7 @@ async function query(sql, params = []) {
 module.exports = {
   initDatabase,
   query,
-  getDB: () => db
+  getDB: () => db,
+  getDatabase: () => db, // Alias
+  saveDatabase
 };

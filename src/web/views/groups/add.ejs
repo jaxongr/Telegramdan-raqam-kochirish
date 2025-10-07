@@ -124,7 +124,15 @@
 
                   <div class="mb-3">
                     <label class="form-label">SMS shablon</label>
-                    <textarea name="sms_template" class="form-control" rows="5" placeholder="Assalomu alaykum! Sizning e'loningizni ko'rdik..."></textarea>
+                    <textarea name="sms_template" class="form-control" rows="5" placeholder="Assalomu alaykum {{name}}! {{group}} guruhida {{time}} da raqamingiz {{phone}} ni ko'rdik..."></textarea>
+                    <small class="text-muted">
+                      <strong>O'zgaruvchilar:</strong>
+                      <code>{{phone}}</code> - Telefon raqam,
+                      <code>{{group}}</code> - Guruh nomi,
+                      <code>{{name}}</code> - Foydalanuvchi ismi,
+                      <code>{{time}}</code> - Vaqt,
+                      <code>{{date}}</code> - Sana
+                    </small>
                   </div>
 
                   <button type="submit" class="btn btn-primary">

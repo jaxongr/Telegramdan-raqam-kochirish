@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { getActiveSemySMSPhones, updateSemySMSPhone, logSMS, getSMSCountToday } = require('../database/models');
+const { isBlacklisted } = require('../database/blacklist');
 const logger = require('../utils/logger');
 
 const SEMYSMS_API_URL = 'https://semysms.net/api/3';
@@ -11,13 +12,33 @@ let currentPhoneIndex = 0; // Round-robin uchun
 
 /**
  * SMS yuborish (round-robin bilan)
+ *
+ * @param {string} toPhone - Qabul qiluvchi telefon raqam
+ * @param {number} groupId - Guruh ID
+ * @param {string} messageText - SMS matni (shablon bo'lishi mumkin)
+ * @param {Object} templateVars - Shablon o'zgaruvchilari (optional)
  */
-async function sendSMS(toPhone, groupId, messageText) {
+async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
   try {
     // Input validation
     if (!toPhone || !messageText) {
       logger.error('SMS yuborish: telefon yoki xabar bo\'sh');
       return { success: false, error: 'invalid_input' };
+    }
+
+    // Qora ro'yxat tekshirish
+    const blacklisted = await isBlacklisted(toPhone);
+    if (blacklisted) {
+      logger.warn(`🚫 Qora ro'yxatda: ${toPhone} - SMS yuborilmaydi`);
+      await logSMS(toPhone, groupId, messageText, null, 'blocked', 'Blacklisted');
+      return { success: false, error: 'blacklisted' };
+    }
+
+    // Agar shablon o'zgaruvchilari berilgan bo'lsa, shablonni render qilish
+    let renderedText = messageText;
+    if (templateVars) {
+      renderedText = renderSMSTemplate(messageText, templateVars);
+      logger.info(`📝 SMS shablon render qilindi: ${renderedText.substring(0, 50)}...`);
     }
 
     // Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
@@ -66,8 +87,8 @@ async function sendSMS(toPhone, groupId, messageText) {
       return await sendSMS(toPhone, groupId, messageText); // Keyingisi bilan urinish
     }
 
-    // SMS matnini tayyorlash
-    const smsText = prepareSMSText(messageText);
+    // SMS matnini tayyorlash (rendered text ishlatamiz)
+    const smsText = prepareSMSText(renderedText);
 
     // SMS yuborish
     const result = await sendViaSemySMS(senderPhone.phone, toPhone, smsText);
@@ -242,6 +263,89 @@ function prepareSMSText(messageText) {
 }
 
 /**
+ * SMS shablon o'zgaruvchilarini almashtirish
+ *
+ * @param {string} template - SMS shablon matni
+ * @param {Object} variables - O'zgaruvchilar obyekti
+ * @param {string} variables.phone - Telefon raqam
+ * @param {string} variables.group - Guruh nomi
+ * @param {string} variables.name - Foydalanuvchi ismi (optional)
+ * @param {Date} variables.foundAt - Topilgan vaqt (optional)
+ * @returns {string} - O'zgaruvchilar almashtirilgan matn
+ *
+ * Qo'llab-quvvatlanadigan o'zgaruvchilar:
+ * - {{phone}} - Telefon raqam
+ * - {{group}} - Guruh nomi
+ * - {{name}} - Foydalanuvchi ismi
+ * - {{time}} - Topilgan vaqt (HH:MM)
+ * - {{date}} - Topilgan sana (DD.MM.YYYY)
+ *
+ * Misol:
+ * renderSMSTemplate(
+ *   "Assalomu alaykum {{name}}! {{group}} guruhida {{time}} da raqamingizni ko'rdik.",
+ *   { name: "Jasur", group: "Toshkent Taxi", phone: "+998901234567", foundAt: new Date() }
+ * )
+ */
+function renderSMSTemplate(template, variables = {}) {
+  if (!template) return '';
+
+  let text = template;
+
+  // {{phone}} - Telefon raqam
+  if (variables.phone) {
+    text = text.replace(/\{\{phone\}\}/g, variables.phone);
+  }
+
+  // {{group}} - Guruh nomi
+  if (variables.group) {
+    text = text.replace(/\{\{group\}\}/g, variables.group);
+  }
+
+  // {{name}} - Foydalanuvchi ismi (agar bor bo'lsa)
+  if (variables.name) {
+    text = text.replace(/\{\{name\}\}/g, variables.name);
+  } else {
+    // Agar ism bo'lmasa, bo'sh joy bilan birga o'chirish
+    // "Assalomu alaykum {{name}}!" → "Assalomu alaykum!"
+    text = text.replace(/\s*\{\{name\}\}\s*/g, ' ');
+  }
+
+  // {{time}} va {{date}} - Topilgan vaqt
+  if (variables.foundAt) {
+    const date = new Date(variables.foundAt);
+
+    // {{time}} - HH:MM format
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    text = text.replace(/\{\{time\}\}/g, timeStr);
+
+    // {{date}} - DD.MM.YYYY format
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const dateStr = `${day}.${month}.${year}`;
+    text = text.replace(/\{\{date\}\}/g, dateStr);
+  } else {
+    // Agar vaqt berilmagan bo'lsa, hozirgi vaqt
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    text = text.replace(/\{\{time\}\}/g, `${hours}:${minutes}`);
+
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    text = text.replace(/\{\{date\}\}/g, `${day}.${month}.${year}`);
+  }
+
+  // Ortiqcha bo'shliqlarni tozalash va trim
+  text = text.replace(/\s+/g, ' ').trim();
+
+  return text;
+}
+
+/**
  * Test SMS yuborish
  */
 async function sendTestSMS(fromPhone, toPhone, text = 'Test SMS') {
@@ -311,5 +415,6 @@ module.exports = {
   checkBalance,
   updateAllBalances,
   prepareSMSText,
+  renderSMSTemplate,
   getLastSMSTime
 };

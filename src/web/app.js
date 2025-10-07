@@ -22,6 +22,7 @@ const semysmsRouter = require('./routes/semysms');
 const settingsRouter = require('./routes/settings');
 const historyRouter = require('./routes/history');
 const messagesRouter = require('./routes/messages');
+const blacklistRouter = require('./routes/blacklist');
 
 // YANGI: Broadcast routes
 const accountsRouter = require('./routes/accounts');
@@ -148,6 +149,7 @@ app.use('/semysms', requireAuth, semysmsRouter);
 app.use('/history', requireAuth, historyRouter);
 app.use('/settings', requireAuth, settingsRouter);
 app.use('/messages', requireAuth, messagesRouter);
+app.use('/blacklist', requireAuth, blacklistRouter);
 
 // YANGI: Broadcast routes
 app.use('/accounts', requireAuth, accountsRouter);

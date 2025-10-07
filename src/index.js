@@ -122,8 +122,21 @@ async function main() {
       console.log("[2/3] LOKAL REJIM (Telegram o'chirilgan - faqat web dashboard)");
     }
 
-    // 3) Web server
-    console.log('[3/3] Web dashboard ishga tushirilmoqda...');
+    // 3) Telegram Bot (opsional)
+    if (process.env.TELEGRAM_BOT_ENABLED === 'true' && isServerMode) {
+      console.log('[3/4] Telegram bot ishga tushirilmoqda...');
+      try {
+        const { startBot } = require('./services/telegramBot');
+        await startBot();
+        console.log('Telegram bot tayyor');
+      } catch (botError) {
+        console.error('Telegram bot xatosi:', botError.message);
+        console.log('Bot o\'chirilgan - davom etadi...');
+      }
+    }
+
+    // 4) Web server
+    console.log('[4/4] Web dashboard ishga tushirilmoqda...');
     app.listen(PORT, () => {
       console.log(`Web dashboard: http://localhost:${PORT}`);
       console.log("\n=== Tizim to'liq ishga tushdi ===\n");

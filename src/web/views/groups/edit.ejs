@@ -111,6 +111,14 @@
               <div class="mb-3">
                 <label class="form-label">SMS shablon</label>
                 <textarea name="sms_template" class="form-control" rows="5"><%= group.sms_template || '' %></textarea>
+                <small class="text-muted">
+                  <strong>O'zgaruvchilar:</strong>
+                  <code>{{phone}}</code> - Telefon raqam,
+                  <code>{{group}}</code> - Guruh nomi,
+                  <code>{{name}}</code> - Foydalanuvchi ismi,
+                  <code>{{time}}</code> - Vaqt,
+                  <code>{{date}}</code> - Sana
+                </small>
               </div>
 
               <div class="mb-3">
