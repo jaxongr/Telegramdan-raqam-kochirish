@@ -48,7 +48,8 @@ app.use(compression({
   level: 6
 }));
 
-app.use(helmet());
+// Vaqtincha helmet o'chirilgan - login test uchun
+// app.use(helmet());
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(bodyParser.json({ limit: '10mb' }));
 
