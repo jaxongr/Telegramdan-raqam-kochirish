@@ -258,56 +258,76 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - 30);
 
-            // Background'da ishlatish
-            (async () => {
-              const result = await historyScraper.scrapeGroupHistoryByDate(
-                group.id,
-                startDate,
-                endDate
-              );
+            // Fayl nomi
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+            const timeStamp = Date.now();
+            const customFilename = `bot_scan_${group.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${timestamp}_${timeStamp}.json`;
 
-              // Progress kuzatish
-              let progressInterval = setInterval(async () => {
-                try {
-                  const progress = historyScraper.getProgress();
+            // Navbatga qo'shish (web interfeys bilan bir xil tizim)
+            const { addToQueue } = require('./historyScraper');
 
-                  if (!progress.isScanning) {
-                    clearInterval(progressInterval);
+            const task = {
+              name: `Bot scan: ${group.name}`,
+              filename: customFilename,
+              execute: async () => {
+                logger.info(`🤖 BOT: Scan boshlandi - ${group.name}`);
+                return await historyScraper.scrapeGroupHistoryByDate(
+                  group.id,
+                  startDate,
+                  endDate,
+                  null, // resumeFile
+                  customFilename
+                );
+              }
+            };
 
-                    // Tugadi - fayl yuborish
-                    if (result && result.filename) {
-                      const filePath = path.join(__dirname, '../../exports', result.filename);
+            const queueInfo = addToQueue(task);
+            logger.info(`📱 Bot scan queued: ${group.name} by user ${ctx.from.id}, position: ${queueInfo.queuePosition}`);
 
-                      if (fs.existsSync(filePath)) {
-                        await bot.telegram.sendDocument(chatId, {
-                          source: fs.createReadStream(filePath),
-                          filename: result.filename
-                        }, {
-                          caption: `✅ *Skan tugadi!*\n\n` +
-                            `📂 Guruh: ${group.name}\n` +
-                            `📊 Xabarlar: ${progress.processedMessages || 0}\n` +
-                            `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
-                            `⏱ Vaqt: ${Math.round((progress.endTime - progress.startTime) / 60000)} daqiqa`,
-                          parse_mode: 'Markdown'
-                        });
-                      } else {
-                        await bot.telegram.editMessageText(
-                          chatId,
-                          messageId,
-                          null,
-                          `✅ *Skan tugadi!*\n\n` +
-                          `📂 Guruh: ${group.name}\n` +
-                          `📊 Xabarlar: ${progress.processedMessages || 0}\n` +
-                          `📱 Raqamlar: ${progress.phonesFound || 0} ta\n\n` +
-                          `⚠️ Fayl topilmadi. Web interfeys'dan yuklab oling.`,
-                          { parse_mode: 'Markdown' }
-                        );
-                      }
-                    }
-                    return;
+            // Navbat ma'lumotini ko'rsatish
+            await bot.telegram.editMessageText(
+              chatId,
+              messageId,
+              null,
+              `📋 *Navbatga qo'shildi!*\n\n` +
+              `📂 Guruh: ${group.name}\n` +
+              `📊 Davomiylik: 30 kun\n` +
+              `🔢 Navbatda: ${queueInfo.queuePosition}-o'rinda\n\n` +
+              `⏳ Skan boshlanguncha kuting...\n` +
+              `📱 Tugagach bu yerda fayl yuboriladi.`,
+              { parse_mode: 'Markdown' }
+            );
+
+            // Progress kuzatish (background'da)
+            let lastUpdate = Date.now();
+            const progressInterval = setInterval(async () => {
+              try {
+                const progress = historyScraper.getProgress();
+                const queueStatus = historyScraper.getQueueStatus();
+
+                // Agar bu task navbatda bo'lsa
+                const taskInQueue = queueStatus.pendingTasks.find(t => t.filename === customFilename);
+                if (taskInQueue && !progress.isScanning) {
+                  // Hali o'z navbatiga kelmagan
+                  const now = Date.now();
+                  if (now - lastUpdate > 30000) { // Har 30 soniyada yangilash
+                    lastUpdate = now;
+                    await bot.telegram.editMessageText(
+                      chatId,
+                      messageId,
+                      null,
+                      `⏳ *Navbatda kutilmoqda...*\n\n` +
+                      `📂 Guruh: ${group.name}\n` +
+                      `🔢 Navbatda: ${queueStatus.pendingTasks.findIndex(t => t.filename === customFilename) + 1}-o'rinda\n` +
+                      `📊 Jami navbat: ${queueStatus.pendingTasks.length} ta`,
+                      { parse_mode: 'Markdown' }
+                    ).catch(() => {});
                   }
+                  return;
+                }
 
-                  // Progress yangilash
+                // Agar bu task hozir ishlayotgan bo'lsa
+                if (progress.isScanning && progress.filename === customFilename) {
                   const percent = progress.totalMessages > 0
                     ? Math.round((progress.processedMessages / progress.totalMessages) * 100)
                     : 0;
@@ -325,15 +345,44 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                     `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
                     `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min`,
                     { parse_mode: 'Markdown' }
-                  ).catch(() => {}); // Ignore edit errors (too many requests)
-                } catch (err) {
-                  logger.error('Progress update error:', err);
+                  ).catch(() => {});
+                  return;
                 }
-              }, 15000); // Har 15 soniyada yangilash
 
-            })();
+                // Agar task tugagan bo'lsa
+                if (!progress.isScanning && !taskInQueue) {
+                  clearInterval(progressInterval);
 
-            logger.info(`📱 Bot scan started: ${group.name} by user ${ctx.from.id}`);
+                  // Fayl yuborish
+                  const filePath = path.join(__dirname, '../../exports', customFilename);
+
+                  if (fs.existsSync(filePath)) {
+                    await bot.telegram.sendDocument(chatId, {
+                      source: fs.createReadStream(filePath),
+                      filename: customFilename
+                    }, {
+                      caption: `✅ *Skan tugadi!*\n\n` +
+                        `📂 Guruh: ${group.name}\n` +
+                        `📊 Xabarlar: ${progress.processedMessages || 0}\n` +
+                        `📱 Raqamlar: ${progress.phonesFound || 0} ta`,
+                      parse_mode: 'Markdown'
+                    });
+                  } else {
+                    await bot.telegram.editMessageText(
+                      chatId,
+                      messageId,
+                      null,
+                      `✅ *Skan tugadi!*\n\n` +
+                      `📂 Guruh: ${group.name}\n\n` +
+                      `⚠️ Fayl topilmadi. Web interfeys'dan yuklab oling.`,
+                      { parse_mode: 'Markdown' }
+                    );
+                  }
+                }
+              } catch (err) {
+                logger.error('🤖 BOT Progress update error:', err);
+              }
+            }, 15000); // Har 15 soniyada
 
           } catch (scanError) {
             logger.error('Scan start error:', scanError);
