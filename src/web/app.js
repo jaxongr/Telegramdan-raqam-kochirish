@@ -80,7 +80,7 @@ const sessionOptions = {
     maxAge: 24 * 60 * 60 * 1000, // 24 soat
     httpOnly: true,
     sameSite: 'lax',
-    secure: isProd
+    secure: false // HTTP da ishlashi uchun false (HTTPS kerak bo'lsa true qiling)
   }
 };
 
