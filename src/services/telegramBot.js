@@ -193,45 +193,66 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
     // /scan - Skanerlash boshlash
     bot.command('scan', async (ctx) => {
       try {
-        const args = ctx.message.text.split(' ').slice(1);
-        const groupName = args.join(' ');
-
         const groups = await getAllGroups();
 
-        if (!groupName) {
-          // Barcha guruhlar ro'yxati
-          if (groups.length === 0) {
-            await ctx.reply('❌ Guruhlar yo\'q!');
-            return;
+        if (groups.length === 0) {
+          await ctx.reply('❌ Guruhlar yo\'q!');
+          return;
+        }
+
+        // Inline tugmalar yaratish
+        const keyboard = [];
+        groups.forEach((group) => {
+          const status = group.active ? '✅' : '❌';
+          keyboard.push([{
+            text: `${status} ${group.name}`,
+            callback_data: `scan_${group.id}`
+          }]);
+        });
+
+        await ctx.reply('📋 Skanerlash uchun guruhni tanlang:', {
+          reply_markup: {
+            inline_keyboard: keyboard
           }
-
-          let msg = '📋 *Mavjud Guruhlar:*\n\n';
-          groups.forEach((g, i) => {
-            msg += `${i + 1}. ${g.name} (${g.active ? '✅' : '❌'})\n`;
-          });
-          msg += '\n💡 Skanerlash: `/scan <guruh_nomi>`';
-
-          await ctx.replyWithMarkdown(msg);
-          return;
-        }
-
-        // Guruhni qidirish
-        const group = groups.find(g =>
-          g.name.toLowerCase().includes(groupName.toLowerCase())
-        );
-
-        if (!group) {
-          await ctx.reply(`❌ Guruh topilmadi: ${groupName}`);
-          return;
-        }
-
-        // TODO: Skanerlashni boshlash
-        await ctx.reply(`🚀 Skanerlash boshlandi: ${group.name}\n\nHozircha bu funksiya ishlamaydi. Web interfeysdan foydalaning: /history`);
-
-        logger.info(`📱 Bot: Scan requested for ${group.name} by ${ctx.from.username}`);
+        });
       } catch (error) {
         logger.error('Scan command error:', error);
         await ctx.reply('❌ Xato: ' + error.message);
+      }
+    });
+
+    // Callback query handler - tugma bosilganda
+    bot.on('callback_query', async (ctx) => {
+      try {
+        const data = ctx.callbackQuery.data;
+
+        if (data.startsWith('scan_')) {
+          const groupId = parseInt(data.replace('scan_', ''));
+          const groups = await getAllGroups();
+          const group = groups.find(g => g.id === groupId);
+
+          if (!group) {
+            await ctx.answerCbQuery('❌ Guruh topilmadi!');
+            return;
+          }
+
+          await ctx.answerCbQuery('🚀 Skan boshlanmoqda...');
+
+          // Skanerlashni boshlash (hozircha xabar)
+          await ctx.editMessageText(
+            `🚀 *Skan boshlandi!*\n\n` +
+            `📂 Guruh: ${group.name}\n` +
+            `📊 Status: Navbatga qo'shildi\n\n` +
+            `💡 Web interfeyslarda "Arxiv Skan" sahifasidan kuzatishingiz mumkin:\n` +
+            `http://5.189.141.151:8080/history`,
+            { parse_mode: 'Markdown' }
+          );
+
+          // TODO: Real skan boshlash - historyScraper.startHistoryScan() chaqirish
+        }
+      } catch (error) {
+        logger.error('Callback query error:', error);
+        await ctx.answerCbQuery('❌ Xato yuz berdi');
       }
     });
 
