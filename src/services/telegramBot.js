@@ -309,19 +309,19 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
             logger.info(`🤖 BOT: Progress interval started for ${customFilename}`);
 
             const progressInterval = setInterval(async () => {
-              console.log(`✅ CHECKPOINT 5: Progress interval tick for ${customFilename}`);
               try {
                 const progress = historyScraper.getProgress();
                 const filePath = path.join(__dirname, '../../exports', customFilename);
 
-                logger.info(`🤖 BOT: Checking progress - isScanning: ${progress.isScanning}, File exists: ${fs.existsSync(filePath)}`);
+                console.log(`🔍 BOT: isScanning=${progress.isScanning}, file=${fs.existsSync(filePath)}`);
 
                 // Agar skanerlash davom etayotgan bo'lsa
                 if (progress.isScanning) {
+                  console.log(`✅ isScanning=true, updating progress...`);
                   // Skanerlash ishlayapti - progress ko'rsatish
                   if (lastStatus !== 'scanning') {
                     lastStatus = 'scanning';
-                    logger.info(`🤖 BOT: Task boshlandi - ${customFilename}`);
+                    console.log(`📢 Status changed to scanning`);
                   }
 
                   const percent = progress.totalMessages > 0
@@ -337,7 +337,7 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                     dateInfo = `\n📅 Sana: ${currentDate.getDate()}/${currentDate.getMonth()+1}/${currentDate.getFullYear()}`;
                   }
 
-                  logger.info(`🤖 BOT: Updating progress - ${percent}%, ${progress.processedMessages}/${progress.totalMessages}`);
+                  console.log(`📊 Sending progress: ${percent}%, ${progress.processedMessages}/${progress.totalMessages}`);
 
                   await bot.telegram.editMessageText(
                     chatId,
