@@ -328,6 +328,13 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
 
                     const progressBar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
 
+                    // Sana formatini yaratish
+                    let dateInfo = '';
+                    if (progress.currentDate) {
+                      const currentDate = new Date(progress.currentDate);
+                      dateInfo = `\n📅 Sana: ${currentDate.getDate()}/${currentDate.getMonth()+1}/${currentDate.getFullYear()}`;
+                    }
+
                     await bot.telegram.editMessageText(
                       chatId,
                       messageId,
@@ -335,9 +342,11 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                       `📊 *Skan davom etmoqda...*\n\n` +
                       `📂 Guruh: ${group.name}\n` +
                       `${progressBar} ${percent}%\n\n` +
-                      `📨 Xabarlar: ${progress.processedMessages || 0}\n` +
+                      `📨 Xabarlar: ${progress.processedMessages || 0} / ${progress.totalMessages || '?'}\n` +
                       `📱 Raqamlar: ${progress.phonesFound || 0} ta\n` +
-                      `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min`,
+                      `✨ Unikal: ${progress.uniquePhones || 0} ta\n` +
+                      `⚡️ Tezlik: ${progress.messagesPerMinute || 0} msg/min` +
+                      dateInfo,
                       { parse_mode: 'Markdown' }
                     ).catch(() => {});
                   } else {
