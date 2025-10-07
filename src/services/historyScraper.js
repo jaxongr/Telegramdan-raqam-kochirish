@@ -153,15 +153,17 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
       if (resumeFile && fs.existsSync(resumeFile)) {
         resumeData = JSON.parse(fs.readFileSync(resumeFile, 'utf8'));
         logger.info(`📂 Resume fayli yuklandi: ${resumeData.processedMessages} xabar qayta ishlanadi`);
-      } else if (!resumeFile) {
-        // Yangi resume fayl yaratish
-        const { createResumeFile } = require('./autoResume');
-        resumeFile = createResumeFile(groupId, group.name, {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          filename: filename
-        });
       }
+      // RESUME YARATISH O'CHIRILDI - user so'rovi bo'yicha
+      // else if (!resumeFile) {
+      //   // Yangi resume fayl yaratish
+      //   const { createResumeFile } = require('./autoResume');
+      //   resumeFile = createResumeFile(groupId, group.name, {
+      //     startDate: startDate.toISOString(),
+      //     endDate: endDate.toISOString(),
+      //     filename: filename
+      //   });
+      // }
     } catch (resumeError) {
       logger.warn(`Resume fayl xatosi (e'tiborsiz qoldirildi): ${resumeError.message}`);
       resumeData = null;
@@ -397,7 +399,7 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             }
           }
 
-          // Har 100 ta raqam topilganda asosiy faylni yangilash (backup emas!)
+          // Har 100 ta raqam topilganda asosiy faylni yangilash VA database ga saqlash
           if (results.phonesFound.length > 0 && results.phonesFound.length % 100 === 0) {
             logger.info(`💾 Progress: ${results.phonesFound.length} ta raqam topildi`);
 
@@ -405,6 +407,21 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
             if (results.filename) {
               await saveResultsToFile(results, results.filename);
               logger.info(`✅ Auto-save: ${results.filename}`);
+            }
+
+            // DATABASE GA BATCH SAQLASH (har 100 ta raqam)
+            try {
+              const { savePhonesInBatch } = require('../database/models');
+              const lastBatch = results.phonesFound.slice(-100); // Oxirgi 100 ta
+              const dbResult = await savePhonesInBatch(lastBatch.map(p => ({
+                phone: p.phone,
+                group_id: groupId,
+                message: p.message,
+                date: p.date
+              })));
+              logger.info(`✅ Database: ${dbResult.inserted} yangi, ${dbResult.updated} yangilandi`);
+            } catch (dbError) {
+              logger.error(`❌ Database batch save error: ${dbError.message}`);
             }
           }
 
@@ -418,26 +435,27 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
 
       // OLIB TASHLANDI: 30-day check (user eski xabarlarni skanerlashi mumkin)
 
-      // Resume faylni yangilash (har batch - faqat zarur ma'lumotlar)
-      if (resumeFile) {
-        try {
-          const resumeData = {
-            groupId,
-            groupName: group.name,
-            processedMessages: currentProgress.processedMessages,
-            phonesFoundCount: results.phonesFound.length, // Faqat count
-            lastMessageId: offsetId,
-            lastMessageDate: new Date(offsetDate * 1000).toISOString(),
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-            filename: filename,
-            timestamp: new Date().toISOString()
-          };
-          fs.writeFileSync(resumeFile, JSON.stringify(resumeData, null, 2));
-        } catch (resumeWriteError) {
-          logger.warn(`Resume faylni yozishda xato (davom etadi): ${resumeWriteError.message}`);
-        }
-      }
+      // RESUME YANGILASH O'CHIRILDI - user so'rovi bo'yicha
+      // // Resume faylni yangilash (har batch - faqat zarur ma'lumotlar)
+      // if (resumeFile) {
+      //   try {
+      //     const resumeData = {
+      //       groupId,
+      //       groupName: group.name,
+      //       processedMessages: currentProgress.processedMessages,
+      //       phonesFoundCount: results.phonesFound.length, // Faqat count
+      //       lastMessageId: offsetId,
+      //       lastMessageDate: new Date(offsetDate * 1000).toISOString(),
+      //       startDate: startDate.toISOString(),
+      //       endDate: endDate.toISOString(),
+      //       filename: filename,
+      //       timestamp: new Date().toISOString()
+      //     };
+      //     fs.writeFileSync(resumeFile, JSON.stringify(resumeData, null, 2));
+      //   } catch (resumeWriteError) {
+      //     logger.warn(`Resume faylni yozishda xato (davom etadi): ${resumeWriteError.message}`);
+      //   }
+      // }
 
       // Progress log (har 3 batch)
       if (batchCount % 3 === 0) {
@@ -458,6 +476,27 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
     updateProgress({ uniquePhones: uniquePhonesCount });
 
     logger.info(`✓ [${group.name}] Skanerlash tugadi: ${results.phonesFound.length} ta raqam topildi (${uniquePhonesCount} unikal)`);
+
+    // OXIRIDA BARCHA QOLGAN RAQAMLARNI DATABASE GA SAQLASH
+    if (results.phonesFound.length > 0) {
+      try {
+        const { savePhonesInBatch } = require('../database/models');
+        const remainingStart = Math.floor(results.phonesFound.length / 100) * 100;
+        const remainingPhones = results.phonesFound.slice(remainingStart);
+
+        if (remainingPhones.length > 0) {
+          const dbResult = await savePhonesInBatch(remainingPhones.map(p => ({
+            phone: p.phone,
+            group_id: groupId,
+            message: p.message,
+            date: p.date
+          })));
+          logger.info(`✅ Final database save: ${dbResult.inserted} yangi, ${dbResult.updated} yangilandi (${remainingPhones.length} ta raqam)`);
+        }
+      } catch (dbError) {
+        logger.error(`❌ Final database save error: ${dbError.message}`);
+      }
+    }
 
     // MUHIM: Progress faqat navbat tizimi tomonidan o'chirilsin!
 
@@ -728,7 +767,7 @@ function sleep(ms) {
 // Cache uchun global o'zgaruvchilar
 let historyStatsCache = null;
 let historyStatsCacheTime = 0;
-const HISTORY_STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minut
+const HISTORY_STATS_CACHE_DURATION = 2 * 60 * 1000; // 2 daqiqa (tezlik uchun)
 
 /**
  * Export fayllardan statistikani hisoblash (OPTIMIZATSIYA - FAQAT METADATA)

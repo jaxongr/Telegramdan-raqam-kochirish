@@ -121,7 +121,15 @@ async function startMonitoring() {
               const { sendSMS } = require('./smsService');
               const smsText = group.sms_template || 'Assalomu alaykum! Sizning e\'loningiz ko\'rildi.';
 
-              const result = await sendSMS(phone, group.id, smsText);
+              // Template variables tayyorlash
+              const templateVars = {
+                phone: phone,
+                group: group.name,
+                name: message.sender?.firstName || '',
+                foundAt: new Date()
+              };
+
+              const result = await sendSMS(phone, group.id, smsText, templateVars);
               if (result.success) {
                 logger.info(`  📤 SMS yuborildi: ${phone}`);
               } else {

@@ -1,20 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { getStatistics, getSMSLogs, getGroupStatistics } = require('../../database/models');
+const { getStatistics, getSMSLogs } = require('../../database/models');
 const { getAllSemySMSPhones } = require('../../database/models');
 const { getClientStatus } = require('../../services/telegramMonitor');
 const { getHistoryStats, getQueueStatus, getProgress } = require('../../services/historyScraper');
 
-// Cache tizimi (2 minut - dashboard tez yuklash uchun)
+// Cache tizimi (2 daqiqa - tezlik uchun)
 let cachedData = null;
 let cacheTime = 0;
-const CACHE_DURATION = 120000; // 2 minut
+const CACHE_DURATION = 120000; // 2 daqiqa
 
 router.get('/', async (req, res) => {
   try {
     const now = Date.now();
 
-    // Queue status - har doim yangi (cache'siz)
+    // Queue status va progress - har doim yangi (cache'siz)
     const queueStatus = getQueueStatus();
     const currentProgress = getProgress();
 
@@ -28,20 +28,16 @@ router.get('/', async (req, res) => {
       });
     }
 
-    // Yangi ma'lumot olish
-    const stats = await getStatistics();
-    const recentSMS = await getSMSLogs({ limit: 5 }); // Faqat 5 ta (tezlik uchun)
-    const semysmsPhones = await getAllSemySMSPhones();
+    // Yangi ma'lumot olish (parallel)
+    const [stats, recentSMS, semysmsPhones] = await Promise.all([
+      getStatistics(),
+      getSMSLogs({ limit: 5 }),
+      getAllSemySMSPhones()
+    ]);
+
     const telegramStatus = getClientStatus();
-
-    // Umumiy balans
     const totalBalance = semysmsPhones.reduce((sum, phone) => sum + (phone.balance || 0), 0);
-
-    // Eski xabarlar statistikasi
     const historyStats = getHistoryStats();
-
-    // Guruh bo'yicha statistika
-    const groupStats = await getGroupStatistics();
 
     // Cache ga saqlash
     cachedData = {
@@ -50,8 +46,7 @@ router.get('/', async (req, res) => {
       totalBalance,
       semysmsPhonesCount: semysmsPhones.length,
       telegramStatus,
-      historyStats,
-      groupStats
+      historyStats
     };
     cacheTime = now;
 

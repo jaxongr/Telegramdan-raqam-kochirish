@@ -110,15 +110,36 @@
 
               <div class="mb-3">
                 <label class="form-label">SMS shablon</label>
-                <textarea name="sms_template" class="form-control" rows="5"><%= group.sms_template || '' %></textarea>
-                <small class="text-muted">
-                  <strong>O'zgaruvchilar:</strong>
-                  <code>{{phone}}</code> - Telefon raqam,
-                  <code>{{group}}</code> - Guruh nomi,
-                  <code>{{name}}</code> - Foydalanuvchi ismi,
-                  <code>{{time}}</code> - Vaqt,
-                  <code>{{date}}</code> - Sana
+                <textarea name="sms_template" id="sms_template" class="form-control" rows="5"><%= group.sms_template || '' %></textarea>
+                <small class="text-muted d-block mb-2">
+                  <strong>O'zgaruvchilar qo'shish:</strong>
                 </small>
+                <div class="btn-group btn-group-sm mb-2" role="group">
+                  <button type="button" class="btn btn-outline-primary" onclick="insertVariable('{{phone}}')">
+                    <i class="bi bi-telephone"></i> {{phone}}
+                  </button>
+                  <button type="button" class="btn btn-outline-primary" onclick="insertVariable('{{group}}')">
+                    <i class="bi bi-people"></i> {{group}}
+                  </button>
+                  <button type="button" class="btn btn-outline-primary" onclick="insertVariable('{{name}}')">
+                    <i class="bi bi-person"></i> {{name}}
+                  </button>
+                  <button type="button" class="btn btn-outline-primary" onclick="insertVariable('{{time}}')">
+                    <i class="bi bi-clock"></i> {{time}}
+                  </button>
+                  <button type="button" class="btn btn-outline-primary" onclick="insertVariable('{{date}}')">
+                    <i class="bi bi-calendar"></i> {{date}}
+                  </button>
+                </div>
+                <div>
+                  <small class="text-muted">
+                    <code>{{phone}}</code> - Telefon raqam,
+                    <code>{{group}}</code> - Guruh nomi,
+                    <code>{{name}}</code> - Foydalanuvchi ismi,
+                    <code>{{time}}</code> - Vaqt (HH:MM),
+                    <code>{{date}}</code> - Sana (DD.MM.YYYY)
+                  </small>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -151,5 +172,26 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // SMS template ga o'zgaruvchi qo'shish
+    function insertVariable(variable) {
+      const textarea = document.getElementById('sms_template');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+
+      // Kursordan oldin va keyingi matnni ajratish
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+
+      // O'zgaruvchini qo'shish
+      textarea.value = before + variable + after;
+
+      // Kursorni o'zgaruvchidan keyin qo'yish
+      const newPos = start + variable.length;
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+    }
+  </script>
 </body>
 </html>

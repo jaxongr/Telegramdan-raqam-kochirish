@@ -64,7 +64,11 @@
       "Bash(Select-String \":3000\")",
       "Bash(Select-Object -First 5)",
       "Bash(tree:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(for i in {1..10})",
+      "Bash(do echo \"=== Urinish $i/10 ===\")",
+      "Bash(break)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

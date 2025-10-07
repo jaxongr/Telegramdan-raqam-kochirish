@@ -290,7 +290,7 @@
 
       try {
         const response = await fetch('/history/delete/' + filename, {
-          method: 'DELETE'
+          method: 'POST'
         });
 
         const result = await response.json();

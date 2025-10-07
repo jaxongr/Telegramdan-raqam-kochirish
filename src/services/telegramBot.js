@@ -398,34 +398,17 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                     lastStatus = 'done';
                     logger.info(`🤖 BOT: Task tugadi, fayl yuborilmoqda - ${customFilename}`);
 
-                    // Fayldan statistika o'qish
+                    // Fayldan statistika o'qish va Excel yaratish
                     let totalPhones = 0;
                     let uniquePhones = 0;
+
                     try {
                       const fileContent = fs.readFileSync(filePath, 'utf8');
                       const data = JSON.parse(fileContent);
                       totalPhones = data.totalPhones || 0;
                       uniquePhones = data.uniquePhones || 0;
-                    } catch (e) {
-                      logger.error('Fayl o\'qishda xato:', e);
-                    }
 
-                    // JSON fayl yuborish
-                    await bot.telegram.sendDocument(chatId, {
-                      source: fs.createReadStream(filePath),
-                      filename: customFilename
-                    }, {
-                      caption: `✅ *Skan tugadi!*\n\n` +
-                        `📂 Guruh: ${group.name}\n` +
-                        `📱 Raqamlar: ${totalPhones} ta (${uniquePhones} unikal)`,
-                      parse_mode: 'Markdown'
-                    });
-
-                    // Excel fayl yaratish va yuborish
-                    try {
-                      const fileContent = fs.readFileSync(filePath, 'utf8');
-                      const data = JSON.parse(fileContent);
-
+                      // Excel fayl yaratish
                       if (data.phonesFound && data.phonesFound.length > 0) {
                         const excelData = data.phonesFound.map(item => ({
                           'Telefon': item.phone,
@@ -441,11 +424,15 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                         const excelPath = path.join(__dirname, '../../exports', excelFilename);
                         XLSX.writeFile(wb, excelPath);
 
+                        // Faqat Excel faylni yuborish
                         await bot.telegram.sendDocument(chatId, {
                           source: fs.createReadStream(excelPath),
                           filename: excelFilename
                         }, {
-                          caption: `📊 *Excel format*\n\n${totalPhones} ta raqam`,
+                          caption: `✅ *Skan tugadi!*\n\n` +
+                            `📂 Guruh: ${group.name}\n` +
+                            `📱 Raqamlar: ${totalPhones} ta (${uniquePhones} unikal)\n` +
+                            `📊 Excel formatda tayyor`,
                           parse_mode: 'Markdown'
                         });
 
@@ -453,7 +440,7 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                         fs.unlinkSync(excelPath);
                       }
 
-                      // Arxivga saqlash - exports faylini kopyalash
+                      // Arxivga saqlash - JSON faylni kopyalash
                       const archivePath = path.join(__dirname, '../../data/archive');
                       if (!fs.existsSync(archivePath)) {
                         fs.mkdirSync(archivePath, { recursive: true });

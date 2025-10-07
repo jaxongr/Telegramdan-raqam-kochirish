@@ -98,6 +98,25 @@ async function markPhoneAsLifetimeUnique(phoneId) {
   return await query('UPDATE phones SET lifetime_unique = 1 WHERE id = ?', [phoneId]);
 }
 
+// BATCH SAVE PHONES - skan uchun optimizatsiya
+async function savePhonesInBatch(phonesData) {
+  const { batchInsertPhones } = require('./index');
+
+  // phonesData format: [{ phone, group_id, message, date }, ...]
+  const formattedData = phonesData.map(item => ({
+    phone: item.phone,
+    group_id: item.group_id,
+    first_message: item.message ? item.message.substring(0, 500) : '',
+    last_message: item.message ? item.message.substring(0, 500) : '',
+    first_date: item.date || new Date().toISOString(),
+    last_date: item.date || new Date().toISOString(),
+    repeat_count: 1,
+    lifetime_unique: 0
+  }));
+
+  return batchInsertPhones(formattedData);
+}
+
 // SMS LOGS
 async function logSMS(toPhone, groupId, message, semysmsPhone, status, error = null) {
   return await query(
@@ -259,7 +278,8 @@ async function getGroupStatistics() {
     // Map yasash (tez qidirish uchun)
     const phoneStatsMap = {};
     phoneStats.forEach(stat => {
-      phoneStatsMap[stat.group_id] = {
+      const groupId = stat.group_id || stat.GROUP_ID;
+      phoneStatsMap[groupId] = {
         unique_phones: stat.unique_phones || stat.UNIQUE_PHONES || 0,
         total_phones: stat.total_phones || stat.TOTAL_PHONES || 0
       };
@@ -267,7 +287,8 @@ async function getGroupStatistics() {
 
     const smsStatsMap = {};
     smsStats.forEach(stat => {
-      smsStatsMap[stat.group_id] = {
+      const groupId = stat.group_id || stat.GROUP_ID;
+      smsStatsMap[groupId] = {
         sms_sent: stat.sms_sent || stat.SMS_SENT || 0,
         sms_success: stat.sms_success || stat.SMS_SUCCESS || 0
       };
@@ -320,6 +341,7 @@ module.exports = {
   getAllPhones,
   getPhoneByNumber,
   savePhone,
+  savePhonesInBatch,
   markPhoneAsLifetimeUnique,
 
   // SMS Logs

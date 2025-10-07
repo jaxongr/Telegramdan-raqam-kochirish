@@ -338,6 +338,38 @@ router.get('/download/:filename', (req, res) => {
   }
 });
 
+// Export faylni o'chirish
+router.post('/delete/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const exportDir = path.join(__dirname, '../../../exports');
+    const filePath = path.join(exportDir, filename);
+
+    // Security check - faqat exports/ ichidagi fayllar
+    if (!filePath.startsWith(exportDir)) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Fayl topilmadi' });
+    }
+
+    // JSON faylni o'chirish
+    fs.unlinkSync(filePath);
+
+    // TXT va XLSX fayllarni ham o'chirish (agar bor bo'lsa)
+    const txtPath = filePath.replace('.json', '.txt');
+    const xlsxPath = filePath.replace('.json', '.xlsx');
+
+    if (fs.existsSync(txtPath)) fs.unlinkSync(txtPath);
+    if (fs.existsSync(xlsxPath)) fs.unlinkSync(xlsxPath);
+
+    res.json({ success: true, message: 'Fayl o\'chirildi' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Bir nechta guruhni skanerlash
 router.post('/scrape-multiple', async (req, res) => {
   try {
