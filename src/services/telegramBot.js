@@ -18,7 +18,6 @@ const { getAllGroups } = require('../database/models');
 const { addToBlacklist, getBlacklistStats } = require('../database/blacklist');
 const historyScraper = require('./historyScraper');
 const { stopScraping, pauseScraping, resumeScraping } = require('./historyScraper');
-const { saveToArchive } = require('../database/archiveResults');
 const XLSX = require('xlsx');
 const fs = require('fs');
 const path = require('path');
@@ -428,14 +427,6 @@ Admin IDs: ${ADMIN_IDS.join(', ') || 'Barcha userlar (xavfsiz emas!)'}
                         // Excel faylni o'chirish
                         fs.unlinkSync(excelPath);
                       }
-
-                      // Arxivga saqlash
-                      await saveToArchive({
-                        groupId: group.id,
-                        filename: customFilename,
-                        totalPhones,
-                        uniquePhones
-                      });
 
                     } catch (excelError) {
                       logger.error('Excel yaratishda xato:', excelError);
