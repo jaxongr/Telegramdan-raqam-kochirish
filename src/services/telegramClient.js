@@ -57,107 +57,131 @@ async function startMonitoring() {
   isMonitoring = true;
   logger.info('📡 Monitoring boshlandi...');
 
-  // Faol guruhlarni olish
-  logger.info('🔍 Faol guruhlar olinmoqda...');
-  const activeGroups = await getActiveGroups();
-  logger.info(`✅ ${activeGroups.length} ta guruh topildi`);
-  logger.info(`Monitoring: ${activeGroups.length} ta guruh`);
+  // Faol guruhlarni olish (try-catch bilan)
+  let activeGroups = [];
+  let groupFetchError = null;
+
+  try {
+    logger.info('🔍 Faol guruhlar olinmoqda...');
+    activeGroups = await getActiveGroups();
+    logger.info(`✅ ${activeGroups.length} ta guruh topildi`);
+    logger.info(`Monitoring: ${activeGroups.length} ta guruh`);
+  } catch (error) {
+    groupFetchError = error;
+    logger.error('❌ Faol guruhlarni olishda xato:', error.message);
+    logger.warn('⚠️ Guruhlar olinmadi, lekin event handler qo\'shilmoqda (yangi xabarlar ushlanadi)');
+  }
 
   // Yangi xabarlarni tinglash
   const { NewMessage } = require('telegram/events');
 
-  client.addEventHandler(async (event) => {
-    try {
-      if (!isMonitoring) return;
+  // Event handler ALBATTA qo'shiladi (guruh fetch xatosi bo'lsa ham)
+  try {
+    client.addEventHandler(async (event) => {
+      try {
+        if (!isMonitoring) return;
 
-      const message = event.message;
-      if (!message || !message.text) return;
+        const message = event.message;
+        if (!message || !message.text) return;
 
-      // Qaysi guruhdan kelganini aniqlash
-      const chatId = message.peerId?.channelId?.toString()
-        || message.peerId?.chatId?.toString()
-        || message.chatId?.toString();
+        // Qaysi guruhdan kelganini aniqlash
+        const chatId = message.peerId?.channelId?.toString()
+          || message.peerId?.chatId?.toString()
+          || message.chatId?.toString();
 
-      if (!chatId) return;
+        if (!chatId) return;
 
-      // Telegram ID ni to'g'ri formatga keltirish (-100 prefixi bilan)
-      const telegramId = chatId.startsWith('-') ? chatId : `-100${chatId}`;
+        // Telegram ID ni to'g'ri formatga keltirish (-100 prefixi bilan)
+        const telegramId = chatId.startsWith('-') ? chatId : `-100${chatId}`;
 
-      logger.info(`📨 Xabar keldi: ${telegramId} - "${message.text.substring(0, 50)}..."`);
+        logger.info(`📨 Xabar keldi: ${telegramId} - "${message.text.substring(0, 50)}..."`);
 
-      // Guruhni topish
-      const group = await getGroupByTelegramId(telegramId);
-      if (!group || !group.active) return;
+        // Guruhni topish
+        const group = await getGroupByTelegramId(telegramId);
+        if (!group || !group.active) return;
 
-      // Kalit so'zlarni tekshirish
-      const messageText = message.text.toLowerCase();
-      const keywords = group.keywords ? group.keywords.split(',').map(k => k.trim()).filter(k => k) : [];
+        // Kalit so'zlarni tekshirish
+        const messageText = message.text.toLowerCase();
+        const keywords = group.keywords ? group.keywords.split(',').map(k => k.trim()).filter(k => k) : [];
 
-      // Faqat kalit so'zlar bo'lsa tekshirish
-      if (keywords.length > 0) {
-        let hasKeyword = false;
-        for (const keyword of keywords) {
-          if (messageText.includes(keyword.toLowerCase())) {
-            hasKeyword = true;
-            break;
+        // Faqat kalit so'zlar bo'lsa tekshirish
+        if (keywords.length > 0) {
+          let hasKeyword = false;
+          for (const keyword of keywords) {
+            if (messageText.includes(keyword.toLowerCase())) {
+              hasKeyword = true;
+              break;
+            }
           }
+          if (!hasKeyword) return;
         }
-        if (!hasKeyword) return;
-      }
 
-      // Telefon raqamlarni topish
-      const phones = extractPhones(message.text);
+        // Telefon raqamlarni topish
+        const phones = extractPhones(message.text);
 
-      if (phones.length > 0) {
-        logger.info(`📞 ${phones.length} ta raqam topildi: ${group.name} [ID: ${group.id}, TG: ${telegramId}] (${message.text.substring(0, 50)}...)`);
+        if (phones.length > 0) {
+          logger.info(`📞 ${phones.length} ta raqam topildi: ${group.name} [ID: ${group.id}, TG: ${telegramId}] (${message.text.substring(0, 50)}...)`);
 
-        for (const phone of phones) {
-          await savePhone(phone, group.id, message.text);
-          logger.info(`  ✓ Saqlandi: ${phone}`);
+          for (const phone of phones) {
+            await savePhone(phone, group.id, message.text);
+            logger.info(`  ✓ Saqlandi: ${phone}`);
 
-          // SMS yuborish (faqat sms_enabled guruhlarga)
-          if (group.sms_enabled) {
-            try {
-              const { sendSMS } = require('./smsService');
-              const smsText = group.sms_template || 'Assalomu alaykum! Sizning e\'loningiz ko\'rildi.';
+            // SMS yuborish (faqat sms_enabled guruhlarga)
+            if (group.sms_enabled) {
+              try {
+                const { sendSMS } = require('./smsService');
+                const smsText = group.sms_template || 'Assalomu alaykum! Sizning e\'loningiz ko\'rildi.';
 
-              // Template variables tayyorlash
-              const templateVars = {
-                phone: phone,
-                group: group.name,
-                name: message.sender?.firstName || '',
-                foundAt: new Date()
-              };
+                // Template variables tayyorlash
+                const templateVars = {
+                  phone: phone,
+                  group: group.name,
+                  name: message.sender?.firstName || '',
+                  foundAt: new Date()
+                };
 
-              const result = await sendSMS(phone, group.id, smsText, templateVars);
-              if (result.success) {
-                logger.info(`  📤 SMS yuborildi: ${phone}`);
-              } else {
-                logger.warn(`  ❌ SMS yuborilmadi: ${phone} (${result.error})`);
+                const result = await sendSMS(phone, group.id, smsText, templateVars);
+                if (result.success) {
+                  logger.info(`  📤 SMS yuborildi: ${phone}`);
+                } else {
+                  logger.warn(`  ❌ SMS yuborilmadi: ${phone} (${result.error})`);
+                }
+              } catch (smsError) {
+                logger.error(`  ❌ SMS xatosi: ${phone}`, smsError);
               }
-            } catch (smsError) {
-              logger.error(`  ❌ SMS xatosi: ${phone}`, smsError);
             }
           }
         }
-      }
 
-      // YANGI: Logistics bot'ga yuborish (faqat kalit so'zlar bor guruhlarga)
-      if (keywords.length > 0 && phones.length > 0) {
-        try {
-          const { processNewMessage } = require('./logisticsBot');
-          await processNewMessage(event.message, parseInt(chatId), group.name);
-        } catch (logError) {
-          logger.error('Logistics bot xatosi:', logError);
+        // YANGI: Logistics bot'ga yuborish (faqat kalit so'zlar bor guruhlarga)
+        if (keywords.length > 0 && phones.length > 0) {
+          try {
+            const { processNewMessage } = require('./logisticsBot');
+            await processNewMessage(event.message, parseInt(chatId), group.name);
+          } catch (logError) {
+            logger.error('Logistics bot xatosi:', logError);
+          }
         }
+
+      } catch (error) {
+        logger.error('Xabar qayta ishlashda xato:', error);
       }
+    }, new NewMessage({}));
 
-    } catch (error) {
-      logger.error('Xabar qayta ishlashda xato:', error);
+    logger.info('✓ Event listener qo\'shildi');
+
+    // Yakuniy hisobot
+    if (groupFetchError) {
+      logger.warn(`⚠️ OGOHLANTIRISH: Guruhlarni olishda muammo bo'ldi, lekin monitoring ishlaydi`);
+      logger.warn(`   Xato: ${groupFetchError.message}`);
+    } else {
+      logger.info(`✅ MUVAFFAQIYATLI: ${activeGroups.length} ta guruh monitoring ostida`);
     }
-  }, new NewMessage({}));
-
-  logger.info('✓ Event listener qo\'shildi');
+  } catch (handlerError) {
+    logger.error('❌ JIDDIY XATO: Event handler qo\'shilmadi!', handlerError);
+    isMonitoring = false;
+    throw handlerError;
+  }
 }
 
 /**
