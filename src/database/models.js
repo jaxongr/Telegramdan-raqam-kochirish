@@ -1,4 +1,4 @@
-const { query } = require('./index');
+const { query } = require('./sqlite');
 
 // GROUPS
 async function getAllGroups() {
@@ -86,9 +86,10 @@ async function savePhone(phone, groupId, messageText = '') {
     );
     return existing.id;
   } else {
+    const now = new Date().toISOString();
     const result = await query(
-      'INSERT INTO phones (phone, group_id, first_message) VALUES (?, ?, ?)',
-      [phone, groupId, messageText.substring(0, 500)]
+      'INSERT INTO phones (phone, group_id, first_message, last_message, first_date, last_date, repeat_count, lifetime_unique) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [phone, groupId, messageText.substring(0, 500), messageText.substring(0, 500), now, now, 1, 0]
     );
     return result.lastID || result.insertId;
   }
@@ -100,7 +101,7 @@ async function markPhoneAsLifetimeUnique(phoneId) {
 
 // BATCH SAVE PHONES - skan uchun optimizatsiya
 async function savePhonesInBatch(phonesData) {
-  const { batchInsertPhones } = require('./index');
+  const { batchInsertPhones } = require('./sqlite');
 
   // phonesData format: [{ phone, group_id, message, date }, ...]
   const formattedData = phonesData.map(item => ({
