@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getAllGroups, createGroup, updateGroup, deleteGroup, getGroupById } = require('../../database/models');
+const { query } = require('../../database/sqlite');
 
 // Server yoki Demo rejimga qarab to'g'ri service'ni tanlash
 const MODE = process.env.MODE || 'demo';
@@ -11,67 +12,40 @@ const telegramService = isServerMode
 
 const { getDialogs } = telegramService;
 
-// Ro'yxat
+// Ro'yxat - OPTIMIZED VERSION (no API calls on page load)
 router.get('/', async (req, res) => {
   try {
     const groups = await getAllGroups();
 
-    // Har bir guruh uchun a'zolar sonini olish
-    let client;
-    try {
-      if (isServerMode) {
-        const telegramClient = require('../../services/telegramClient');
-        client = telegramClient.getClient();
-      } else {
-        const { getClient } = require('../../services/telegramMonitor');
-        client = getClient();
-      }
-
-      if (client && client.connected) {
-        // Parallel ravishda barcha guruhlar uchun a'zolar sonini olish
-        const groupsWithMembers = await Promise.all(
-          groups.map(async (group) => {
-            try {
-              const entity = await client.getEntity(group.telegram_id);
-
-              let participantsCount = 0;
-              try {
-                const fullChat = await client.invoke(
-                  new (require('telegram/tl')).Api.channels.GetFullChannel({
-                    channel: entity
-                  })
-                );
-                participantsCount = fullChat.fullChat.participantsCount || 0;
-              } catch (e) {
-                participantsCount = entity.participantsCount || 0;
-              }
-
-              return {
-                ...group,
-                member_count: participantsCount
-              };
-            } catch (error) {
-              // Agar guruhni olish xato bersa, member_count = 0
-              return {
-                ...group,
-                member_count: 0
-              };
-            }
-          })
-        );
-
-        return res.render('groups/list', {
-          groups: groupsWithMembers,
-          username: req.session.username
-        });
-      }
-    } catch (clientError) {
-      console.error('Telegram client error:', clientError);
+    // Get phone counts for each group from database (FAST)
+    let phoneCounts = [];
+    if (groups.length > 0) {
+      phoneCounts = await query(`
+        SELECT group_id, COUNT(DISTINCT phone) as phone_count
+        FROM phones
+        WHERE group_id IN (${groups.map(() => '?').join(',')})
+        GROUP BY group_id
+      `, groups.map(g => g.id));
     }
 
-    // Agar client yo'q bo'lsa, oddiy guruhlarni ko'rsatish
-    res.render('groups/list', { groups, username: req.session.username });
+    const phoneCountMap = {};
+    phoneCounts.forEach(pc => {
+      phoneCountMap[pc.group_id] = pc.phone_count;
+    });
+
+    // Add phone counts to groups (no Telegram API calls)
+    const groupsWithStats = groups.map(group => ({
+      ...group,
+      phone_count: phoneCountMap[group.id] || 0,
+      member_count: '-' // Don't fetch from API
+    }));
+
+    res.render('groups/list', {
+      groups: groupsWithStats,
+      username: req.session.username
+    });
   } catch (error) {
+    console.error('Groups page error:', error);
     res.status(500).render('error', { error: error.message });
   }
 });
