@@ -16,7 +16,7 @@ async function importSemySMSDevices() {
 
   try {
     // 1. SemySMS'dan barcha qurilmalarni olish
-    console.log('🔍 SemySMS API'ga so\'rov yuborilmoqda...');
+    console.log("🔍 SemySMS API'ga so'rov yuborilmoqda...");
     console.log(`   URL: ${SEMYSMS_API_URL}/devices.php`);
     console.log(`   API Key: ${SEMYSMS_API_KEY.substring(0, 10)}...`);
 
@@ -33,7 +33,7 @@ async function importSemySMSDevices() {
 
     // Response formati tekshirish
     if (!response.data) {
-      console.error('\n❌ API response bo\'sh!');
+      console.error("\n❌ API response bo'sh!");
       process.exit(1);
     }
 
@@ -48,8 +48,8 @@ async function importSemySMSDevices() {
     }
 
     if (devices.length === 0) {
-      console.warn('\n⚠️  Hech qanday qurilma topilmadi!');
-      console.log('   SemySMS.net saytida qurilma qo\'shing.');
+      console.warn("\n⚠️  Hech qanday qurilma topilmadi!");
+      console.log("   SemySMS.net saytida qurilma qo'shing.");
       process.exit(0);
     }
 
