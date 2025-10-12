@@ -298,44 +298,47 @@ async function findMatchingMessages(routeId, timeWindowMinutes = 120) {
  * @returns {Promise<number>} - Yaratilgan message ID
  */
 async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, messageDate) {
-  // CRITICAL FIX: Dublikat telefon raqamlarni olib tashlash
+  // CRITICAL FIX: Dublikat telefon raqamlarni olib tashlash (shu xabar ichida)
   const uniquePhones = [...new Set(phoneNumbers)];
 
-  // YANGI LOGIKA: Telefon raqam bo'yicha dublikat tekshirish
-  // Shu yo'nalishda mavjud barcha telefon raqamlarni olish
-  const allMessages = await query(
-    'SELECT phone_numbers FROM route_messages WHERE route_id = ?',
-    [routeId]
+  // YANGI LOGIKA (2-SOATLIK REAL-TIME UCHUN):
+  // Faqat 15 daqiqa ichidagi dublikatlarni tekshirish (spam oldini olish)
+  // 15 daqiqadan keyin bir xil raqam yana paydo bo'lishi mumkin (shoshilinch elon!)
+  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+  const recentMessages = await query(
+    'SELECT phone_numbers FROM route_messages WHERE route_id = ? AND message_date >= ?',
+    [routeId, fifteenMinutesAgo]
   );
 
-  // Barcha mavjud raqamlarni to'plash
-  const existingPhones = new Set();
-  allMessages.forEach(msg => {
+  // Oxirgi 15 daqiqadagi raqamlarni to'plash
+  const recentPhones = new Set();
+  recentMessages.forEach(msg => {
     try {
       const phones = JSON.parse(msg.phone_numbers || '[]');
-      phones.forEach(phone => existingPhones.add(phone));
+      phones.forEach(phone => recentPhones.add(phone));
     } catch (e) {
       // JSON parse xato - o'tkazib yuborish
     }
   });
 
-  // Faqat YANGI raqamlarni qoldirish (mavjud bo'lmaganlar)
-  const newPhones = uniquePhones.filter(phone => !existingPhones.has(phone));
+  // Faqat 15 daqiqa ichida bo'lmagan raqamlarni qoldirish
+  const newPhones = uniquePhones.filter(phone => !recentPhones.has(phone));
 
-  // Agar barcha raqamlar dublikat bo'lsa, saqlamaslik
+  // Agar barcha raqamlar 15 daqiqa ichida dublikat bo'lsa, saqlamaslik (spam)
   if (newPhones.length === 0) {
-    console.log(`⚠️  Route ${routeId}: Barcha raqamlar dublikat, elon saqlanmaydi`);
+    console.log(`⚠️  Route ${routeId}: Barcha raqamlar 15 daqiqa ichida dublikat (spam), elon saqlanmaydi`);
     return null; // Saqlanmadi
   }
 
-  // Dublikat xabarni tekshirish (bir yo'nalishda bir xil matn faqat 1 marta!)
+  // Dublikat xabarni tekshirish (bir yo'nalishda bir xil matn 15 daqiqa ichida faqat 1 marta!)
   const existing = await query(
-    'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND message_text = ? ORDER BY created_at DESC LIMIT 1',
-    [routeId, messageText]
+    'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND message_text = ? AND message_date >= ? ORDER BY created_at DESC LIMIT 1',
+    [routeId, messageText, fifteenMinutesAgo]
   );
 
   if (existing && existing.length > 0) {
-    // Agar bir xil matnli xabar bor bo'lsa, FAQAT YANGI raqamlarni qo'shish
+    // Agar 15 daqiqa ichida bir xil matnli xabar bor bo'lsa, FAQAT YANGI raqamlarni qo'shish
     const existingMessagePhones = JSON.parse(existing[0].phone_numbers || '[]');
     const combinedPhones = [...new Set([...existingMessagePhones, ...newPhones])];
 
@@ -348,14 +351,14 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
     return existing[0].id;
   }
 
-  // Yangi xabar yaratish (faqat yangi raqamlar bilan)
+  // Yangi xabar yaratish (barcha raqamlar bilan - 15 daqiqadan keyin dublikat bo'lishi mumkin!)
   try {
     const result = await query(
       'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
       [routeId, groupId, messageText, JSON.stringify(newPhones), messageDate]
     );
 
-    console.log(`✓ Route ${routeId}: Yangi elon saqlandi - ${newPhones.length} ta yangi raqam`);
+    console.log(`✓ Route ${routeId}: Yangi elon saqlandi - ${newPhones.length} ta raqam`);
     return result.lastID || result.insertId;
   } catch (error) {
     // UNIQUE constraint error (race condition) - mavjud xabarni yangilash
