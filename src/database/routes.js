@@ -301,15 +301,15 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
   // CRITICAL FIX: Dublikat telefon raqamlarni olib tashlash
   const uniquePhones = [...new Set(phoneNumbers)];
 
-  // CRITICAL FIX: Dublikat xabarni tekshirish (BARCHA yo'nalishlarda, faqat group_id va message_text bo'yicha)
-  // Bir xil xabar bir nechta yo'nalishda paydo bo'lmasligi kerak!
+  // CRITICAL FIX: Dublikat xabarni tekshirish (bir yo'nalishda bir xil matn faqat 1 marta!)
+  // group_id farq qilishi mumkin, lekin route_id + message_text bir xil bo'lsa - dublikat!
   const existing = await query(
-    'SELECT id, phone_numbers, route_id FROM route_messages WHERE group_id = ? AND message_text = ? ORDER BY created_at DESC LIMIT 1',
-    [groupId, messageText]
+    'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND message_text = ? ORDER BY created_at DESC LIMIT 1',
+    [routeId, messageText]
   );
 
   if (existing && existing.length > 0) {
-    // Agar xabar BIROR yo'nalishda bor bo'lsa, telefon raqamlarni yangilash (yangi yo'nalishga SAQLAMASLIK!)
+    // Agar bir yo'nalishda bir xil matnli xabar bor bo'lsa, telefon raqamlarni yangilash
     const existingPhones = JSON.parse(existing[0].phone_numbers || '[]');
     const combinedPhones = [...new Set([...existingPhones, ...uniquePhones])]; // Unikal qilish
 

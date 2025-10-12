@@ -13,12 +13,13 @@ async function fixDuplicateAnnouncements() {
     const allMessages = await query('SELECT * FROM route_messages ORDER BY created_at ASC');
     console.log(`📊 Jami e'lonlar: ${allMessages.length} ta\n`);
 
-    // 2. Dublikatlarni topish (bir xil group_id + message_text)
-    const seen = new Map(); // key: "groupId|messageText", value: first message record
+    // 2. Dublikatlarni topish (bir xil route_id + message_text)
+    // group_id farq qilishi mumkin, lekin bir yo'nalishda bir xil matn faqat 1 marta!
+    const seen = new Map(); // key: "routeId|messageText", value: first message record
     const duplicates = [];
 
     for (const msg of allMessages) {
-      const key = `${msg.group_id}|${msg.message_text}`;
+      const key = `${msg.route_id}|${msg.message_text}`;
 
       if (seen.has(key)) {
         // Bu dublikat!
