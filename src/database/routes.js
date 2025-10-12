@@ -322,12 +322,37 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
   }
 
   // Yangi xabar yaratish (faqat birinchi marta topilganda)
-  const result = await query(
-    'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
-    [routeId, groupId, messageText, JSON.stringify(uniquePhones), messageDate]
-  );
+  try {
+    const result = await query(
+      'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
+      [routeId, groupId, messageText, JSON.stringify(uniquePhones), messageDate]
+    );
 
-  return result.lastID || result.insertId;
+    return result.lastID || result.insertId;
+  } catch (error) {
+    // UNIQUE constraint error (race condition) - mavjud xabarni yangilash
+    if (error.message && error.message.includes('UNIQUE constraint failed')) {
+      const existing = await query(
+        'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND message_text = ? ORDER BY created_at DESC LIMIT 1',
+        [routeId, messageText]
+      );
+
+      if (existing && existing.length > 0) {
+        const existingPhones = JSON.parse(existing[0].phone_numbers || '[]');
+        const combinedPhones = [...new Set([...existingPhones, ...uniquePhones])];
+
+        await query(
+          'UPDATE route_messages SET phone_numbers = ?, message_date = ? WHERE id = ?',
+          [JSON.stringify(combinedPhones), messageDate, existing[0].id]
+        );
+
+        return existing[0].id;
+      }
+    }
+
+    // Boshqa xato - yuqoriga o'tkazish
+    throw error;
+  }
 }
 
 /**
