@@ -143,6 +143,47 @@ router.get('/add/to-tashkent', async (req, res) => {
   }
 });
 
+// YANGI: Viloyat tumanlarini ko'rsatish
+router.get('/region/:regionName', async (req, res) => {
+  try {
+    const regionName = decodeURIComponent(req.params.regionName);
+    const allRoutes = await getAllRoutes();
+
+    // Shu viloyatdan boshlanuvchi barcha yo'nalishlar
+    const regionRoutes = allRoutes.filter(route =>
+      route.name.toLowerCase().startsWith(regionName.toLowerCase())
+    );
+
+    if (regionRoutes.length === 0) {
+      return res.redirect('/routes?error=' + encodeURIComponent('Viloyat topilmadi'));
+    }
+
+    // Har bir route uchun statistika
+    const routesWithStats = await Promise.all(
+      regionRoutes.map(async (route) => {
+        const stats = await getRouteStatistics(route.id);
+        const messageCount = await getRouteMessageCount(route.id);
+        return {
+          ...route,
+          totalSent: stats.total,
+          successSent: stats.success,
+          messageCount: messageCount
+        };
+      })
+    );
+
+    res.render('routes/region_districts', {
+      routes: routesWithStats,
+      regionName: regionName,
+      page: 'routes',
+      username: req.session.username
+    });
+  } catch (error) {
+    console.error('Region districts error:', error);
+    res.redirect('/routes?error=' + encodeURIComponent(error.message));
+  }
+});
+
 // YANGI: Toshkentdan viloyatlarga (POST)
 router.post('/add/from-tashkent', async (req, res) => {
   try {
