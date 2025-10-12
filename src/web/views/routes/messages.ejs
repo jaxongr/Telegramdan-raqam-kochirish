@@ -124,9 +124,12 @@
             </a>
             <%= route.name %> - E'lonlar
           </h1>
-          <div>
+          <div class="d-flex gap-2 align-items-center">
             <span class="badge bg-info fs-6">
               <i class="bi bi-chat-text"></i> <%= messageCount %> ta e'lon
+            </span>
+            <span class="badge bg-success fs-6" id="refreshStatus">
+              <i class="bi bi-arrow-clockwise"></i> <span id="refreshTimer">10</span>s
             </span>
           </div>
         </div>
@@ -270,8 +273,31 @@
     // Tanlangan raqamlar
     const selectedPhones = new Set();
 
+    // AUTO-REFRESH: Har 10 soniyada sahifani yangilash
+    let refreshCountdown = 10;
+    let refreshInterval = null;
+
+    function startAutoRefresh() {
+      const timerElement = document.getElementById('refreshTimer');
+
+      refreshInterval = setInterval(() => {
+        refreshCountdown--;
+        if (timerElement) {
+          timerElement.textContent = refreshCountdown;
+        }
+
+        if (refreshCountdown <= 0) {
+          // Sahifani yangilash
+          window.location.reload();
+        }
+      }, 1000); // Har 1 soniyada
+    }
+
     // Sahifa yuklanganda
     document.addEventListener('DOMContentLoaded', () => {
+      // Auto-refresh boshlash
+      startAutoRefresh();
+
       // Barcha checkboxlarni tinglash
       document.querySelectorAll('.phone-selector').forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectedPhones);
