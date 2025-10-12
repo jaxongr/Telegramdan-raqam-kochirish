@@ -113,28 +113,111 @@
           </div>
         <% } %>
 
-        <!-- Har doim ikkita katta kartochka -->
-        <div class="row">
+        <!-- CHIROYLI PROFESSIONAL KARTOCHKALAR -->
+        <style>
+          .direction-card {
+            min-height: 450px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: none;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+          }
+          .direction-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+            opacity: 0;
+            transition: opacity 0.4s;
+          }
+          .direction-card:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+          }
+          .direction-card:hover::before {
+            opacity: 1;
+          }
+          .direction-card.to-tashkent {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+          }
+          .direction-card.to-tashkent:hover {
+            box-shadow: 0 25px 50px rgba(16, 185, 129, 0.6);
+          }
+          .direction-card.from-tashkent {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+          }
+          .direction-card.from-tashkent:hover {
+            box-shadow: 0 25px 50px rgba(59, 130, 246, 0.6);
+          }
+          .direction-icon {
+            font-size: 8rem;
+            animation: pulse 2s infinite;
+          }
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
+          .direction-badge {
+            background: rgba(255,255,255,0.25);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: 600;
+          }
+          .direction-btn {
+            background: rgba(255,255,255,0.9);
+            border: none;
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+          }
+          .direction-btn:hover {
+            background: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+          }
+          .to-tashkent .direction-btn {
+            color: #059669;
+          }
+          .from-tashkent .direction-btn {
+            color: #2563eb;
+          }
+        </style>
+
+        <div class="row g-4">
           <!-- 1. VILOYATLARDAN → TOSHKENTGA -->
-          <div class="col-md-6 mb-4">
-            <div class="card h-100 border-success" style="min-height: 400px; cursor: pointer; transition: all 0.3s;"
-                 onclick="window.location.href='/routes/add/to-tashkent'"
-                 onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.3)';"
-                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='';">
-              <div class="card-body text-center p-5 d-flex flex-column justify-content-center">
-                <h1 class="display-1 text-success mb-4">
+          <div class="col-md-6">
+            <div class="direction-card to-tashkent" onclick="window.location.href='/routes/add/to-tashkent'">
+              <div class="card-body text-center text-white p-5 d-flex flex-column justify-content-center h-100">
+                <div class="direction-icon mb-4">
                   <i class="bi bi-arrow-left-circle-fill"></i>
-                </h1>
-                <h2 class="card-title mb-4">VILOYATLARDAN</h2>
-                <h3 class="text-muted mb-4">↓</h3>
-                <h2 class="text-primary mb-4">TOSHKENTGA</h2>
-                <p class="text-muted fs-5 mt-3">
-                  Andijon, Farg'ona, Samarqand,<br>
-                  Buxoro va boshqa viloyatlardan<br>
-                  Toshkent shahriga
+                </div>
+
+                <h1 class="display-5 fw-bold mb-3">VILOYATLARDAN</h1>
+                <div class="mb-3">
+                  <i class="bi bi-chevron-double-down" style="font-size: 2.5rem; opacity: 0.8;"></i>
+                </div>
+                <h1 class="display-5 fw-bold mb-4">TOSHKENTGA</h1>
+
+                <p class="fs-5 mb-4" style="opacity: 0.9;">
+                  Andijon, Farg'ona, Samarqand, Buxoro<br>
+                  va boshqa viloyatlardan<br>
+                  <strong>Toshkent shahriga</strong>
                 </p>
+
                 <%
-                  // Viloyatlardan Toshkentga yo'nalishlar soni
                   let toTashkentCount = 0;
                   if (groupedRoutes) {
                     Object.keys(groupedRoutes).forEach(region => {
@@ -147,39 +230,41 @@
                   }
                 %>
                 <% if (toTashkentCount > 0) { %>
-                  <div class="mt-3">
-                    <span class="badge bg-success" style="font-size: 1.2rem; padding: 10px 20px;">
-                      <%= toTashkentCount %> ta yo'nalish
+                  <div class="mb-4">
+                    <span class="direction-badge">
+                      <i class="bi bi-check-circle-fill"></i> <%= toTashkentCount %> ta yo'nalish
                     </span>
                   </div>
                 <% } %>
-                <button class="btn btn-success btn-lg mt-4">
-                  <i class="bi bi-plus-circle-fill"></i> ICHIGA KIRISH
+
+                <button class="direction-btn">
+                  <i class="bi bi-box-arrow-in-right"></i> KIRISH
                 </button>
               </div>
             </div>
           </div>
 
           <!-- 2. TOSHKENTDAN → VILOYATLARGA -->
-          <div class="col-md-6 mb-4">
-            <div class="card h-100 border-primary" style="min-height: 400px; cursor: pointer; transition: all 0.3s;"
-                 onclick="window.location.href='/routes/add/from-tashkent'"
-                 onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.3)';"
-                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='';">
-              <div class="card-body text-center p-5 d-flex flex-column justify-content-center">
-                <h1 class="display-1 text-primary mb-4">
+          <div class="col-md-6">
+            <div class="direction-card from-tashkent" onclick="window.location.href='/routes/add/from-tashkent'">
+              <div class="card-body text-center text-white p-5 d-flex flex-column justify-content-center h-100">
+                <div class="direction-icon mb-4">
                   <i class="bi bi-arrow-right-circle-fill"></i>
-                </h1>
-                <h2 class="card-title mb-4">TOSHKENTDAN</h2>
-                <h3 class="text-muted mb-4">↓</h3>
-                <h2 class="text-success mb-4">VILOYATLARGA</h2>
-                <p class="text-muted fs-5 mt-3">
-                  Toshkent shahridan<br>
-                  Andijon, Farg'ona, Samarqand,<br>
-                  Buxoro va boshqa viloyatlarga
+                </div>
+
+                <h1 class="display-5 fw-bold mb-3">TOSHKENTDAN</h1>
+                <div class="mb-3">
+                  <i class="bi bi-chevron-double-down" style="font-size: 2.5rem; opacity: 0.8;"></i>
+                </div>
+                <h1 class="display-5 fw-bold mb-4">VILOYATLARGA</h1>
+
+                <p class="fs-5 mb-4" style="opacity: 0.9;">
+                  <strong>Toshkent shahridan</strong><br>
+                  Andijon, Farg'ona, Samarqand, Buxoro<br>
+                  va boshqa viloyatlarga
                 </p>
+
                 <%
-                  // Toshkentdan viloyatlarga yo'nalishlar soni
                   let fromTashkentCount = 0;
                   if (groupedRoutes) {
                     Object.keys(groupedRoutes).forEach(region => {
@@ -192,14 +277,15 @@
                   }
                 %>
                 <% if (fromTashkentCount > 0) { %>
-                  <div class="mt-3">
-                    <span class="badge bg-primary" style="font-size: 1.2rem; padding: 10px 20px;">
-                      <%= fromTashkentCount %> ta yo'nalish
+                  <div class="mb-4">
+                    <span class="direction-badge">
+                      <i class="bi bi-check-circle-fill"></i> <%= fromTashkentCount %> ta yo'nalish
                     </span>
                   </div>
                 <% } %>
-                <button class="btn btn-primary btn-lg mt-4">
-                  <i class="bi bi-plus-circle-fill"></i> ICHIGA KIRISH
+
+                <button class="direction-btn">
+                  <i class="bi bi-box-arrow-in-right"></i> KIRISH
                 </button>
               </div>
             </div>
