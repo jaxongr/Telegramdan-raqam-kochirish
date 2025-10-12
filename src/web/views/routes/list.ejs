@@ -111,79 +111,62 @@
           </div>
         <% } %>
 
-        <% if (routes.length === 0) { %>
+        <% if (sortedRegions.length === 0) { %>
           <div class="alert alert-info">
             <i class="bi bi-info-circle"></i> Hozircha yo'nalishlar yo'q. Yangi yo'nalish qo'shing.
           </div>
         <% } else { %>
-          <div class="table-responsive">
-            <table class="table table-striped">
-              <thead>
-                <tr>
-                  <th style="width: 5%">ID</th>
-                  <th style="width: 15%">Nom</th>
-                  <th style="width: 15%">Dan</th>
-                  <th style="width: 15%">Ga</th>
-                  <th style="width: 10%">Vaqt oyna</th>
-                  <th style="width: 10%">Status</th>
-                  <th style="width: 10%">SMS</th>
-                  <th style="width: 20%">Harakatlar</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% routes.forEach(route => { %>
-                  <tr>
-                    <td><%= route.id %></td>
-                    <td><strong><%= route.name %></strong></td>
-                    <td>
-                      <% if (route.from_keywords) { %>
-                        <%= route.from_keywords.split(',').slice(0, 2).join(', ') %><% if (route.from_keywords.split(',').length > 2) { %>...<% } %>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (route.to_keywords) { %>
-                        <%= route.to_keywords.split(',').slice(0, 2).join(', ') %><% if (route.to_keywords.split(',').length > 2) { %>...<% } %>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <%= route.time_window_minutes %> daqiqa
-                    </td>
-                    <td>
-                      <% if (route.active) { %>
-                        <span class="badge bg-success">Faol</span>
-                      <% } else { %>
-                        <span class="badge bg-secondary">Nofaol</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (route.totalSent !== undefined || route.successSent !== undefined) { %>
-                        <span class="badge bg-info">
-                          <%= route.successSent || 0 %> / <%= route.totalSent || 0 %>
-                        </span>
-                      <% } else { %>
-                        <span class="badge bg-secondary">0 / 0</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <a href="/routes/send/<%= route.id %>" class="btn btn-sm btn-primary me-1" title="SMS Yuborish">
-                        <i class="bi bi-send"></i> SMS
-                      </a>
-                      <a href="/routes/edit/<%= route.id %>" class="btn btn-sm btn-warning me-1" title="Tahrirlash">
-                        <i class="bi bi-pencil"></i>
-                      </a>
-                      <button onclick="deleteRoute(<%= route.id %>, '<%= route.name %>')" class="btn btn-sm btn-danger" title="O'chirish">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
+          <!-- Viloyatlar bo'yicha guruhlangan ko'rinish -->
+          <% sortedRegions.forEach((region, regionIndex) => { %>
+            <div class="card mb-4">
+              <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                  <i class="bi bi-geo-alt"></i> <%= region %>dan
+                  <span class="badge bg-light text-dark ms-2"><%= groupedRoutes[region].length %> ta yo'nalish</span>
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <% groupedRoutes[region].forEach(route => { %>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                      <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                          <h6 class="card-title">
+                            <i class="bi bi-arrow-right-circle"></i>
+                            <%= route.name.split(' → ')[1] %>
+                          </h6>
+                          <p class="card-text small text-muted mb-2">
+                            <i class="bi bi-clock"></i> <%= route.time_window_minutes %> daqiqa
+                          </p>
+                          <div class="d-flex justify-content-between align-items-center mb-2">
+                            <% if (route.active) { %>
+                              <span class="badge bg-success">Faol</span>
+                            <% } else { %>
+                              <span class="badge bg-secondary">Nofaol</span>
+                            <% } %>
+                            <small class="text-muted">
+                              SMS: <%= route.successSent || 0 %> / <%= route.totalSent || 0 %>
+                            </small>
+                          </div>
+                          <div class="btn-group w-100" role="group">
+                            <a href="/routes/send/<%= route.id %>" class="btn btn-sm btn-primary" title="SMS Yuborish">
+                              <i class="bi bi-send"></i>
+                            </a>
+                            <a href="/routes/edit/<%= route.id %>" class="btn btn-sm btn-warning" title="Tahrirlash">
+                              <i class="bi bi-pencil"></i>
+                            </a>
+                            <button onclick="deleteRoute(<%= route.id %>, '<%= route.name %>')" class="btn btn-sm btn-danger" title="O'chirish">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <% }) %>
+                </div>
+              </div>
+            </div>
+          <% }) %>
         <% } %>
       </main>
     </div>

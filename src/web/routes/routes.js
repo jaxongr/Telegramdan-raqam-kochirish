@@ -11,7 +11,7 @@ const {
 } = require('../../database/routes');
 const { sendRouteSMS } = require('../../services/routeSmsService');
 
-// Ro'yxat
+// Ro'yxat - Viloyatlar bo'yicha guruhlangan
 router.get('/', async (req, res) => {
   try {
     const routes = await getAllRoutes();
@@ -28,8 +28,25 @@ router.get('/', async (req, res) => {
       })
     );
 
+    // Viloyatlar bo'yicha guruhlash
+    const groupedRoutes = {};
+    routesWithStats.forEach(route => {
+      // Route name'dan "Dan" qismini olish (masalan: "toshkent → andijon" dan "toshkent")
+      const fromRegion = route.name.split(' → ')[0].trim();
+      const regionKey = fromRegion.charAt(0).toUpperCase() + fromRegion.slice(1);
+
+      if (!groupedRoutes[regionKey]) {
+        groupedRoutes[regionKey] = [];
+      }
+      groupedRoutes[regionKey].push(route);
+    });
+
+    // Viloyatlarni alfabetik tartibda saralash
+    const sortedRegions = Object.keys(groupedRoutes).sort();
+
     res.render('routes/list', {
-      routes: routesWithStats,
+      groupedRoutes,
+      sortedRegions,
       page: 'routes',
       username: req.session.username
     });
