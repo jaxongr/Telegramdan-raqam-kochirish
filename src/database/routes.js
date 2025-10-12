@@ -107,43 +107,70 @@ async function findMatchingPhones(routeId, timeWindowMinutes = 120) {
  */
 function matchesRoute(message, fromKeywords, toKeywords) {
   const messageLower = message.toLowerCase();
+  const normalizedMessage = messageLower.replace(/['`']/g, "'");
 
-  // YANGILANGAN: Ko'p shaharli e'lonlarni qo'llab-quvvatlash
-  // Misol: "YAKKABOG' SHAXRISABZ KITOBDAN TOSHKENTGA"
-  // Bu 3 ta alohida yo'nalishga mos kelishi kerak
+  // CRITICAL FIX: FROM/TO tartibini "dan/ga" qo'shimchalari bilan aniqlash
+  // Masalan:
+  // - "TOSHKENTDAN yakkabog'ga" → FROM=toshkent, TO=yakkabog ✓
+  // - "YAKKABOG'DAN toshkentga" → FROM=yakkabog, TO=toshkent ✓
 
-  // FROM location tekshirish (dan/дан bilan yoki bo'lmasa ham)
-  const fromMatched = fromKeywords.some(keyword => {
-    const keywordLower = keyword.toLowerCase();
+  let fromMatchedWithDirection = false;
+  let toMatchedWithDirection = false;
 
-    // Turli variantlarni tekshirish:
-    // 1. keyword + "dan" = "kitobdan", "yakkabog'dan"
-    // 2. keyword + " " = "kitob ", "yakkabog' "
-    // 3. keyword o'zi = "kitob", "yakkabog'"
+  // 1. FROM keyword + "dan/дан/дhan" tekshirish
+  for (const keyword of fromKeywords) {
+    const normalizedKeyword = keyword.toLowerCase().replace(/['`']/g, "'");
 
-    // Apostrof muammosini hal qilish uchun normalize qilish
-    const normalizedMessage = messageLower.replace(/['`']/g, "'");
-    const normalizedKeyword = keywordLower.replace(/['`']/g, "'");
+    // "dan" qo'shimchasi bilan tekshirish
+    if (normalizedMessage.includes(normalizedKeyword + 'dan') ||
+        normalizedMessage.includes(normalizedKeyword + 'дан') ||
+        normalizedMessage.includes(normalizedKeyword + ' dan') ||
+        normalizedMessage.includes(normalizedKeyword + ' дан')) {
+      fromMatchedWithDirection = true;
+      break;
+    }
+  }
 
-    return normalizedMessage.includes(normalizedKeyword);
+  // 2. TO keyword + "ga/га/ga" tekshirish
+  for (const keyword of toKeywords) {
+    const normalizedKeyword = keyword.toLowerCase().replace(/['`']/g, "'");
+
+    // "ga" qo'shimchasi bilan tekshirish
+    if (normalizedMessage.includes(normalizedKeyword + 'ga') ||
+        normalizedMessage.includes(normalizedKeyword + 'га') ||
+        normalizedMessage.includes(normalizedKeyword + ' ga') ||
+        normalizedMessage.includes(normalizedKeyword + ' га') ||
+        normalizedMessage.includes(normalizedKeyword + 'ка') ||
+        normalizedMessage.includes(normalizedKeyword + ' ка')) {
+      toMatchedWithDirection = true;
+      break;
+    }
+  }
+
+  // AGAR "dan/ga" bilan aniq yo'nalish topilsa - faqat shuni qabul qilish
+  if (fromMatchedWithDirection && toMatchedWithDirection) {
+    return true; // ✅ To'g'ri yo'nalish!
+  }
+
+  // Agar "dan/ga" topilmasa, eski usul bilan tekshirish (backward compatibility)
+  // Lekin bu holda ham FROM birinchi, TO ikkinchi bo'lishi kerak
+  const fromIndex = fromKeywords.findIndex(kw => {
+    const normalized = kw.toLowerCase().replace(/['`']/g, "'");
+    return normalizedMessage.includes(normalized);
   });
 
-  // TO location tekshirish (ga/ка/га bilan yoki bo'lmasa ham)
-  const toMatched = toKeywords.some(keyword => {
-    const keywordLower = keyword.toLowerCase();
-
-    // Apostrof muammosini hal qilish
-    const normalizedMessage = messageLower.replace(/['`']/g, "'");
-    const normalizedKeyword = keywordLower.replace(/['`']/g, "'");
-
-    return normalizedMessage.includes(normalizedKeyword);
+  const toIndex = toKeywords.findIndex(kw => {
+    const normalized = kw.toLowerCase().replace(/['`']/g, "'");
+    return normalizedMessage.includes(normalized);
   });
 
-  // MUHIM: Ko'p shaharli e'lonlar uchun
-  // Agar FROM shaharlardan BIRI bor va TO shahar bor bo'lsa - MOS KELADI
+  // Agar ikkala so'z ham bor bo'lsa, FROM birinchi bo'lishi kerak
+  if (fromIndex !== -1 && toIndex !== -1) {
+    const fromPos = normalizedMessage.indexOf(fromKeywords[fromIndex].toLowerCase());
+    const toPos = normalizedMessage.indexOf(toKeywords[toIndex].toLowerCase());
 
-  if (fromMatched && toMatched) {
-    return true; // ✅ Yo'nalish topildi
+    // FROM TO dan oldin turishi kerak
+    return fromPos < toPos;
   }
 
   return false; // Yo'nalish topilmadi
@@ -271,19 +298,32 @@ async function findMatchingMessages(routeId, timeWindowMinutes = 120) {
  * @returns {Promise<number>} - Yaratilgan message ID
  */
 async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, messageDate) {
+  // CRITICAL FIX: Dublikat telefon raqamlarni olib tashlash
+  const uniquePhones = [...new Set(phoneNumbers)];
+
   // Dublikat xabarni tekshirish (bir xil xabar va guruh)
   const existing = await query(
-    'SELECT id FROM route_messages WHERE route_id = ? AND group_id = ? AND message_text = ?',
+    'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND group_id = ? AND message_text = ?',
     [routeId, groupId, messageText]
   );
 
   if (existing && existing.length > 0) {
-    return existing[0].id; // Dublikat, yangi record yaratmaymiz
+    // Agar xabar bor bo'lsa, telefon raqamlarni yangilash (yangi raqamlar qo'shish)
+    const existingPhones = JSON.parse(existing[0].phone_numbers || '[]');
+    const combinedPhones = [...new Set([...existingPhones, ...uniquePhones])]; // Unikal qilish
+
+    await query(
+      'UPDATE route_messages SET phone_numbers = ?, message_date = ? WHERE id = ?',
+      [JSON.stringify(combinedPhones), messageDate, existing[0].id]
+    );
+
+    return existing[0].id;
   }
 
+  // Yangi xabar yaratish
   const result = await query(
     'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
-    [routeId, groupId, messageText, JSON.stringify(phoneNumbers), messageDate]
+    [routeId, groupId, messageText, JSON.stringify(uniquePhones), messageDate]
   );
 
   return result.lastID || result.insertId;
