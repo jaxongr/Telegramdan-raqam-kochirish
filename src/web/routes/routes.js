@@ -66,9 +66,75 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Qo'shish sahifasi
+// Qo'shish sahifasi - YANGI: Ikkita konsul (Toshkentdan/Toshkentga)
 router.get('/add', (req, res) => {
-  res.render('routes/add', { page: 'routes', username: req.session.username });
+  res.render('routes/add_simple', { page: 'routes', username: req.session.username });
+});
+
+// YANGI: Toshkentdan viloyatlarga (GET)
+router.get('/add/from-tashkent', (req, res) => {
+  res.render('routes/add_from_tashkent', { page: 'routes', username: req.session.username });
+});
+
+// YANGI: Viloyatlardan Toshkentga (GET)
+router.get('/add/to-tashkent', (req, res) => {
+  res.render('routes/add_to_tashkent', { page: 'routes', username: req.session.username });
+});
+
+// YANGI: Toshkentdan viloyatlarga (POST)
+router.post('/add/from-tashkent', async (req, res) => {
+  try {
+    const regions = req.body.regions;
+    if (!regions || (Array.isArray(regions) && regions.length === 0)) {
+      return res.redirect('/routes/add/from-tashkent?error=' + encodeURIComponent('Viloyat tanlanmadi'));
+    }
+
+    const selectedRegions = Array.isArray(regions) ? regions : [regions];
+
+    for (const region of selectedRegions) {
+      const regionName = region.charAt(0).toUpperCase() + region.slice(1);
+      await createRoute(
+        `Toshkent → ${regionName}`,
+        'toshkent,toshkentdan,тошкент',
+        region.toLowerCase(),
+        `Assalomu alaykum! Toshkentdan ${regionName}ga yo'lovchi kerak.`,
+        30
+      );
+    }
+
+    res.redirect('/routes?success=' + encodeURIComponent(`${selectedRegions.length} ta yo'nalish qo'shildi`));
+  } catch (error) {
+    console.error('From Tashkent add error:', error);
+    res.redirect('/routes/add/from-tashkent?error=' + encodeURIComponent(error.message));
+  }
+});
+
+// YANGI: Viloyatlardan Toshkentga (POST)
+router.post('/add/to-tashkent', async (req, res) => {
+  try {
+    const regions = req.body.regions;
+    if (!regions || (Array.isArray(regions) && regions.length === 0)) {
+      return res.redirect('/routes/add/to-tashkent?error=' + encodeURIComponent('Viloyat tanlanmadi'));
+    }
+
+    const selectedRegions = Array.isArray(regions) ? regions : [regions];
+
+    for (const region of selectedRegions) {
+      const regionName = region.charAt(0).toUpperCase() + region.slice(1);
+      await createRoute(
+        `${regionName} → Toshkent`,
+        region.toLowerCase(),
+        'toshkent,toshkentga,тошкент',
+        `Assalomu alaykum! ${regionName}dan Toshkentga yo'lovchi kerak.`,
+        30
+      );
+    }
+
+    res.redirect('/routes?success=' + encodeURIComponent(`${selectedRegions.length} ta yo'nalish qo'shildi`));
+  } catch (error) {
+    console.error('To Tashkent add error:', error);
+    res.redirect('/routes/add/to-tashkent?error=' + encodeURIComponent(error.message));
+  }
 });
 
 // Qo'shish (POST)
