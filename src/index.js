@@ -18,6 +18,10 @@ async function main() {
     initBroadcastDatabase();
     console.log('Database tayyor');
 
+    // Route Cleanup (2 soatdan eski elonlarni avtomatik ochirish)
+    const { startRouteCleanup } = require('./services/routeCleanup');
+    startRouteCleanup();
+
     // 2) Telegram client (faqat server/production)
     if (isServerMode) {
       console.log('[2/3] Telegram client ishga tushirilmoqda...');
