@@ -195,6 +195,18 @@
                   </h5>
                 </div>
                 <div class="card-body">
+                  <!-- Tanlash tugmalari -->
+                  <div class="mb-3">
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-sm btn-primary w-50" onclick="selectAllPhones()">
+                        <i class="bi bi-check-all"></i> Hammasini tanlash
+                      </button>
+                      <button class="btn btn-sm btn-secondary w-50" onclick="clearAllPhones()">
+                        <i class="bi bi-x-circle"></i> Tozalash
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Tanlangan raqamlar -->
                   <div class="mb-3">
                     <label class="form-label fw-bold">
@@ -301,6 +313,22 @@
         });
         sendBtn.disabled = false;
       }
+    }
+
+    // Hammasini tanlash
+    function selectAllPhones() {
+      document.querySelectorAll('.phone-selector').forEach(checkbox => {
+        checkbox.checked = true;
+      });
+      updateSelectedPhones();
+    }
+
+    // Hammasini tozalash
+    function clearAllPhones() {
+      document.querySelectorAll('.phone-selector').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      updateSelectedPhones();
     }
 
     // Shablon ishlatish
