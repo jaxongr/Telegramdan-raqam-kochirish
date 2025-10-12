@@ -37,10 +37,13 @@ async function importSemySMSDevices() {
       process.exit(1);
     }
 
-    // Response array yoki object bo'lishi mumkin
+    // SemySMS API response: { code: 0, count: N, data: [...] }
     let devices = [];
 
-    if (Array.isArray(response.data)) {
+    if (response.data.code === 0 && Array.isArray(response.data.data)) {
+      // SemySMS standard format
+      devices = response.data.data;
+    } else if (Array.isArray(response.data)) {
       devices = response.data;
     } else if (typeof response.data === 'object') {
       // Agar object bo'lsa, values'ni olish
