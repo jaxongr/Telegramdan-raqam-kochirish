@@ -301,33 +301,61 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
   // CRITICAL FIX: Dublikat telefon raqamlarni olib tashlash
   const uniquePhones = [...new Set(phoneNumbers)];
 
-  // CRITICAL FIX: Dublikat xabarni tekshirish (bir yo'nalishda bir xil matn faqat 1 marta!)
-  // group_id farq qilishi mumkin, lekin route_id + message_text bir xil bo'lsa - dublikat!
+  // YANGI LOGIKA: Telefon raqam bo'yicha dublikat tekshirish
+  // Shu yo'nalishda mavjud barcha telefon raqamlarni olish
+  const allMessages = await query(
+    'SELECT phone_numbers FROM route_messages WHERE route_id = ?',
+    [routeId]
+  );
+
+  // Barcha mavjud raqamlarni to'plash
+  const existingPhones = new Set();
+  allMessages.forEach(msg => {
+    try {
+      const phones = JSON.parse(msg.phone_numbers || '[]');
+      phones.forEach(phone => existingPhones.add(phone));
+    } catch (e) {
+      // JSON parse xato - o'tkazib yuborish
+    }
+  });
+
+  // Faqat YANGI raqamlarni qoldirish (mavjud bo'lmaganlar)
+  const newPhones = uniquePhones.filter(phone => !existingPhones.has(phone));
+
+  // Agar barcha raqamlar dublikat bo'lsa, saqlamaslik
+  if (newPhones.length === 0) {
+    console.log(`⚠️  Route ${routeId}: Barcha raqamlar dublikat, elon saqlanmaydi`);
+    return null; // Saqlanmadi
+  }
+
+  // Dublikat xabarni tekshirish (bir yo'nalishda bir xil matn faqat 1 marta!)
   const existing = await query(
     'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND message_text = ? ORDER BY created_at DESC LIMIT 1',
     [routeId, messageText]
   );
 
   if (existing && existing.length > 0) {
-    // Agar bir yo'nalishda bir xil matnli xabar bor bo'lsa, telefon raqamlarni yangilash
-    const existingPhones = JSON.parse(existing[0].phone_numbers || '[]');
-    const combinedPhones = [...new Set([...existingPhones, ...uniquePhones])]; // Unikal qilish
+    // Agar bir xil matnli xabar bor bo'lsa, FAQAT YANGI raqamlarni qo'shish
+    const existingMessagePhones = JSON.parse(existing[0].phone_numbers || '[]');
+    const combinedPhones = [...new Set([...existingMessagePhones, ...newPhones])];
 
     await query(
       'UPDATE route_messages SET phone_numbers = ?, message_date = ? WHERE id = ?',
       [JSON.stringify(combinedPhones), messageDate, existing[0].id]
     );
 
-    return existing[0].id; // Mavjud xabar ID qaytarish (yangi yaratmaslik!)
+    console.log(`✓ Route ${routeId}: ${newPhones.length} ta yangi raqam qoshildi (ID: ${existing[0].id})`);
+    return existing[0].id;
   }
 
-  // Yangi xabar yaratish (faqat birinchi marta topilganda)
+  // Yangi xabar yaratish (faqat yangi raqamlar bilan)
   try {
     const result = await query(
       'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
-      [routeId, groupId, messageText, JSON.stringify(uniquePhones), messageDate]
+      [routeId, groupId, messageText, JSON.stringify(newPhones), messageDate]
     );
 
+    console.log(`✓ Route ${routeId}: Yangi elon saqlandi - ${newPhones.length} ta yangi raqam`);
     return result.lastID || result.insertId;
   } catch (error) {
     // UNIQUE constraint error (race condition) - mavjud xabarni yangilash
@@ -338,8 +366,8 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
       );
 
       if (existing && existing.length > 0) {
-        const existingPhones = JSON.parse(existing[0].phone_numbers || '[]');
-        const combinedPhones = [...new Set([...existingPhones, ...uniquePhones])];
+        const existingMessagePhones = JSON.parse(existing[0].phone_numbers || '[]');
+        const combinedPhones = [...new Set([...existingMessagePhones, ...newPhones])];
 
         await query(
           'UPDATE route_messages SET phone_numbers = ?, message_date = ? WHERE id = ?',
