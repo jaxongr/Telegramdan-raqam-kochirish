@@ -77,7 +77,19 @@ async function sendRouteSMS(routeId) {
       };
 
       // SMS matnini tayyorlash
+      logger.info(`   📝 Template render: shablon="${route.sms_template?.substring(0, 50)}..."`);
+      logger.info(`   📝 Template vars: phone=${templateVars.phone}, group=${templateVars.group}`);
+
       const smsText = renderSMSTemplate(route.sms_template, templateVars);
+
+      logger.info(`   📝 Rendered text: "${smsText?.substring(0, 50)}..."`);
+
+      // Agar template render qilinmagan bo'lsa ({{}} bor bo'lsa), xatolik
+      if (smsText && (smsText.includes('{{') || smsText.includes('}}'))) {
+        logger.error(`   ❌ Template render qilinmadi! Text: "${smsText}"`);
+        logger.error(`   ❌ Route template: "${route.sms_template}"`);
+        logger.error(`   ❌ Template vars: ${JSON.stringify(templateVars)}`);
+      }
 
       // Round-robin phone tanlash
       const semysmsPhone = semysmsPhones[currentPhoneIndex % semysmsPhones.length];

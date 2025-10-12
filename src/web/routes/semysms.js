@@ -21,12 +21,22 @@ router.get('/', async (req, res) => {
 // Qo'shish
 router.post('/add', async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, device_id } = req.body;
+
+    if (!phone || !device_id) {
+      const phones = await getAllSemySMSPhones();
+      return res.render('semysms/list', {
+        phones,
+        error: 'Telefon va Device ID majburiy!',
+        success: null,
+        username: req.session.username
+      });
+    }
 
     // Balans tekshirish
     const balance = await checkBalance(phone);
 
-    await createSemySMSPhone(phone, balance || 0);
+    await createSemySMSPhone(phone, balance || 0, device_id);
 
     const phones = await getAllSemySMSPhones();
     res.render('semysms/list', {
