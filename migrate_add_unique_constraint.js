@@ -6,16 +6,16 @@
 const { getDatabase } = require('./src/database/sqlite');
 
 async function addUniqueConstraint() {
-  console.log('🔧 UNIQUE CONSTRAINT QO\'SHISH...\\n');
+  console.log('UNIQUE CONSTRAINT QOSHISH...\n');
 
   try {
     const db = getDatabase();
 
     // 1. Avval dublikatlarni tozalash (cleanup script orqali)
-    console.log('⚠️  Birinchi cleanup script ishga tushiring: node fix_duplicate_announcements.js\\n');
+    console.log('Birinchi cleanup script ishga tushiring: node fix_duplicate_announcements.js\n');
 
     // 2. Yangi jadval yaratish (UNIQUE constraint bilan)
-    console.log('📦 Yangi jadval yaratilmoqda...\\n');
+    console.log('Yangi jadval yaratilmoqda...\n');
     db.exec(`
       CREATE TABLE route_messages_new (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,8 +32,8 @@ async function addUniqueConstraint() {
       )
     `);
 
-    // 3. Ma'lumotlarni ko'chirish (faqat unikal qatorlar)
-    console.log('📋 Ma\\'lumotlar ko\\'chirilmoqda...\\n');
+    // 3. Malumotlarni kochirish (faqat unikal qatorlar)
+    console.log('Malumotlar kochirilmoqda...\n');
     const result = db.prepare(`
       INSERT OR IGNORE INTO route_messages_new
         (id, route_id, group_id, message_text, phone_numbers, message_date, sms_sent, created_at)
@@ -42,25 +42,25 @@ async function addUniqueConstraint() {
       ORDER BY created_at ASC
     `).run();
 
-    console.log(`   ✓ ${result.changes} ta qator ko\\'chirildi\\n`);
+    console.log(`   ${result.changes} ta qator kochirildi\n`);
 
-    // 4. Eski jadvalni o'chirish
-    console.log('🗑️  Eski jadval o\\'chirilmoqda...\\n');
+    // 4. Eski jadvalni ochirish
+    console.log('Eski jadval ochirilmoqda...\n');
     db.exec('DROP TABLE route_messages');
 
     // 5. Yangi jadvalni qayta nomlash
-    console.log('✏️  Yangi jadval nomlanmoqda...\\n');
+    console.log('Yangi jadval nomlanmoqda...\n');
     db.exec('ALTER TABLE route_messages_new RENAME TO route_messages');
 
     // 6. Indexlarni qayta yaratish
-    console.log('📊 Indexlar yaratilmoqda...\\n');
+    console.log('Indexlar yaratilmoqda...\n');
     db.exec(`
       CREATE INDEX idx_route_messages_route ON route_messages(route_id);
       CREATE INDEX idx_route_messages_date ON route_messages(message_date);
     `);
 
-    console.log('\\n✅ MIGRATION MUVAFFAQIYATLI!');
-    console.log('   route_messages endi UNIQUE(route_id, message_text) ga ega\\n');
+    console.log('\nMIGRATION MUVAFFAQIYATLI!\n');
+    console.log('   route_messages endi UNIQUE(route_id, message_text) ga ega\n');
 
     process.exit(0);
   } catch (error) {
