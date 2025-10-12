@@ -1,11 +1,12 @@
 const { findMatchingPhones, logRouteSMS, getRouteById } = require('../database/routes');
-const { renderSMSTemplate } = require('./smsService');
+const { renderSMSTemplate, getLastSMSTime } = require('./smsService');
 const { getActiveSemySMSPhones } = require('../database/models');
 const logger = require('../utils/logger');
 const axios = require('axios');
 
 const SEMYSMS_API_KEY = process.env.SEMYSMS_API_KEY;
-const SEMYSMS_API_URL = 'https://api.semysms.net/';
+const SEMYSMS_API_URL = 'https://semysms.net/api/3';
+const SMS_COOLDOWN_HOURS = parseInt(process.env.SMS_COOLDOWN_HOURS) || 2; // 2 soat cooldown
 
 // Round-robin index
 let currentPhoneIndex = 0;
@@ -53,6 +54,20 @@ async function sendRouteSMS(routeId) {
     for (const phoneRecord of matchedPhones) {
       const toPhone = phoneRecord.phone;
 
+      // 1. Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
+      const lastSMS = await getLastSMSTime(toPhone);
+
+      if (lastSMS) {
+        const hoursSinceLastSMS = (Date.now() - new Date(lastSMS).getTime()) / (1000 * 60 * 60);
+
+        if (hoursSinceLastSMS < SMS_COOLDOWN_HOURS) {
+          const remainingMinutes = Math.ceil((SMS_COOLDOWN_HOURS - hoursSinceLastSMS) * 60);
+          logger.warn(`   ⏸ ${toPhone} uchun cooldown: ${remainingMinutes} daqiqa qoldi - o'tkazib yuborildi`);
+          failedCount++;
+          continue; // Keyingi raqamga o'tish
+        }
+      }
+
       // Template variables
       const templateVars = {
         phone: toPhone,
@@ -69,22 +84,33 @@ async function sendRouteSMS(routeId) {
       currentPhoneIndex++;
 
       try {
-        // SemySMS orqali SMS yuborish
-        const response = await axios.post(SEMYSMS_API_URL + 'sms/send', {
-          api_key: SEMYSMS_API_KEY,
-          device: semysmsPhone.device_id,
-          phone: toPhone,
-          message: smsText
-        }, {
+        // Telefon raqamni to'g'ri formatda yuborish
+        let cleanedPhone = toPhone.replace(/\D/g, ''); // faqat raqamlar
+        if (!cleanedPhone.startsWith('998')) {
+          cleanedPhone = '998' + cleanedPhone; // Uzbekistan country code
+        }
+        cleanedPhone = '+' + cleanedPhone; // + qo'shish
+
+        // SemySMS orqali SMS yuborish (GET request bilan)
+        const response = await axios.get(SEMYSMS_API_URL + '/sms.php', {
+          params: {
+            token: SEMYSMS_API_KEY,
+            device: semysmsPhone.device_id,
+            phone: cleanedPhone,
+            msg: smsText
+          },
           timeout: 10000
         });
 
-        if (response.data && response.data.success) {
+        // SemySMS response: {"code":"0","id_device":...,"id":...}
+        // code="0" = success
+        if (response.data && response.data.code === "0") {
           logger.info(`   ✅ SMS yuborildi: ${toPhone}`);
           await logRouteSMS(routeId, toPhone, smsText, 'success');
           sentCount++;
         } else {
-          logger.warn(`   ❌ SMS yuborilmadi: ${toPhone} (${response.data?.error || 'Unknown error'})`);
+          const errorMsg = response.data?.error || response.data?.message || `Error code: ${response.data?.code || 'unknown'}`;
+          logger.warn(`   ❌ SMS yuborilmadi: ${toPhone} (${errorMsg})`);
           await logRouteSMS(routeId, toPhone, smsText, 'failed');
           failedCount++;
         }
