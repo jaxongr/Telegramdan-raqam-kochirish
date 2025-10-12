@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { Api } = require('telegram');
 const { getAllGroups, createGroup, updateGroup, deleteGroup, getGroupById } = require('../../database/models');
 const { query } = require('../../database/sqlite');
 

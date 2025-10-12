@@ -34,12 +34,15 @@ cd $APP_DIR
 
 # Create .env if not exists
 if [ ! -f .env ]; then
-    echo "⚙️ .env yaratilmoqda..."
-    cp .env.example .env
-    # Update with production values
-    sed -i 's/MODE=demo/MODE=production/' .env
-    sed -i 's/TELEGRAM_SESSION=/TELEGRAM_SESSION=1AgAOMTQ5LjE1NC4xNjcuNDEBu3y1L8XP3USYh9r1tVJXRaH6kdJrdCo0bzxLqV6sF9BaU32BRoqN4yFnxQsB7fEDWADDXIbf4Jqetkt7aYGyszaNMHMr0sCiIYwwcmUbRHoX2UdNXA1PyjSLeNFR8ACuJmH7PxlUFRZuzTI1gbVnMpX9GiBK+h+5KwXC9Qdl38XELUDXjmm9ux87VChlcghm3fhVxJkQfsZ367+A5N5CT3LLkKb/J9vdDZBFj56zoeKewwDvNrqLgZWcv/N97rmTOKRabpFa52tw9HjzBlpsexjHeMKcwRRNilJxClAhohU+64w+eZkNMV0SIXLpfgjjhVmEehXYhU/cG8QJLg5laI0=/' .env
-    sed -i 's/SEMYSMS_API_KEY=/SEMYSMS_API_KEY=c83da9b60ac2fa1463887a85735cb711/' .env
+    echo "⚙️ .env topilmadi. .env.example dan nusxa olinmoqda..."
+    if [ -f .env.example ]; then
+      cp .env.example .env
+      sed -i 's/^MODE=.*/MODE=production/' .env || true
+      sed -i 's/^NODE_ENV=.*/NODE_ENV=production/' .env || true
+      echo "⚠️ Iltimos .env faylini serverda to\'ldiring (TELEGRAM_*, SEMYSMS_*, WEB_*)."
+    else
+      echo "⚠️ .env.example topilmadi. Iltimos .env ni qo'lda yarating."
+    fi
 fi
 
 # Install dependencies

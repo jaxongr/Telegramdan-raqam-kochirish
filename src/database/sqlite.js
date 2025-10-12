@@ -22,6 +22,9 @@ function openDatabase() {
   return db;
 }
 
+// Open DB immediately so exported `db` is usable by dependents
+openDatabase();
+
 // Database schema yaratish
 function initDatabase() {
   const db = openDatabase();
@@ -101,6 +104,36 @@ function initDatabase() {
     )
   `);
 
+  // Routes (for routeSmsService)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS routes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      from_keywords TEXT NOT NULL,
+      to_keywords TEXT NOT NULL,
+      from_region TEXT,
+      to_region TEXT,
+      use_region_matching INTEGER DEFAULT 0,
+      sms_template TEXT,
+      time_window_minutes INTEGER DEFAULT 120,
+      active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS route_sms_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      route_id INTEGER NOT NULL,
+      to_phone TEXT NOT NULL,
+      message TEXT,
+      status TEXT DEFAULT 'pending',
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (route_id) REFERENCES routes(id)
+    )
+  `);
+
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_phones_group ON phones(group_id);
     CREATE INDEX IF NOT EXISTS idx_phones_phone ON phones(phone);
@@ -110,6 +143,7 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_sms_logs_date ON sms_logs(sent_at);
     CREATE INDEX IF NOT EXISTS idx_semysms_status ON semysms_phones(status);
     CREATE INDEX IF NOT EXISTS idx_semysms_last_used ON semysms_phones(last_used);
+    CREATE INDEX IF NOT EXISTS idx_route_logs_sent ON route_sms_logs(sent_at);
   `);
 
   console.log('✓ SQLite database initialized:', dbPath);
@@ -251,9 +285,173 @@ function batchInsertSMSLogs(logsData) {
   return insertMany(logsData);
 }
 
+// Broadcast tables and helpers
 function initBroadcastDatabase() {
-  console.log('✓ Broadcast database (JSON) initialized');
-  return null;
+  const db = openDatabase();
+
+  // Telegram accounts used for broadcasting
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS telegram_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      session_string TEXT,
+      api_id TEXT,
+      api_hash TEXT,
+      status TEXT DEFAULT 'active',
+      assigned_groups_count INTEGER DEFAULT 0,
+      total_messages_sent INTEGER DEFAULT 0,
+      last_message_time DATETIME,
+      wait_until DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Groups for broadcast distribution
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS broadcast_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      telegram_id TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      username TEXT,
+      assigned_account_id INTEGER,
+      last_broadcast_time DATETIME,
+      total_broadcasts INTEGER DEFAULT 0,
+      permission TEXT DEFAULT 'allowed',
+      permission_reason TEXT,
+      permission_until DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (assigned_account_id) REFERENCES telegram_accounts(id)
+    )
+  `);
+
+  // Broadcast messages
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS broadcast_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_text TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      total_groups INTEGER DEFAULT 0,
+      sent_count INTEGER DEFAULT 0,
+      failed_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      started_at DATETIME,
+      completed_at DATETIME
+    )
+  `);
+
+  // Broadcast logs (per group)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS broadcast_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      group_id INTEGER NOT NULL,
+      account_id INTEGER,
+      status TEXT NOT NULL,
+      error TEXT,
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (message_id) REFERENCES broadcast_messages(id),
+      FOREIGN KEY (group_id) REFERENCES broadcast_groups(id),
+      FOREIGN KEY (account_id) REFERENCES telegram_accounts(id)
+    )
+  `);
+
+  // Useful indexes
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_bm_status ON broadcast_messages(status);
+    CREATE INDEX IF NOT EXISTS idx_bl_message ON broadcast_logs(message_id);
+    CREATE INDEX IF NOT EXISTS idx_bg_assigned ON broadcast_groups(assigned_account_id);
+  `);
+
+  console.log('✓ Broadcast database initialized');
+  return db;
+}
+
+// Broadcast helpers used by services
+function getActiveAccounts() {
+  const rows = db.prepare(`SELECT * FROM telegram_accounts WHERE status = 'active'`).all();
+  return rows;
+}
+
+function getAccountById(id) {
+  return db.prepare(`SELECT * FROM telegram_accounts WHERE id = ?`).get(id);
+}
+
+function updateAccountStatus(id, status, waitUntil = null) {
+  const stmt = db.prepare(`UPDATE telegram_accounts SET status = ?, wait_until = ? WHERE id = ?`);
+  return stmt.run(status, waitUntil, id);
+}
+
+function upsertBroadcastGroup(telegramId, title, username = null) {
+  const existing = db.prepare(`SELECT id FROM broadcast_groups WHERE telegram_id = ?`).get(telegramId);
+  if (existing) {
+    return db.prepare(`UPDATE broadcast_groups SET title = ?, username = ? WHERE id = ?`).run(title, username, existing.id);
+  }
+  return db.prepare(`INSERT INTO broadcast_groups (telegram_id, title, username) VALUES (?, ?, ?)`)
+    .run(telegramId, title, username);
+}
+
+function assignGroupToAccount(groupId, accountId) {
+  return db.prepare(`UPDATE broadcast_groups SET assigned_account_id = ? WHERE id = ?`).run(accountId, groupId);
+}
+
+function getUnassignedGroups() {
+  return db.prepare(`SELECT * FROM broadcast_groups WHERE assigned_account_id IS NULL`).all();
+}
+
+function createBroadcastMessage(messageText) {
+  return db.prepare(`INSERT INTO broadcast_messages (message_text, status, created_at) VALUES (?, 'pending', CURRENT_TIMESTAMP)`).run(messageText);
+}
+
+function updateBroadcastStatus(messageId, status, sentCount = 0, failedCount = 0) {
+  return db.prepare(`UPDATE broadcast_messages SET status = ?, sent_count = ?, failed_count = ? WHERE id = ?`)
+    .run(status, sentCount, failedCount, messageId);
+}
+
+function addBroadcastLog(messageId, groupId, accountId, status, error = null) {
+  return db.prepare(`INSERT INTO broadcast_logs (message_id, group_id, account_id, status, error, sent_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`) 
+    .run(messageId, groupId, accountId || null, status, error || null);
+}
+
+function getAllGroups() {
+  // Broadcast groups list
+  return db.prepare(`SELECT * FROM broadcast_groups ORDER BY created_at DESC`).all();
+}
+
+function getBroadcastStats() {
+  const totalGroups = db.prepare(`SELECT COUNT(*) AS c FROM broadcast_groups`).get().c;
+  const assignedGroups = db.prepare(`SELECT COUNT(*) AS c FROM broadcast_groups WHERE assigned_account_id IS NOT NULL`).get().c;
+  const totalAccounts = db.prepare(`SELECT COUNT(*) AS c FROM telegram_accounts`).get().c;
+  const activeAccounts = db.prepare(`SELECT COUNT(*) AS c FROM telegram_accounts WHERE status = 'active'`).get().c;
+  return { totalGroups, assignedGroups, unassignedGroups: totalGroups - assignedGroups, totalAccounts, activeAccounts };
+}
+
+function getAccountStats() {
+  return db.prepare(`SELECT id, phone, status, assigned_groups_count, total_messages_sent, last_message_time FROM telegram_accounts ORDER BY id DESC`).all();
+}
+
+function canSendToGroup(groupId) {
+  const g = db.prepare(`SELECT permission, permission_reason, permission_until FROM broadcast_groups WHERE id = ?`).get(groupId);
+  if (!g) return { allowed: false, reason: 'group_not_found' };
+  if (g.permission === 'denied') {
+    return { allowed: false, reason: g.permission_reason || 'denied' };
+  }
+  if (g.permission_until) {
+    const until = new Date(g.permission_until).getTime();
+    if (Date.now() < until) {
+      return { allowed: false, reason: 'temporary_denied' };
+    }
+  }
+  return { allowed: true, reason: null };
+}
+
+function updateGroupPermission(groupId, permission, reason = null, until = null) {
+  return db.prepare(`UPDATE broadcast_groups SET permission = ?, permission_reason = ?, permission_until = ? WHERE id = ?`)
+    .run(permission, reason, until, groupId);
+}
+
+function isMessageSentToGroup(messageId, groupId) {
+  const row = db.prepare(`SELECT 1 FROM broadcast_logs WHERE message_id = ? AND group_id = ? AND status = 'sent' LIMIT 1`).get(messageId, groupId);
+  return !!row;
 }
 
 module.exports = {
@@ -261,9 +459,26 @@ module.exports = {
   query,
   getDB: () => db,
   getDatabase: () => db,
+  db,
   closeDatabase,
   backupDatabase,
   batchInsertPhones,
   batchInsertSMSLogs,
-  initBroadcastDatabase
+  initBroadcastDatabase,
+  // Broadcast helpers
+  getActiveAccounts,
+  getAccountById,
+  updateAccountStatus,
+  upsertBroadcastGroup,
+  assignGroupToAccount,
+  getUnassignedGroups,
+  createBroadcastMessage,
+  updateBroadcastStatus,
+  addBroadcastLog,
+  getAllGroups,
+  getBroadcastStats,
+  getAccountStats,
+  canSendToGroup,
+  updateGroupPermission,
+  isMessageSentToGroup
 };

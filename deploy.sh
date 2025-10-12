@@ -38,36 +38,15 @@ npm install --production
 
 # 4. Setup .env file (if not exists)
 if [ ! -f .env ]; then
-    echo "⚙️ Creating .env file..."
-    cat > .env << 'EOF'
-# MODE SOZLAMASI
-MODE=production
-
-# TELEGRAM API SOZLAMALARI
-TELEGRAM_API_ID=20330024
-TELEGRAM_API_HASH=09f429bbd6278fc534798fb349239e0e
-TELEGRAM_PHONE=+998901579450
-TELEGRAM_SESSION=1AgAOMTQ5LjE1NC4xNjcuNDEBu3y1L8XP3USYh9r1tVJXRaH6kdJrdCo0bzxLqV6sF9BaU32BRoqN4yFnxQsB7fEDWADDXIbf4Jqetkt7aYGyszaNMHMr0sCiIYwwcmUbRHoX2UdNXA1PyjSLeNFR8ACuJmH7PxlUFRZuzTI1gbVnMpX9GiBK+h+5KwXC9Qdl38XELUDXjmm9ux87VChlcghm3fhVxJkQfsZ367+A5N5CT3LLkKb/J9vdDZBFj56zoeKewwDvNrqLgZWcv/N97rmTOKRabpFa52tw9HjzBlpsexjHeMKcwRRNilJxClAhohU+64w+eZkNMV0SIXLpfgjjhVmEehXYhU/cG8QJLg5laI0=
-
-# SEMYSMS API SOZLAMALARI
-SEMYSMS_API_KEY=c83da9b60ac2fa1463887a85735cb711
-
-# WEB DASHBOARD
-WEB_PORT=3000
-WEB_USERNAME=admin
-WEB_PASSWORD=admin123
-SESSION_SECRET=production_secret_key_$(openssl rand -hex 16)
-
-# SMS SETTINGS
-SMS_DAILY_LIMIT_PER_NUMBER=2
-SMS_DELAY_SECONDS=1
-
-# SYSTEM
-NODE_ENV=production
-LOG_LEVEL=info
-TIMEZONE=Asia/Tashkent
-EOF
-    echo "✅ .env file created"
+    echo "⚙️ .env topilmadi. .env.example dan nusxa olinmoqda..."
+    if [ -f .env.example ]; then
+      cp .env.example .env
+      sed -i 's/^MODE=.*/MODE=production/' .env || true
+      sed -i 's/^NODE_ENV=.*/NODE_ENV=production/' .env || true
+      echo "⚠️ Iltimos .env faylini serverda to\'ldiring (TELEGRAM_*, SEMYSMS_*, WEB_*)."
+    else
+      echo "⚠️ .env.example topilmadi. Iltimos .env ni qo'lda yarating."
+    fi
 fi
 
 # 5. Create necessary directories

@@ -167,11 +167,12 @@ async function getSMSCountToday(phone) {
 
 // SEMYSMS PHONES
 async function getAllSemySMSPhones() {
-  return await query('SELECT * FROM semysms_phones ORDER BY last_used ASC NULLS FIRST, id ASC');
+  // SQLite NULLS FIRST yo'q; ASC tartibda NULL lar allaqachon birinchi bo'ladi
+  return await query('SELECT * FROM semysms_phones ORDER BY last_used ASC, id ASC');
 }
 
 async function getActiveSemySMSPhones() {
-  return await query('SELECT * FROM semysms_phones WHERE status = ? ORDER BY last_used ASC NULLS FIRST', ['active']);
+  return await query('SELECT * FROM semysms_phones WHERE status = ? ORDER BY last_used ASC', ['active']);
 }
 
 async function getSemySMSPhoneByNumber(phone) {

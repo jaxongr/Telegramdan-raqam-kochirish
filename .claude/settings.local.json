@@ -69,7 +69,8 @@
       "Bash(do echo \"=== Urinish $i/10 ===\")",
       "Bash(break)",
       "Bash(done)",
-      "Bash(pm2 restart:*)"
+      "Bash(pm2 restart:*)",
+      "Read(//c/Users/Pro/Downloads/**)"
     ],
     "deny": [],
     "ask": []

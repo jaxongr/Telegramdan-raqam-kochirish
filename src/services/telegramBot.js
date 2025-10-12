@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Bot token
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8364976076:AAGrM4eI1sAh12VRpQEprBMd9u9fUNQimmg';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Admin user IDs (faqat bu userlar botdan foydalanishi mumkin)
 const ADMIN_IDS = process.env.TELEGRAM_ADMIN_IDS
@@ -55,6 +55,9 @@ async function startBot() {
   }
 
   try {
+    if (!BOT_TOKEN) {
+      throw new Error('TELEGRAM_BOT_TOKEN .env faylda yo\'q');
+    }
     bot = new Telegraf(BOT_TOKEN);
 
     // Middleware - admin check
