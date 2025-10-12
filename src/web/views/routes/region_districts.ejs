@@ -106,6 +106,7 @@
 
           routes.forEach(route => {
             totalMessages += route.messageCount || 0;
+            totalPhones += route.uniquePhones || 0;
           });
         %>
 
@@ -168,7 +169,7 @@
                     <div>
                       <small class="text-muted d-block">Raqamlar</small>
                       <span class="badge bg-primary fs-6">
-                        0
+                        <%= route.uniquePhones || 0 %>
                       </span>
                     </div>
                   </div>

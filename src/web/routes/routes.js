@@ -158,16 +158,23 @@ router.get('/region/:regionName', async (req, res) => {
       return res.redirect('/routes?error=' + encodeURIComponent('Viloyat topilmadi'));
     }
 
-    // Har bir route uchun statistika
+    // Har bir route uchun statistika va unikal raqamlar
     const routesWithStats = await Promise.all(
       regionRoutes.map(async (route) => {
         const stats = await getRouteStatistics(route.id);
         const messageCount = await getRouteMessageCount(route.id);
+
+        // Unikal telefon raqamlarni hisoblash
+        const messages = await getRouteMessages(route.id, 10000); // Barcha xabarlar
+        const allPhones = messages.flatMap(msg => msg.phone_numbers || []);
+        const uniquePhones = new Set(allPhones);
+
         return {
           ...route,
           totalSent: stats.total,
           successSent: stats.success,
-          messageCount: messageCount
+          messageCount: messageCount,
+          uniquePhones: uniquePhones.size
         };
       })
     );
