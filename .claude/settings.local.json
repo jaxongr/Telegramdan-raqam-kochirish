@@ -68,7 +68,8 @@
       "Bash(for i in {1..10})",
       "Bash(do echo \"=== Urinish $i/10 ===\")",
       "Bash(break)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(pm2 restart:*)"
     ],
     "deny": [],
     "ask": []

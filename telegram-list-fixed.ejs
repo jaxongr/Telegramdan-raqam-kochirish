@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Guruhlar - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+    .group-row {
+      transition: all 0.2s;
+    }
+    .group-row:hover {
+      background-color: #f8f9fa;
+    }
+    .badge-status {
+      font-size: 0.85rem;
+      padding: 0.4rem 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <%- include('../partials/sidebar', { currentPage: 'groups', username }) %>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">
+            <i class="bi bi-telegram text-primary"></i> Telegram Guruhlar
+          </h1>
+          <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+              <button type="button" class="btn btn-sm btn-success" onclick="addAllGroups()">
+                <i class="bi bi-plus-circle-fill"></i> Hammasini qo'shish
+              </button>
+              <a href="/groups/add" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg"></i> Qo'lda qo'shish
+              </a>
+            </div>
+            <a href="/groups" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-arrow-left"></i> Orqaga
+            </a>
+          </div>
+        </div>
+
+        <% if (error) { %>
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Xato!</strong> <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="card border-primary">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Jami guruhlar</h6>
+                    <h3 class="mb-0"><%= telegramGroups.length %></h3>
+                  </div>
+                  <div class="text-primary">
+                    <i class="bi bi-collection fs-1"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-success">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Kuzatilmoqda</h6>
+                    <h3 class="mb-0 text-success"><%= monitoredIds.length %></h3>
+                  </div>
+                  <div class="text-success">
+                    <i class="bi bi-check-circle fs-1"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-secondary">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Kuzatilmaydi</h6>
+                    <h3 class="mb-0"><%= telegramGroups.length - monitoredIds.length %></h3>
+                  </div>
+                  <div class="text-secondary">
+                    <i class="bi bi-dash-circle fs-1"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <% if (telegramGroups.length === 0 && !error) { %>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Telegram guruhlar topilmadi. Avval Telegram'ga guruhlar qo'shing.
+          </div>
+        <% } else { %>
+          <!-- Groups Table -->
+          <div class="card shadow-sm">
+            <div class="card-header bg-white">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                  <i class="bi bi-list-ul"></i> Barcha guruhlar
+                </h5>
+                <span class="badge bg-primary"><%= telegramGroups.length %> ta guruh</span>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width: 5%;">
+                        <input type="checkbox" class="form-check-input" id="selectAll" onclick="toggleSelectAll()">
+                      </th>
+                      <th style="width: 30%;">Guruh nomi</th>
+                      <th style="width: 15%;">ID</th>
+                      <th style="width: 12%;">Username</th>
+                      <th style="width: 10%;">A'zolar</th>
+                      <th style="width: 13%;">Holat</th>
+                      <th style="width: 15%;">Amallar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% telegramGroups.forEach((group, index) => { %>
+                      <tr class="group-row" data-group-id="<%= group.id %>">
+                        <td>
+                          <% if (!group.isMonitored) { %>
+                            <input type="checkbox" class="form-check-input group-checkbox"
+                                   value="<%= group.id %>"
+                                   data-title="<%= group.title.replace(/"/g, '&quot;') %>">
+                          <% } %>
+                        </td>
+                        <td>
+                          <div class="d-flex align-items-center">
+                            <i class="bi bi-<%= group.username ? 'megaphone' : 'people' %> me-2 text-primary"></i>
+                            <strong><%= group.title %></strong>
+                          </div>
+                        </td>
+                        <td>
+                          <code class="small text-muted"><%= group.id %></code>
+                        </td>
+                        <td>
+                          <% if (group.username) { %>
+                            <a href="https://t.me/<%= group.username %>" target="_blank" class="badge bg-info text-decoration-none">
+                              @<%= group.username %>
+                            </a>
+                          <% } else { %>
+                            <span class="text-muted">-</span>
+                          <% } %>
+                        </td>
+                        <td>
+                          <span class="badge bg-light text-dark">
+                            <i class="bi bi-people-fill"></i> <%= group.participantsCount.toLocaleString() %>
+                          </span>
+                        </td>
+                        <td>
+                          <% if (group.isMonitored) { %>
+                            <span class="badge badge-status bg-success">
+                              <i class="bi bi-check-circle-fill"></i> Kuzatilmoqda
+                            </span>
+                          <% } else { %>
+                            <span class="badge badge-status bg-secondary">
+                              <i class="bi bi-dash-circle"></i> Faol emas
+                            </span>
+                          <% } %>
+                        </td>
+                        <td>
+                          <% if (!group.isMonitored) { %>
+                            <button class="btn btn-sm btn-outline-primary"
+                                    onclick="addToMonitoring('<%= group.id %>', '<%= group.title.replace(/'/g, "\\'").replace(/"/g, "&quot;") %>')">
+                              <i class="bi bi-plus-circle"></i> Qo'shish
+                            </button>
+                          <% } else { %>
+                            <a href="/groups" class="btn btn-sm btn-outline-secondary">
+                              <i class="bi bi-gear"></i> Boshqarish
+                            </a>
+                          <% } %>
+                        </td>
+                      </tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card-footer bg-light">
+              <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                <strong>Maslahat:</strong> Bir nechta guruhni tanlab "Hammasini qo'shish" tugmasini bosing.
+              </small>
+            </div>
+          </div>
+        <% } %>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Barcha checkboxlarni tanlash/bekor qilish
+    function toggleSelectAll() {
+      const selectAll = document.getElementById('selectAll');
+      const checkboxes = document.querySelectorAll('.group-checkbox');
+      checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    }
+
+    // Bitta guruhni monitoring'ga qo'shish
+    function addToMonitoring(telegramId, title) {
+      if (confirm(`"${title}" guruhini monitoring'ga qo'shilsinmi?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/groups/add';
+
+        const inputs = {
+          name: title,
+          telegram_id: telegramId,
+          keywords: '',
+          sms_template: 'Assalomu alaykum! {{group}} guruhida {{phone}} raqamingizni ko\'rdik. Bizning xizmatlarimiz bilan tanishing!'
+        };
+
+        for (const [key, value] of Object.entries(inputs)) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    }
+
+    // Tanlangan barcha guruhlarni qo'shish
+    function addAllGroups() {
+      const checkboxes = document.querySelectorAll('.group-checkbox:checked');
+
+      if (checkboxes.length === 0) {
+        alert("Iltimos, biror guruhni tanlang!");
+        return;
+      }
+
+      if (confirm(`${checkboxes.length} ta guruh monitoring'ga qo'shilsinmi?`)) {
+        let added = 0;
+
+        checkboxes.forEach((checkbox, index) => {
+          setTimeout(() => {
+            const telegramId = checkbox.value;
+            const title = checkbox.getAttribute('data-title');
+
+            // Form yaratish
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/groups/add';
+
+            const inputs = {
+              name: title,
+              telegram_id: telegramId,
+              keywords: '',
+              sms_template: 'Assalomu alaykum! {{group}} guruhida {{phone}} raqamingizni ko\'rdik.'
+            };
+
+            for (const [key, value] of Object.entries(inputs)) {
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = key;
+              input.value = value;
+              form.appendChild(input);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+
+            added++;
+
+            // Oxirgi form submit bo'lganida sahifani yangilash
+            if (added === checkboxes.length) {
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            }
+          }, index * 500); // Har bir guruhni 0.5 sekundda qo'shish
+        });
+      }
+    }
+  </script>
+</body>
+</html>

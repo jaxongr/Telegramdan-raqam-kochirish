@@ -100,13 +100,10 @@ async function startMonitoring() {
         const group = await getGroupByTelegramId(telegramId);
         if (!group || !group.active) return;
 
-        // Kalit so'zlarni tekshirish - MUVAQQAT O'CHIRILGAN!
-        // SABAB: Bu filter 99% xabarlarni tashlamoqda!
-        // Hamma xabarlardan telefon raqam izlash kerak
+        // Kalit so'zlarni tekshirish
         const messageText = message.text.toLowerCase();
         const keywords = group.keywords ? group.keywords.split(',').map(k => k.trim()).filter(k => k) : [];
 
-        /* MUVAQQAT O'CHIRILGAN - BARCHA XABARLAR QAYTA ISHLANADI
         // Faqat kalit so'zlar bo'lsa tekshirish
         if (keywords.length > 0) {
           let hasKeyword = false;
@@ -118,7 +115,6 @@ async function startMonitoring() {
           }
           if (!hasKeyword) return;
         }
-        */
 
         // Telefon raqamlarni topish
         const phones = extractPhones(message.text);
@@ -157,9 +153,8 @@ async function startMonitoring() {
           }
         }
 
-        // YANGI: Logistics bot'ga yuborish - ENDI BARCHA XABARLAR UCHUN
-        // if (keywords.length > 0 && phones.length > 0) { // O'CHIRILGAN
-        if (phones.length > 0) { // YANGI: Faqat telefon raqam bo'lsa yuborish
+        // YANGI: Logistics bot'ga yuborish (faqat kalit so'zlar bor guruhlarga)
+        if (keywords.length > 0 && phones.length > 0) {
           try {
             const { processNewMessage } = require('./logisticsBot');
             await processNewMessage(event.message, parseInt(chatId), group.name);

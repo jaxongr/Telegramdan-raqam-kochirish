@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= districtName %> - <%= route.name %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        body { background: #f5f7fa; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+        .header-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        .sms-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 20px;
+        }
+        .phone-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .phone-item:hover {
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+            transform: translateX(5px);
+        }
+        .phone-item.selected {
+            background: linear-gradient(to right, #e3f2fd, #ffffff);
+            border-left-color: #28a745;
+        }
+        .phone-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .message-preview {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #6c757d;
+            max-height: 60px;
+            overflow: hidden;
+        }
+        .time-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        .send-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .send-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .sms-textarea {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .sms-textarea:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.15);
+        }
+        .char-count {
+            color: #6c757d;
+            font-size: 0.9em;
+            text-align: right;
+            margin-top: 5px;
+        }
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .select-all-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-md-block sidebar">
+                <div class="position-sticky pt-3">
+                    <div class="px-3 mb-4 text-center">
+                        <h5><i class="bi bi-telegram"></i> SMS Tizim</h5>
+                        <small>Salom, <%= username %>!</small>
+                    </div>
+                    <ul class="nav flex-column px-2">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/routes">
+                                <i class="bi bi-signpost-2"></i> Yo'nalishlar
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/history">
+                                <i class="bi bi-clock-history"></i> Tarix
+                            </a>
+                        </li>
+                    </ul>
+                    <hr class="text-white-50">
+                    <div class="px-3">
+                        <a href="/logout" class="btn btn-outline-light btn-sm w-100">
+                            <i class="bi bi-box-arrow-right"></i> Chiqish
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-10 px-4 py-3">
+                <!-- Header -->
+                <div class="header-gradient">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="/routes/region/<%= route.id %>" class="btn btn-light btn-sm mb-2">
+                                <i class="bi bi-arrow-left"></i> Orqaga
+                            </a>
+                            <h2 class="mb-1"><i class="bi bi-geo-alt-fill"></i> <%= districtName.charAt(0).toUpperCase() + districtName.slice(1) %></h2>
+                            <p class="mb-0 opacity-75"><%= route.name %></p>
+                        </div>
+                        <div class="text-end">
+                            <h3 class="mb-0"><%= phones.length %></h3>
+                            <small>Telefon raqam</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- LEFT: SMS Panel -->
+                    <div class="col-md-4">
+                        <div class="sms-panel">
+                            <h5 class="mb-3"><i class="bi bi-envelope-fill text-primary"></i> SMS Yuborish</h5>
+
+                            <!-- Selected Count -->
+                            <div class="stats-card text-center">
+                                <h2 class="mb-0 text-primary" id="selectedCount">0</h2>
+                                <small class="text-muted">ta telefon tanlandi</small>
+                            </div>
+
+                            <!-- SMS Message -->
+                            <label class="form-label fw-bold">SMS Matni:</label>
+                            <textarea
+                                class="form-control sms-textarea"
+                                id="smsMessage"
+                                rows="6"
+                                maxlength="500"
+                                placeholder="SMS matnini kiriting..."
+                            ><%= route.sms_template || '' %></textarea>
+                            <div class="char-count">
+                                <span id="charCount">0</span> / 500 belgi
+                            </div>
+
+                            <!-- Template Variables -->
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i> O'zgaruvchilar: {phone}, {district}, {time}
+                                </small>
+                            </div>
+
+                            <!-- Send Button -->
+                            <button class="btn btn-primary send-btn w-100 mt-4" id="sendBtn" onclick="sendSMS()" disabled>
+                                <i class="bi bi-send-fill"></i> SMS Yuborish
+                            </button>
+
+                            <!-- Template Quick Actions -->
+                            <div class="mt-3">
+                                <small class="text-muted d-block mb-2">Tez shablon:</small>
+                                <button class="btn btn-sm btn-outline-secondary w-100 mb-2" onclick="setTemplate('Assalomu alaykum! E\'loningiz ko\'rildi. Telefon: {phone}')">
+                                    Standart shablon
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary w-100" onclick="setTemplate('Salom! {district} dan {phone} raqamiga xabar.')">
+                                    Joylashuv bilan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Phone List -->
+                    <div class="col-md-8">
+                        <!-- Select All -->
+                        <div class="select-all-box">
+                            <div class="form-check">
+                                <input class="form-check-input phone-checkbox" type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                <label class="form-check-label fw-bold" for="selectAll">
+                                    <i class="bi bi-check-all"></i> Hammasini tanlash (<%= phones.length %> ta)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Phone List -->
+                        <% if (phones.length === 0) { %>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Hech qanday telefon raqam topilmadi.
+                            </div>
+                        <% } else { %>
+                            <div id="phonesList">
+                                <% phones.forEach((phoneRecord, index) => { %>
+                                    <div class="phone-item" onclick="togglePhoneSelection(this, '<%= phoneRecord.phone %>')">
+                                        <div class="d-flex align-items-start">
+                                            <input
+                                                class="form-check-input phone-checkbox me-3"
+                                                type="checkbox"
+                                                value="<%= phoneRecord.phone %>"
+                                                id="phone_<%= index %>"
+                                                onclick="event.stopPropagation();"
+                                                onchange="updateCount()"
+                                            >
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <h6 class="mb-1">
+                                                        <i class="bi bi-telephone-fill text-success"></i>
+                                                        <strong><%= phoneRecord.phone %></strong>
+                                                    </h6>
+                                                    <span class="time-badge">
+                                                        <i class="bi bi-clock"></i>
+                                                        <%= new Date(phoneRecord.date).toLocaleString('uz-UZ', {
+                                                            day: '2-digit',
+                                                            month: '2-digit',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        }) %>
+                                                    </span>
+                                                </div>
+                                                <% if (phoneRecord.message) { %>
+                                                    <div class="message-preview">
+                                                        <i class="bi bi-chat-text"></i>
+                                                        <%= phoneRecord.message.substring(0, 120) %>...
+                                                    </div>
+                                                    <div class="mt-2">
+                                                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); showMessage('<%= index %>')">
+                                                            <i class="bi bi-eye"></i> E'lonni ko'rish
+                                                        </button>
+                                                    </div>
+                                                <% } %>
+                                                <!-- Hidden full message -->
+                                                <div class="d-none" id="fullMessage_<%= index %>">
+                                                    <%= phoneRecord.message %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- E'lon Modal -->
+    <div class="modal fade" id="messageModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="modal-title"><i class="bi bi-chat-text-fill"></i> To'liq E'lon</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="white-space: pre-wrap; font-size: 1.1em; line-height: 1.6;" id="modalMessageContent">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Character count
+        const smsTextarea = document.getElementById('smsMessage');
+        const charCount = document.getElementById('charCount');
+
+        function updateCharCount() {
+            charCount.textContent = smsTextarea.value.length;
+        }
+
+        smsTextarea.addEventListener('input', updateCharCount);
+        updateCharCount();
+
+        // Toggle phone selection
+        function togglePhoneSelection(element, phone) {
+            const checkbox = element.querySelector('.phone-checkbox');
+            checkbox.checked = !checkbox.checked;
+            updateCount();
+        }
+
+        // Select all
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.phone-item .phone-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            updateCount();
+        }
+
+        // Update count
+        function updateCount() {
+            const selected = document.querySelectorAll('.phone-item .phone-checkbox:checked');
+            document.getElementById('selectedCount').textContent = selected.length;
+            document.getElementById('sendBtn').disabled = selected.length === 0 || !smsTextarea.value.trim();
+
+            // Update visual
+            document.querySelectorAll('.phone-item').forEach(item => {
+                const cb = item.querySelector('.phone-checkbox');
+                if (cb.checked) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        // Set template
+        function setTemplate(text) {
+            smsTextarea.value = text;
+            updateCharCount();
+            updateCount();
+        }
+
+        // Show full message in modal
+        function showMessage(index) {
+            const fullMessage = document.getElementById('fullMessage_' + index).textContent;
+            document.getElementById('modalMessageContent').textContent = fullMessage;
+            const modal = new bootstrap.Modal(document.getElementById('messageModal'));
+            modal.show();
+        }
+
+        // Send SMS
+        async function sendSMS() {
+            const selected = Array.from(document.querySelectorAll('.phone-item .phone-checkbox:checked')).map(cb => cb.value);
+            const message = smsTextarea.value.trim();
+
+            if (selected.length === 0) {
+                alert('Telefon raqamlarni tanlang!');
+                return;
+            }
+
+            if (!message) {
+                alert('SMS matnini kiriting!');
+                return;
+            }
+
+            if (!confirm(`${selected.length} ta raqamga SMS yuborilsinmi?`)) {
+                return;
+            }
+
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Yuborilmoqda...';
+
+            try {
+                const response = await fetch('/routes/send-to-phones', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        route_id: <%= route.id %>,
+                        phones: selected,
+                        message: message
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ Muvaffaqiyatli! ${result.sent} ta SMS yuborildi.`);
+                    document.querySelectorAll('.phone-item .phone-checkbox:checked').forEach(cb => cb.checked = false);
+                    document.getElementById('selectAll').checked = false;
+                    updateCount();
+                } else {
+                    alert(`❌ Xato: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`❌ Xato: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send-fill"></i> SMS Yuborish';
+                updateCount();
+            }
+        }
+
+        // Auto-refresh (har 30 sekundda yangilanadi)
+        setInterval(() => {
+            if (!document.querySelector('.phone-item .phone-checkbox:checked')) {
+                location.reload();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

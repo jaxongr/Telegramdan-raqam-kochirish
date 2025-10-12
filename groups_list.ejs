@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guruhlar - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history/results">
+                <i class="bi bi-archive"></i> Arxiv natijalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">Guruhlar</h1>
+          <div class="btn-group">
+            <a href="/groups/add" class="btn btn-primary">
+              <i class="bi bi-plus-circle"></i> Guruh qo'shish
+            </a>
+            <a href="/groups/telegram-groups" class="btn btn-success">
+              <i class="bi bi-telegram"></i> Telegram Guruhlar
+            </a>
+          </div>
+        </div>
+
+        <!-- Guruhni qidirish -->
+        <div class="card mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-search"></i> Guruhni qidirish va qo'shish</h5>
+          </div>
+          <div class="card-body">
+            <form id="searchGroupForm">
+              <div class="row">
+                <div class="col-md-8">
+                  <label class="form-label">Guruh ID yoki username</label>
+                  <input type="text" id="searchQuery" class="form-control" placeholder="Masalan: -1001234567890 yoki @mygroup" required>
+                  <small class="text-muted">Guruh ID (manfiy raqam) yoki @username kiriting</small>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  <button type="submit" class="btn btn-info w-100">
+                    <i class="bi bi-search"></i> Qidirish
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Qidiruv natijasi -->
+            <div id="searchResult" style="display: none;" class="mt-3">
+              <div class="alert alert-success">
+                <h6 class="mb-3"><i class="bi bi-check-circle"></i> Guruh topildi!</h6>
+                <div class="row">
+                  <div class="col-md-8">
+                    <p class="mb-1"><strong>Nom:</strong> <span id="resultTitle"></span></p>
+                    <p class="mb-1"><strong>ID:</strong> <code id="resultId"></code></p>
+                    <p class="mb-1"><strong>Username:</strong> <span id="resultUsername"></span></p>
+                    <p class="mb-1"><strong>A'zolar:</strong> <span id="resultMembers" class="badge bg-primary"></span></p>
+                    <p class="mb-0"><strong>Tavsif:</strong> <span id="resultDescription" class="text-muted"></span></p>
+                  </div>
+                  <div class="col-md-4 d-flex align-items-center">
+                    <button onclick="addGroupAndScan()" class="btn btn-success w-100">
+                      <i class="bi bi-plus-circle"></i> Qo'shish + Skanerlash
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Xato -->
+            <div id="searchError" style="display: none;" class="mt-3">
+              <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> <span id="errorMessage"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <% if (groups.length === 0) { %>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Hozircha guruhlar yo'q. Yangi guruh qo'shing.
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th style="width: 25%">Nom</th>
+                  <th style="width: 15%">Telegram ID</th>
+                  <th style="width: 10%">A'zolar</th>
+                  <th style="width: 20%">Kalit so'zlar</th>
+                  <th style="width: 10%">Holat</th>
+                  <th style="width: 20%">Amallar</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% groups.forEach(group => { %>
+                  <tr>
+                    <td><strong><%= group.name %></strong></td>
+                    <td><code><%= group.telegram_id %></code></td>
+                    <td>
+                      <% if (group.member_count !== undefined && group.member_count > 0) { %>
+                        <span class="badge bg-primary"><%= group.member_count.toLocaleString() %></span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (group.keywords) { %>
+                        <%= group.keywords.split(',').slice(0, 3).join(', ') %>...
+                      <% } else { %>
+                        <span class="text-muted">Standart</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (group.active) { %>
+                        <span class="badge bg-success">Faol</span>
+                      <% } else { %>
+                        <span class="badge bg-secondary">O'chiq</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <button onclick="joinGroup(<%= group.id %>, '<%= group.name %>')" class="btn btn-sm btn-outline-success me-1">
+                        <i class="bi bi-box-arrow-in-right"></i> Join
+                      </button>
+                      <a href="/groups/edit/<%= group.id %>" class="btn btn-sm btn-outline-primary me-1">
+                        <i class="bi bi-pencil"></i> Tahrirlash
+                      </a>
+                      <button onclick="deleteGroup(<%= group.id %>, '<%= group.name %>')" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i> O'chirish
+                      </button>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let foundGroup = null;
+
+    // Guruhni qidirish
+    document.getElementById('searchGroupForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const query = document.getElementById('searchQuery').value.trim();
+      const searchResult = document.getElementById('searchResult');
+      const searchError = document.getElementById('searchError');
+
+      // Natijalarni yashirish
+      searchResult.style.display = 'none';
+      searchError.style.display = 'none';
+
+      try {
+        const response = await fetch('/groups/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          foundGroup = result.group;
+
+          // Natijalarni ko'rsatish
+          document.getElementById('resultTitle').textContent = result.group.title;
+          document.getElementById('resultId').textContent = result.group.id;
+          document.getElementById('resultUsername').textContent = result.group.username || 'Yo\'q';
+          document.getElementById('resultMembers').textContent = result.group.participantsCount.toLocaleString();
+          document.getElementById('resultDescription').textContent = result.group.description || 'Tavsif yo\'q';
+
+          searchResult.style.display = 'block';
+        } else {
+          document.getElementById('errorMessage').textContent = result.error;
+          searchError.style.display = 'block';
+        }
+      } catch (error) {
+        document.getElementById('errorMessage').textContent = 'Xato: ' + error.message;
+        searchError.style.display = 'block';
+      }
+    });
+
+    // Guruhni qo'shish va skanerlash
+    async function addGroupAndScan() {
+      if (!foundGroup) {
+        alert('Avval guruhni qidiring!');
+        return;
+      }
+
+      if (!confirm(`"${foundGroup.title}" guruhini qo'shib, darhol skanerlashni boshlashni xohlaysizmi?`)) {
+        return;
+      }
+
+      try {
+        // Guruhni qo'shish
+        const addResponse = await fetch('/groups/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            name: foundGroup.title,
+            telegram_id: foundGroup.id,
+            keywords: '',
+            sms_template: ''
+          })
+        });
+
+        if (addResponse.ok) {
+          alert('✅ Guruh qo\'shildi! Endi skanerlashga o\'tyapsiz...');
+          // Skanerlash sahifasiga yo'naltirish
+          window.location.href = '/history';
+        } else {
+          alert('❌ Xato: Guruhni qo\'shib bo\'lmadi');
+        }
+      } catch (error) {
+        alert('❌ Xato: ' + error.message);
+      }
+    }
+
+    // Guruhga join qilish
+    async function joinGroup(groupId, groupName) {
+      if (!confirm(`"${groupName}" guruhiga join qilmoqchimisiz?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/groups/join/${groupId}`, {
+          method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ ' + result.message);
+          window.location.reload();
+        } else {
+          alert('❌ Xato: ' + result.error);
+        }
+      } catch (error) {
+        alert('❌ Xato: ' + error.message);
+      }
+    }
+
+    // Guruhni o'chirish
+    async function deleteGroup(groupId, groupName) {
+      const confirmMessage = `"${groupName}" guruhini o'chirmoqchimisiz?\n\n` +
+        `✓ Telegramdan chiqiladi\n` +
+        `✓ Monitoring to'xtaydi\n` +
+        `✓ Raqamlar va SMS loglar SAQLANADI\n\n` +
+        `Davom etasizmi?`;
+
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/groups/delete/${groupId}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ ' + result.message);
+          window.location.reload();
+        } else {
+          alert('❌ Xato: ' + result.error);
+        }
+      } catch (error) {
+        alert('❌ Xato: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# SERVERDAGI BUYRUQLAR - COPY-PASTE QILING
+
+# 1. Serverga ulanish
+ssh root@188.245.180.98
+
+# 2. Telegram-SMS papkasiga o'tish
+cd /root/telegram-sms
+
+# 3. Yangi kodlarni yuklab olish
+git pull
+
+# 4. Qaysi guruhlar inactive ekanligini ko'rish
+node check_groups.js
+
+# 5. Inactive guruhlarni tuzatish (barcha guruhlarni active qilish)
+node fix_inactive_groups.js
+
+# 6. Monitoring'ni qayta ishga tushirish
+pm2 restart telegram-sms
+
+# 7. Log'ni tekshirish (25 ta guruh topildi ko'rinishi kerak!)
+pm2 logs telegram-sms --lines 50
+
+# KUTILGAN NATIJA:
+# ✅ 25 ta guruh topildi
+# ✅ MUVAFFAQIYATLI: 25 ta guruh monitoring ostida

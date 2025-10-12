@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yangi yo'nalish qo'shish - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history/results">
+                <i class="bi bi-archive"></i> Arxiv natijalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/routes">
+                <i class="bi bi-signpost"></i> Yo'nalishlar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">Yangi yo'nalish qo'shish</h1>
+          <a href="/routes" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Orqaga
+          </a>
+        </div>
+
+        <!-- Success/Error Alerts -->
+        <% if (typeof success !== 'undefined' && success) { %>
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle"></i> <%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <!-- Add Route Form -->
+        <div class="row">
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-body">
+                <form action="/routes/add" method="POST">
+                  <div class="mb-3">
+                    <label for="name" class="form-label">Nom <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" required placeholder="Masalan: Toshkent - Samarqand">
+                    <div class="form-text">Yo'nalishning nomi (masalan: Toshkent - Samarqand)</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="from_keywords" class="form-label">Dan kalit so'zlar <span class="text-danger">*</span></label>
+                    <div class="mb-2">
+                      <label for="fromCitySelect" class="text-muted small">Shahar tanlang (ixtiyoriy)</label>
+                      <div class="input-group">
+                        <select class="form-select" id="fromCitySelect">
+                          <option value="">-- Shahar/Tuman tanlang --</option>
+                          <optgroup label="Toshkent shahri">
+                            <option value="Toshkent">Toshkent</option>
+                            <option value="Yunusobod">Yunusobod</option>
+                            <option value="Chilonzor">Chilonzor</option>
+                            <option value="Olmazor">Olmazor</option>
+                            <option value="Sergeli">Sergeli</option>
+                            <option value="Yakkasaroy">Yakkasaroy</option>
+                            <option value="Mirzo Ulug'bek">Mirzo Ulug'bek</option>
+                            <option value="Bektemir">Bektemir</option>
+                            <option value="Mirobod">Mirobod</option>
+                            <option value="Shayxontohur">Shayxontohur</option>
+                            <option value="Yashnobod">Yashnobod</option>
+                            <option value="Uchtepa">Uchtepa</option>
+                          </optgroup>
+                          <optgroup label="Toshkent viloyati">
+                            <option value="Angren">Angren</option>
+                            <option value="Olmaliq">Olmaliq</option>
+                            <option value="Chirchiq">Chirchiq</option>
+                            <option value="Yangiyul">Yangiyul</option>
+                            <option value="Bekobod">Bekobod</option>
+                            <option value="Ohangaron">Ohangaron</option>
+                            <option value="Nurafshon">Nurafshon</option>
+                            <option value="Bo'ka">Bo'ka</option>
+                            <option value="Bo'stonliq">Bo'stonliq</option>
+                            <option value="Zangiota">Zangiota</option>
+                            <option value="Qibray">Qibray</option>
+                            <option value="Oqqo'rg'on">Oqqo'rg'on</option>
+                            <option value="Parkent">Parkent</option>
+                            <option value="Piskent">Piskent</option>
+                            <option value="O'rtachirchiq">O'rtachirchiq</option>
+                            <option value="Chinoz">Chinoz</option>
+                            <option value="Quyichirchiq">Quyichirchiq</option>
+                            <option value="Yangiyo'l">Yangiyo'l</option>
+                            <option value="Yuqorichirchiq">Yuqorichirchiq</option>
+                          </optgroup>
+                          <optgroup label="Samarqand viloyati">
+                            <option value="Samarqand">Samarqand</option>
+                            <option value="Kattaqo'rg'on">Kattaqo'rg'on</option>
+                            <option value="Urgut">Urgut</option>
+                            <option value="Jomboy">Jomboy</option>
+                            <option value="Ishtixon">Ishtixon</option>
+                            <option value="Bulung'ur">Bulung'ur</option>
+                            <option value="Paxtachi">Paxtachi</option>
+                            <option value="Payariq">Payariq</option>
+                            <option value="Toyloq">Toyloq</option>
+                            <option value="Pastdarg'om">Pastdarg'om</option>
+                            <option value="Narpay">Narpay</option>
+                            <option value="Nurobod">Nurobod</option>
+                            <option value="Oqdaryo">Oqdaryo</option>
+                          </optgroup>
+                          <optgroup label="Farg'ona viloyati">
+                            <option value="Farg'ona">Farg'ona</option>
+                            <option value="Marg'ilon">Marg'ilon</option>
+                            <option value="Qo'qon">Qo'qon</option>
+                            <option value="Quvasoy">Quvasoy</option>
+                            <option value="Rishton">Rishton</option>
+                            <option value="Beshariq">Beshariq</option>
+                            <option value="Bog'dod">Bog'dod</option>
+                            <option value="Buvayda">Buvayda</option>
+                            <option value="Dangara">Dangara</option>
+                            <option value="Yozyovon">Yozyovon</option>
+                            <option value="Qo'shtepa">Qo'shtepa</option>
+                            <option value="Quva">Quva</option>
+                            <option value="Oltiariq">Oltiariq</option>
+                            <option value="So'x">So'x</option>
+                            <option value="Toshloq">Toshloq</option>
+                            <option value="Uchko'prik">Uchko'prik</option>
+                            <option value="O'zbekiston">O'zbekiston</option>
+                            <option value="Furqat">Furqat</option>
+                          </optgroup>
+                          <optgroup label="Andijon viloyati">
+                            <option value="Andijon">Andijon</option>
+                            <option value="Xonobod">Xonobod</option>
+                            <option value="Asaka">Asaka</option>
+                            <option value="Baliqchi">Baliqchi</option>
+                            <option value="Bo'z">Bo'z</option>
+                            <option value="Buloqboshi">Buloqboshi</option>
+                            <option value="Jalaquduq">Jalaquduq</option>
+                            <option value="Izboskan">Izboskan</option>
+                            <option value="Qo'rg'ontepa">Qo'rg'ontepa</option>
+                            <option value="Marhamat">Marhamat</option>
+                            <option value="Oltinko'l">Oltinko'l</option>
+                            <option value="Paxtaobod">Paxtaobod</option>
+                            <option value="Ulug'nor">Ulug'nor</option>
+                            <option value="Xo'jaobod">Xo'jaobod</option>
+                            <option value="Shahrixon">Shahrixon</option>
+                          </optgroup>
+                          <optgroup label="Namangan viloyati">
+                            <option value="Namangan">Namangan</option>
+                            <option value="Chortoq">Chortoq</option>
+                            <option value="Chust">Chust</option>
+                            <option value="Kosonsoy">Kosonsoy</option>
+                            <option value="Mingbuloq">Mingbuloq</option>
+                            <option value="Norin">Norin</option>
+                            <option value="Pop">Pop</option>
+                            <option value="To'raqo'rg'on">To'raqo'rg'on</option>
+                            <option value="Uchqo'rg'on">Uchqo'rg'on</option>
+                            <option value="Uychi">Uychi</option>
+                            <option value="Yangiqo'rg'on">Yangiqo'rg'on</option>
+                          </optgroup>
+                          <optgroup label="Buxoro viloyati">
+                            <option value="Buxoro">Buxoro</option>
+                            <option value="Kogon">Kogon</option>
+                            <option value="Olot">Olot</option>
+                            <option value="G'ijduvon">G'ijduvon</option>
+                            <option value="Jondor">Jondor</option>
+                            <option value="Kogon tuman">Kogon tuman</option>
+                            <option value="Qorako'l">Qorako'l</option>
+                            <option value="Qorovulbozor">Qorovulbozor</option>
+                            <option value="Peshku">Peshku</option>
+                            <option value="Romitan">Romitan</option>
+                            <option value="Shofirkon">Shofirkon</option>
+                            <option value="Vobkent">Vobkent</option>
+                          </optgroup>
+                          <optgroup label="Navoiy viloyati">
+                            <option value="Navoiy">Navoiy</option>
+                            <option value="Zarafshon">Zarafshon</option>
+                            <option value="Uchquduq">Uchquduq</option>
+                            <option value="Nurota">Nurota</option>
+                            <option value="Konimex">Konimex</option>
+                            <option value="Karmana">Karmana</option>
+                            <option value="Qiziltepa">Qiziltepa</option>
+                            <option value="Xatirchi">Xatirchi</option>
+                            <option value="Tomdi">Tomdi</option>
+                          </optgroup>
+                          <optgroup label="Jizzax viloyati">
+                            <option value="Jizzax">Jizzax</option>
+                            <option value="Zomin">Zomin</option>
+                            <option value="Do'stlik">Do'stlik</option>
+                            <option value="Arnasoy">Arnasoy</option>
+                            <option value="Baxmal">Baxmal</option>
+                            <option value="G'allaorol">G'allaorol</option>
+                            <option value="Sharof Rashidov">Sharof Rashidov</option>
+                            <option value="Forish">Forish</option>
+                            <option value="Paxtakor">Paxtakor</option>
+                            <option value="Yangiobod">Yangiobod</option>
+                            <option value="Zafarobod">Zafarobod</option>
+                            <option value="Zarbdor">Zarbdor</option>
+                          </optgroup>
+                          <optgroup label="Sirdaryo viloyati">
+                            <option value="Guliston">Guliston</option>
+                            <option value="Yangiyer">Yangiyer</option>
+                            <option value="Shirin">Shirin</option>
+                            <option value="Boyovut">Boyovut</option>
+                            <option value="Oqoltin">Oqoltin</option>
+                            <option value="Mirzaobod">Mirzaobod</option>
+                            <option value="Sardoba">Sardoba</option>
+                            <option value="Xovos">Xovos</option>
+                            <option value="Sayxunobod">Sayxunobod</option>
+                          </optgroup>
+                          <optgroup label="Qashqadaryo viloyati">
+                            <option value="Qarshi">Qarshi</option>
+                            <option value="Shahrisabz">Shahrisabz</option>
+                            <option value="G'uzor">G'uzor</option>
+                            <option value="Koson">Koson</option>
+                            <option value="Kitob">Kitob</option>
+                            <option value="Muborak">Muborak</option>
+                            <option value="Nishon">Nishon</option>
+                            <option value="Chiroqchi">Chiroqchi</option>
+                            <option value="Qamashi">Qamashi</option>
+                            <option value="Yakkabog'">Yakkabog'</option>
+                            <option value="Mirishkor">Mirishkor</option>
+                            <option value="Dehqonobod">Dehqonobod</option>
+                            <option value="Kasbi">Kasbi</option>
+                          </optgroup>
+                          <optgroup label="Surxondaryo viloyati">
+                            <option value="Termiz">Termiz</option>
+                            <option value="Denov">Denov</option>
+                            <option value="Boysun">Boysun</option>
+                            <option value="Jarqo'rg'on">Jarqo'rg'on</option>
+                            <option value="Qiziriq">Qiziriq</option>
+                            <option value="Qo'mqo'rg'on">Qo'mqo'rg'on</option>
+                            <option value="Muzrobod">Muzrobod</option>
+                            <option value="Oltinsoy">Oltinsoy</option>
+                            <option value="Sariosiyo">Sariosiyo</option>
+                            <option value="Sherobod">Sherobod</option>
+                            <option value="Sho'rchi">Sho'rchi</option>
+                            <option value="Uzun">Uzun</option>
+                            <option value="Angor">Angor</option>
+                          </optgroup>
+                          <optgroup label="Xorazm viloyati">
+                            <option value="Urganch">Urganch</option>
+                            <option value="Xiva">Xiva</option>
+                            <option value="Xonqa">Xonqa</option>
+                            <option value="Bog'ot">Bog'ot</option>
+                            <option value="Gurlan">Gurlan</option>
+                            <option value="Qo'shko'pir">Qo'shko'pir</option>
+                            <option value="Shovot">Shovot</option>
+                            <option value="Tuproqqal'a">Tuproqqal'a</option>
+                            <option value="Xazorasp">Xazorasp</option>
+                            <option value="Yangiariq">Yangiariq</option>
+                            <option value="Yangibozor">Yangibozor</option>
+                          </optgroup>
+                          <optgroup label="Qoraqalpog'iston Respublikasi">
+                            <option value="Nukus">Nukus</option>
+                            <option value="Beruniy">Beruniy</option>
+                            <option value="Amudaryo">Amudaryo</option>
+                            <option value="Bo'zatov">Bo'zatov</option>
+                            <option value="Ellikqal'a">Ellikqal'a</option>
+                            <option value="Kegeyli">Kegeyli</option>
+                            <option value="Mo'ynoq">Mo'ynoq</option>
+                            <option value="Nukus tuman">Nukus tuman</option>
+                            <option value="Qonliko'l">Qonliko'l</option>
+                            <option value="Qo'ng'irot">Qo'ng'irot</option>
+                            <option value="Shumanay">Shumanay</option>
+                            <option value="Taxtako'pir">Taxtako'pir</option>
+                            <option value="To'rtko'l">To'rtko'l</option>
+                            <option value="Xo'jayli">Xo'jayli</option>
+                            <option value="Chimboy">Chimboy</option>
+                          </optgroup>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" onclick="addCityKeywords('fromCitySelect', 'from_keywords')">
+                          Qo'shish
+                        </button>
+                      </div>
+                    </div>
+                    <textarea class="form-control" id="from_keywords" name="from_keywords" rows="3" required placeholder="toshkent,ташкент (vergul bilan ajratilgan)"></textarea>
+                    <div class="form-text">Xabar qayerdan jo'natilganini aniqlash uchun kalit so'zlar (vergul bilan ajratilgan)</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="to_keywords" class="form-label">Ga kalit so'zlar <span class="text-danger">*</span></label>
+                    <div class="mb-2">
+                      <label for="toCitySelect" class="text-muted small">Shahar tanlang (ixtiyoriy)</label>
+                      <div class="input-group">
+                        <select class="form-select" id="toCitySelect">
+                          <option value="">-- Shahar/Tuman tanlang --</option>
+                          <optgroup label="Toshkent shahri">
+                            <option value="Toshkent">Toshkent</option>
+                            <option value="Yunusobod">Yunusobod</option>
+                            <option value="Chilonzor">Chilonzor</option>
+                            <option value="Olmazor">Olmazor</option>
+                            <option value="Sergeli">Sergeli</option>
+                            <option value="Yakkasaroy">Yakkasaroy</option>
+                            <option value="Mirzo Ulug'bek">Mirzo Ulug'bek</option>
+                            <option value="Bektemir">Bektemir</option>
+                            <option value="Mirobod">Mirobod</option>
+                            <option value="Shayxontohur">Shayxontohur</option>
+                            <option value="Yashnobod">Yashnobod</option>
+                            <option value="Uchtepa">Uchtepa</option>
+                          </optgroup>
+                          <optgroup label="Toshkent viloyati">
+                            <option value="Angren">Angren</option>
+                            <option value="Olmaliq">Olmaliq</option>
+                            <option value="Chirchiq">Chirchiq</option>
+                            <option value="Yangiyul">Yangiyul</option>
+                            <option value="Bekobod">Bekobod</option>
+                            <option value="Ohangaron">Ohangaron</option>
+                            <option value="Nurafshon">Nurafshon</option>
+                            <option value="Bo'ka">Bo'ka</option>
+                            <option value="Bo'stonliq">Bo'stonliq</option>
+                            <option value="Zangiota">Zangiota</option>
+                            <option value="Qibray">Qibray</option>
+                            <option value="Oqqo'rg'on">Oqqo'rg'on</option>
+                            <option value="Parkent">Parkent</option>
+                            <option value="Piskent">Piskent</option>
+                            <option value="O'rtachirchiq">O'rtachirchiq</option>
+                            <option value="Chinoz">Chinoz</option>
+                            <option value="Quyichirchiq">Quyichirchiq</option>
+                            <option value="Yangiyo'l">Yangiyo'l</option>
+                            <option value="Yuqorichirchiq">Yuqorichirchiq</option>
+                          </optgroup>
+                          <optgroup label="Samarqand viloyati">
+                            <option value="Samarqand">Samarqand</option>
+                            <option value="Kattaqo'rg'on">Kattaqo'rg'on</option>
+                            <option value="Urgut">Urgut</option>
+                            <option value="Jomboy">Jomboy</option>
+                            <option value="Ishtixon">Ishtixon</option>
+                            <option value="Bulung'ur">Bulung'ur</option>
+                            <option value="Paxtachi">Paxtachi</option>
+                            <option value="Payariq">Payariq</option>
+                            <option value="Toyloq">Toyloq</option>
+                            <option value="Pastdarg'om">Pastdarg'om</option>
+                            <option value="Narpay">Narpay</option>
+                            <option value="Nurobod">Nurobod</option>
+                            <option value="Oqdaryo">Oqdaryo</option>
+                          </optgroup>
+                          <optgroup label="Farg'ona viloyati">
+                            <option value="Farg'ona">Farg'ona</option>
+                            <option value="Marg'ilon">Marg'ilon</option>
+                            <option value="Qo'qon">Qo'qon</option>
+                            <option value="Quvasoy">Quvasoy</option>
+                            <option value="Rishton">Rishton</option>
+                            <option value="Beshariq">Beshariq</option>
+                            <option value="Bog'dod">Bog'dod</option>
+                            <option value="Buvayda">Buvayda</option>
+                            <option value="Dangara">Dangara</option>
+                            <option value="Yozyovon">Yozyovon</option>
+                            <option value="Qo'shtepa">Qo'shtepa</option>
+                            <option value="Quva">Quva</option>
+                            <option value="Oltiariq">Oltiariq</option>
+                            <option value="So'x">So'x</option>
+                            <option value="Toshloq">Toshloq</option>
+                            <option value="Uchko'prik">Uchko'prik</option>
+                            <option value="O'zbekiston">O'zbekiston</option>
+                            <option value="Furqat">Furqat</option>
+                          </optgroup>
+                          <optgroup label="Andijon viloyati">
+                            <option value="Andijon">Andijon</option>
+                            <option value="Xonobod">Xonobod</option>
+                            <option value="Asaka">Asaka</option>
+                            <option value="Baliqchi">Baliqchi</option>
+                            <option value="Bo'z">Bo'z</option>
+                            <option value="Buloqboshi">Buloqboshi</option>
+                            <option value="Jalaquduq">Jalaquduq</option>
+                            <option value="Izboskan">Izboskan</option>
+                            <option value="Qo'rg'ontepa">Qo'rg'ontepa</option>
+                            <option value="Marhamat">Marhamat</option>
+                            <option value="Oltinko'l">Oltinko'l</option>
+                            <option value="Paxtaobod">Paxtaobod</option>
+                            <option value="Ulug'nor">Ulug'nor</option>
+                            <option value="Xo'jaobod">Xo'jaobod</option>
+                            <option value="Shahrixon">Shahrixon</option>
+                          </optgroup>
+                          <optgroup label="Namangan viloyati">
+                            <option value="Namangan">Namangan</option>
+                            <option value="Chortoq">Chortoq</option>
+                            <option value="Chust">Chust</option>
+                            <option value="Kosonsoy">Kosonsoy</option>
+                            <option value="Mingbuloq">Mingbuloq</option>
+                            <option value="Norin">Norin</option>
+                            <option value="Pop">Pop</option>
+                            <option value="To'raqo'rg'on">To'raqo'rg'on</option>
+                            <option value="Uchqo'rg'on">Uchqo'rg'on</option>
+                            <option value="Uychi">Uychi</option>
+                            <option value="Yangiqo'rg'on">Yangiqo'rg'on</option>
+                          </optgroup>
+                          <optgroup label="Buxoro viloyati">
+                            <option value="Buxoro">Buxoro</option>
+                            <option value="Kogon">Kogon</option>
+                            <option value="Olot">Olot</option>
+                            <option value="G'ijduvon">G'ijduvon</option>
+                            <option value="Jondor">Jondor</option>
+                            <option value="Kogon tuman">Kogon tuman</option>
+                            <option value="Qorako'l">Qorako'l</option>
+                            <option value="Qorovulbozor">Qorovulbozor</option>
+                            <option value="Peshku">Peshku</option>
+                            <option value="Romitan">Romitan</option>
+                            <option value="Shofirkon">Shofirkon</option>
+                            <option value="Vobkent">Vobkent</option>
+                          </optgroup>
+                          <optgroup label="Navoiy viloyati">
+                            <option value="Navoiy">Navoiy</option>
+                            <option value="Zarafshon">Zarafshon</option>
+                            <option value="Uchquduq">Uchquduq</option>
+                            <option value="Nurota">Nurota</option>
+                            <option value="Konimex">Konimex</option>
+                            <option value="Karmana">Karmana</option>
+                            <option value="Qiziltepa">Qiziltepa</option>
+                            <option value="Xatirchi">Xatirchi</option>
+                            <option value="Tomdi">Tomdi</option>
+                          </optgroup>
+                          <optgroup label="Jizzax viloyati">
+                            <option value="Jizzax">Jizzax</option>
+                            <option value="Zomin">Zomin</option>
+                            <option value="Do'stlik">Do'stlik</option>
+                            <option value="Arnasoy">Arnasoy</option>
+                            <option value="Baxmal">Baxmal</option>
+                            <option value="G'allaorol">G'allaorol</option>
+                            <option value="Sharof Rashidov">Sharof Rashidov</option>
+                            <option value="Forish">Forish</option>
+                            <option value="Paxtakor">Paxtakor</option>
+                            <option value="Yangiobod">Yangiobod</option>
+                            <option value="Zafarobod">Zafarobod</option>
+                            <option value="Zarbdor">Zarbdor</option>
+                          </optgroup>
+                          <optgroup label="Sirdaryo viloyati">
+                            <option value="Guliston">Guliston</option>
+                            <option value="Yangiyer">Yangiyer</option>
+                            <option value="Shirin">Shirin</option>
+                            <option value="Boyovut">Boyovut</option>
+                            <option value="Oqoltin">Oqoltin</option>
+                            <option value="Mirzaobod">Mirzaobod</option>
+                            <option value="Sardoba">Sardoba</option>
+                            <option value="Xovos">Xovos</option>
+                            <option value="Sayxunobod">Sayxunobod</option>
+                          </optgroup>
+                          <optgroup label="Qashqadaryo viloyati">
+                            <option value="Qarshi">Qarshi</option>
+                            <option value="Shahrisabz">Shahrisabz</option>
+                            <option value="G'uzor">G'uzor</option>
+                            <option value="Koson">Koson</option>
+                            <option value="Kitob">Kitob</option>
+                            <option value="Muborak">Muborak</option>
+                            <option value="Nishon">Nishon</option>
+                            <option value="Chiroqchi">Chiroqchi</option>
+                            <option value="Qamashi">Qamashi</option>
+                            <option value="Yakkabog'">Yakkabog'</option>
+                            <option value="Mirishkor">Mirishkor</option>
+                            <option value="Dehqonobod">Dehqonobod</option>
+                            <option value="Kasbi">Kasbi</option>
+                          </optgroup>
+                          <optgroup label="Surxondaryo viloyati">
+                            <option value="Termiz">Termiz</option>
+                            <option value="Denov">Denov</option>
+                            <option value="Boysun">Boysun</option>
+                            <option value="Jarqo'rg'on">Jarqo'rg'on</option>
+                            <option value="Qiziriq">Qiziriq</option>
+                            <option value="Qo'mqo'rg'on">Qo'mqo'rg'on</option>
+                            <option value="Muzrobod">Muzrobod</option>
+                            <option value="Oltinsoy">Oltinsoy</option>
+                            <option value="Sariosiyo">Sariosiyo</option>
+                            <option value="Sherobod">Sherobod</option>
+                            <option value="Sho'rchi">Sho'rchi</option>
+                            <option value="Uzun">Uzun</option>
+                            <option value="Angor">Angor</option>
+                          </optgroup>
+                          <optgroup label="Xorazm viloyati">
+                            <option value="Urganch">Urganch</option>
+                            <option value="Xiva">Xiva</option>
+                            <option value="Xonqa">Xonqa</option>
+                            <option value="Bog'ot">Bog'ot</option>
+                            <option value="Gurlan">Gurlan</option>
+                            <option value="Qo'shko'pir">Qo'shko'pir</option>
+                            <option value="Shovot">Shovot</option>
+                            <option value="Tuproqqal'a">Tuproqqal'a</option>
+                            <option value="Xazorasp">Xazorasp</option>
+                            <option value="Yangiariq">Yangiariq</option>
+                            <option value="Yangibozor">Yangibozor</option>
+                          </optgroup>
+                          <optgroup label="Qoraqalpog'iston Respublikasi">
+                            <option value="Nukus">Nukus</option>
+                            <option value="Beruniy">Beruniy</option>
+                            <option value="Amudaryo">Amudaryo</option>
+                            <option value="Bo'zatov">Bo'zatov</option>
+                            <option value="Ellikqal'a">Ellikqal'a</option>
+                            <option value="Kegeyli">Kegeyli</option>
+                            <option value="Mo'ynoq">Mo'ynoq</option>
+                            <option value="Nukus tuman">Nukus tuman</option>
+                            <option value="Qonliko'l">Qonliko'l</option>
+                            <option value="Qo'ng'irot">Qo'ng'irot</option>
+                            <option value="Shumanay">Shumanay</option>
+                            <option value="Taxtako'pir">Taxtako'pir</option>
+                            <option value="To'rtko'l">To'rtko'l</option>
+                            <option value="Xo'jayli">Xo'jayli</option>
+                            <option value="Chimboy">Chimboy</option>
+                          </optgroup>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" onclick="addCityKeywords('toCitySelect', 'to_keywords')">
+                          Qo'shish
+                        </button>
+                      </div>
+                    </div>
+                    <textarea class="form-control" id="to_keywords" name="to_keywords" rows="3" required placeholder="samarqand,самарканд (vergul bilan ajratilgan)"></textarea>
+                    <div class="form-text">Xabar qayerga jo'natilganini aniqlash uchun kalit so'zlar (vergul bilan ajratilgan)</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="sms_template" class="form-label">SMS shablon <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="sms_template" name="sms_template" rows="4" required placeholder="Assalomu alaykum! {{phone}} raqam topildi."></textarea>
+                    <div class="form-text">SMS matni. <code>{{phone}}</code> o'rniga topilgan raqam qo'yiladi</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="time_window_minutes" class="form-label">Vaqt oynasi (daqiqa) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="time_window_minutes" name="time_window_minutes" value="30" min="1" required>
+                    <div class="form-text">Oxirgi necha daqiqadagi xabarlarni qidirish (masalan: 30)</div>
+                  </div>
+
+                  <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-check-circle"></i> Saqlash
+                    </button>
+                    <a href="/routes" class="btn btn-secondary">
+                      <i class="bi bi-x-circle"></i> Bekor qilish
+                    </a>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="card bg-light">
+              <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-info-circle"></i> Yordam</h5>
+                <p class="card-text small">
+                  <strong>Yo'nalish nima?</strong><br>
+                  Yo'nalish - bu muayyan yo'nalish bo'yicha xabarlarni qidirish va SMS yuborish uchun qoidalar to'plami.
+                </p>
+                <hr>
+                <p class="card-text small">
+                  <strong>Kalit so'zlar qanday ishlaydi?</strong><br>
+                  Telegram xabarlarida "dan" va "ga" kalit so'zlarni qidiradi va mos kelsa, yo'nalish faollashadi.
+                </p>
+                <hr>
+                <p class="card-text small">
+                  <strong>SMS shablon:</strong><br>
+                  <code>{{phone}}</code> - topilgan telefon raqam<br>
+                  Misol: "Assalomu alaykum! {{phone}} raqam topildi."
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const cityKeywords = {
+      'Toshkent': 'toshkent,ташкент,тошкент,tashkent',
+      'Yunusobod': 'yunusobod,юнусобод',
+      'Chilonzor': 'chilonzor,чилонзор',
+      'Olmazor': 'olmazor,олмазор',
+      'Sergeli': 'sergeli,сергели',
+      'Yakkasaroy': 'yakkasaroy,яккасарой',
+      "Mirzo Ulug'bek": "mirzo ulugbek,mirzo ulug'bek,мирзо улугбек",
+      'Bektemir': 'bektemir,бектемир',
+      'Mirobod': 'mirobod,миробод',
+      'Shayxontohur': 'shayxontohur,shaykhontohur,шайхонтохур',
+      'Yashnobod': 'yashnobod,яшнобод',
+      'Uchtepa': 'uchtepa,учтепа',
+      'Angren': 'angren,ангрен',
+      'Olmaliq': 'olmaliq,almalyk,алмалык',
+      'Chirchiq': 'chirchiq,chirchik,чирчик',
+      'Yangiyul': "yangiyul,yangiyo'l,янгиюль",
+      'Bekobod': 'bekobod,bekabad,бекабад,бекобод',
+      'Ohangaron': 'ohangaron,ахангаран',
+      'Nurafshon': 'nurafshon,нурафшон',
+      "Bo'ka": "bo'ka,boka,бока",
+      "Bo'stonliq": "bo'stonliq,bostonliq,бостонлиқ",
+      'Zangiota': 'zangiota,зангиота',
+      'Qibray': 'qibray,kibray,кибрай',
+      "Oqqo'rg'on": "oqqo'rg'on,oqqorgon,оққорғон",
+      'Parkent': 'parkent,паркент',
+      'Piskent': 'piskent,пискент',
+      "O'rtachirchiq": "o'rtachirchiq,ortachirchiq,ўртачирчиқ",
+      'Chinoz': 'chinoz,чиноз',
+      'Quyichirchiq': 'quyichirchiq,куйичирчиқ',
+      "Yangiyo'l": "yangiyo'l,yangiyol,янгиёл",
+      'Yuqorichirchiq': 'yuqorichirchiq,юқоричирчиқ',
+      'Samarqand': 'samarqand,samarkand,самарканд',
+      "Kattaqo'rg'on": "kattaqo'rg'on,kattaqorgon,kattakurgan,каттақўрғон,каттакурган",
+      'Urgut': 'urgut,ургут',
+      'Jomboy': 'jomboy,джомбой',
+      'Ishtixon': 'ishtixon,иштихон',
+      "Bulung'ur": "bulung'ur,bulungur,булунғур",
+      'Paxtachi': 'paxtachi,пахтачи',
+      'Payariq': 'payariq,паярик',
+      'Toyloq': 'toyloq,тойлоқ',
+      "Pastdarg'om": "pastdarg'om,pastdargom,пастдарғом",
+      'Narpay': 'narpay,нарпай',
+      'Nurobod': 'nurobod,нуробод',
+      'Oqdaryo': 'oqdaryo,ақдарё',
+      "Farg'ona": 'fargona,fergana,фергана,ферғона,фаргона',
+      "Marg'ilon": 'margilon,margilan,маргилан',
+      "Qo'qon": 'qoqon,kokand,коканд',
+      'Quvasoy': 'quvasoy,kuvasoy,кувасой',
+      'Rishton': 'rishton,риштон',
+      'Beshariq': 'beshariq,бешариқ',
+      "Bog'dod": "bog'dod,bogdod,боғдод",
+      'Buvayda': 'buvayda,бувайда',
+      'Dangara': 'dangara,данғара',
+      'Yozyovon': 'yozyovon,ёзёвон',
+      "Qo'shtepa": "qo'shtepa,qoshtepa,қўштепа",
+      'Quva': 'quva,кува',
+      'Oltiariq': 'oltiariq,олтиариқ',
+      "So'x": "so'x,sox,сўх",
+      'Toshloq': 'toshloq,тошлоқ',
+      "Uchko'prik": "uchko'prik,uchkoprik,учкўприк",
+      "O'zbekiston": "o'zbekiston,ozbekiston,ўзбекистон",
+      'Furqat': 'furqat,фурқат',
+      'Andijon': 'andijon,андижон,андижан,andijan',
+      'Xonobod': 'xonobod,khanabad,хонобод',
+      'Asaka': 'asaka,асака',
+      'Baliqchi': 'baliqchi,балиқчи',
+      "Bo'z": "bo'z,boz,боз",
+      'Buloqboshi': 'buloqboshi,булоқбоши',
+      'Jalaquduq': 'jalaquduq,jalalkuduk,жалалқудуқ',
+      'Izboskan': 'izboskan,избоскан',
+      "Qo'rg'ontepa": "qo'rg'ontepa,qorgontepa,qurgontepa,қўрғонтепа",
+      'Marhamat': 'marhamat,мархамат',
+      "Oltinko'l": "oltinko'l,oltinkol,олтинкўл",
+      'Paxtaobod': 'paxtaobod,пахтаобод',
+      "Ulug'nor": "ulug'nor,ulugnor,улуғнор",
+      "Xo'jaobod": "xo'jaobod,khojaobod,хўжаобод",
+      'Shahrixon': 'shahrixon,шахрихон',
+      'Namangan': 'namangan,наманган',
+      'Chortoq': 'chortoq,чортоқ',
+      'Chust': 'chust,чуст',
+      'Kosonsoy': 'kosonsoy,косонсой',
+      'Mingbuloq': 'mingbuloq,мингбулоқ',
+      'Norin': 'norin,норин',
+      'Pop': 'pop,поп',
+      "To'raqo'rg'on": "to'raqo'rg'on,toraqorgon,turakurgan,тўрақўрғон",
+      "Uchqo'rg'on": "uchqo'rg'on,uchqorgon,учқўрғон",
+      'Uychi': 'uychi,уйчи',
+      "Yangiqo'rg'on": "yangiqo'rg'on,yangiqorgon,янгиқўрғон",
+      'Buxoro': 'buxoro,bukhara,бухара',
+      'Kogon': 'kogon,kagan,коган',
+      'Olot': 'olot,олот',
+      "G'ijduvon": "g'ijduvon,gijduvan,гиждувон",
+      'Jondor': 'jondor,жондор',
+      'Kogon tuman': 'kogon tuman,коган туман',
+      "Qorako'l": "qorako'l,qorakol,каракуль,қоракўл",
+      'Qorovulbozor': 'qorovulbozor,қоровулбозор',
+      'Peshku': 'peshku,пешку',
+      'Romitan': 'romitan,ромитан',
+      'Shofirkon': 'shofirkon,шофиркон',
+      'Vobkent': 'vobkent,вобкент',
+      'Navoiy': 'navoiy,navoi,навои',
+      'Zarafshon': 'zarafshon,зарафшон',
+      'Uchquduq': 'uchquduq,учқудуқ',
+      'Nurota': 'nurota,nurата,нурота',
+      'Konimex': 'konimex,конимех',
+      'Karmana': 'karmana,кармана',
+      'Qiziltepa': 'qiziltepa,қизилтепа',
+      'Xatirchi': 'xatirchi,хатирчи',
+      'Tomdi': 'tomdi,томди',
+      'Jizzax': 'jizzax,jizzakh,джизак',
+      'Zomin': 'zomin,зомин',
+      "Do'stlik": "do'stlik,dostlik,дўстлик",
+      'Arnasoy': 'arnasoy,арнасой',
+      'Baxmal': 'baxmal,бахмал',
+      "G'allaorol": "g'allaorol,gallaorol,ғаллаорол",
+      'Sharof Rashidov': 'sharof rashidov,шароф рашидов',
+      'Forish': 'forish,фориш',
+      'Paxtakor': 'paxtakor,пахтакор',
+      'Yangiobod': 'yangiobod,янгиобод',
+      'Zafarobod': 'zafarobod,зафаробод',
+      'Zarbdor': 'zarbdor,зарбдор',
+      'Guliston': 'guliston,gulistan,гулистан',
+      'Yangiyer': 'yangiyer,yangier,янгиер',
+      'Shirin': 'shirin,ширин',
+      'Boyovut': 'boyovut,боёвут',
+      'Oqoltin': 'oqoltin,ақолтин',
+      'Mirzaobod': 'mirzaobod,мирзаобод',
+      'Sardoba': 'sardoba,сардоба',
+      'Xovos': 'xovos,khovos,ховос',
+      'Sayxunobod': 'sayxunobod,сайхунобод',
+      'Qarshi': 'qarshi,karshi,карши',
+      'Shahrisabz': 'shahrisabz,shahrisabz,шахрисабз',
+      "G'uzor": "g'uzor,guzor,guzar,ғузор",
+      'Koson': 'koson,косон',
+      'Kitob': 'kitob,китоб',
+      'Muborak': 'muborak,мубарак',
+      'Nishon': 'nishon,нишон',
+      'Chiroqchi': 'chiroqchi,чироқчи',
+      'Qamashi': 'qamashi,қамаши',
+      "Yakkabog'": "yakkabog',yakkabog,яккабоғ",
+      'Mirishkor': 'mirishkor,миришкор',
+      'Dehqonobod': 'dehqonobod,dekhkanabad,дехқонобод',
+      'Kasbi': 'kasbi,касби',
+      'Termiz': 'termiz,termez,термез,термиз',
+      'Denov': 'denov,denau,денов,денау',
+      'Boysun': 'boysun,бойсун',
+      "Jarqo'rg'on": "jarqo'rg'on,jarqorgon,жарқўрғон",
+      'Qiziriq': 'qiziriq,қизириқ',
+      "Qo'mqo'rg'on": "qo'mqo'rg'on,qomqorgon,қўмқўрғон",
+      'Muzrobod': 'muzrobod,музрабод',
+      'Oltinsoy': 'oltinsoy,олтинсой',
+      'Sariosiyo': 'sariosiyo,сариосиё',
+      'Sherobod': 'sherobod,шеробод',
+      "Sho'rchi": "sho'rchi,shorchi,шўрчи",
+      'Uzun': 'uzun,узун',
+      'Angor': 'angor,ангор',
+      'Urganch': 'urganch,urgench,ургенч',
+      'Xiva': 'xiva,khiva,хива',
+      'Xonqa': 'xonqa,khonka,хонқа',
+      "Bog'ot": "bog'ot,bogot,боғот",
+      'Gurlan': 'gurlan,гурлан',
+      "Qo'shko'pir": "qo'shko'pir,qoshkopir,қўшкўпир",
+      'Shovot': 'shovot,шовот',
+      "Tuproqqal'a": "tuproqqal'a,tuproqqala,тупроққалъа",
+      'Xazorasp': 'xazorasp,khorezm,хазорасп',
+      'Yangiariq': 'yangiariq,янгиариқ',
+      'Yangibozor': 'yangibozor,янгибозор',
+      'Nukus': 'nukus,нукус',
+      'Beruniy': 'beruniy,беруний',
+      'Amudaryo': 'amudaryo,амударё',
+      "Bo'zatov": "bo'zatov,bozatov,бўзатов",
+      "Ellikqal'a": "ellikqal'a,ellikqala,элликқалъа",
+      'Kegeyli': 'kegeyli,кегейли',
+      "Mo'ynoq": "mo'ynoq,moynoq,muynak,муйнақ",
+      'Nukus tuman': 'nukus tuman,нукус туман',
+      "Qonliko'l": "qonliko'l,qonlikol,қонликўл",
+      "Qo'ng'irot": "qo'ng'irot,qongirot,kungirot,қўнғирот",
+      'Shumanay': 'shumanay,шуманай',
+      "Taxtako'pir": "taxtako'pir,taxtakopir,тахтакўпир",
+      "To'rtko'l": "to'rtko'l,tortkol,turtkul,тўрткўл",
+      "Xo'jayli": "xo'jayli,khojayli,хўжайли",
+      'Chimboy': 'chimboy,chimbay,чимбой'
+    };
+
+    function addCityKeywords(selectId, textareaId) {
+      const select = document.getElementById(selectId);
+      const textarea = document.getElementById(textareaId);
+      const city = select.value;
+
+      if (!city) return;
+
+      const keywords = cityKeywords[city];
+      const current = textarea.value.trim();
+
+      if (current) {
+        // Check if not already added
+        if (!current.includes(keywords.split(',')[0])) {
+          textarea.value = current + ',' + keywords;
+        }
+      } else {
+        textarea.value = keywords;
+      }
+
+      select.value = ''; // Reset select
+    }
+  </script>
+</body>
+</html>

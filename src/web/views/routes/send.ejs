@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMS yuborish - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+    .preview-box {
+      background: #f8f9fa;
+      border-left: 4px solid #0d6efd;
+      padding: 1rem;
+      border-radius: 0.25rem;
+    }
+    .phone-badge {
+      display: inline-block;
+      margin: 0.25rem;
+    }
+    .spinner-border-sm {
+      width: 1rem;
+      height: 1rem;
+      border-width: 0.15em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history/results">
+                <i class="bi bi-archive"></i> Arxiv natijalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/routes">
+                <i class="bi bi-signpost"></i> Yo'nalishlar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">SMS yuborish</h1>
+          <a href="/routes" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Orqaga
+          </a>
+        </div>
+
+        <!-- Success/Error Alerts -->
+        <% if (typeof success !== 'undefined' && success) { %>
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle"></i> <%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <div class="row">
+          <div class="col-lg-8">
+            <!-- Route Details Card -->
+            <div class="card mb-3">
+              <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-signpost"></i> Yo'nalish ma'lumotlari</h5>
+              </div>
+              <div class="card-body">
+                <h4 class="card-title"><%= route.name %></h4>
+                <div class="row mt-3">
+                  <div class="col-md-6">
+                    <p class="mb-2">
+                      <strong>Dan kalit so'zlar:</strong><br>
+                      <span class="text-muted"><%= route.from_keywords %></span>
+                    </p>
+                    <p class="mb-2">
+                      <strong>Ga kalit so'zlar:</strong><br>
+                      <span class="text-muted"><%= route.to_keywords %></span>
+                    </p>
+                  </div>
+                  <div class="col-md-6">
+                    <p class="mb-2">
+                      <strong>Vaqt oynasi:</strong><br>
+                      <span class="text-muted"><%= route.time_window_minutes %> daqiqa</span>
+                    </p>
+                    <p class="mb-2">
+                      <strong>Holat:</strong><br>
+                      <% if (route.active) { %>
+                        <span class="badge bg-success">Faol</span>
+                      <% } else { %>
+                        <span class="badge bg-secondary">Nofaol</span>
+                      <% } %>
+                    </p>
+                  </div>
+                </div>
+                <hr>
+                <p class="mb-1"><strong>SMS shablon:</strong></p>
+                <div class="preview-box">
+                  <%= route.sms_template %>
+                </div>
+              </div>
+            </div>
+
+            <!-- Matched Phones Card -->
+            <div class="card mb-3">
+              <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-telephone-fill"></i> Topilgan raqamlar</h5>
+              </div>
+              <div class="card-body">
+                <% if (matchedPhones && matchedPhones.length > 0) { %>
+                  <div class="alert alert-success mb-3">
+                    <i class="bi bi-check-circle"></i>
+                    Oxirgi <strong><%= route.time_window_minutes %></strong> daqiqada
+                    <strong><%= matchedPhones.length %></strong> ta raqam topildi
+                  </div>
+
+                  <div class="mb-3">
+                    <% matchedPhones.slice(0, 10).forEach(phoneRecord => { %>
+                      <span class="badge bg-primary phone-badge"><%= phoneRecord.phone %></span>
+                    <% }) %>
+                    <% if (matchedPhones.length > 10) { %>
+                      <span class="badge bg-secondary phone-badge">... va yana <%= matchedPhones.length - 10 %> ta</span>
+                    <% } %>
+                  </div>
+
+                  <div class="d-grid gap-2">
+                    <button type="button" id="sendSmsBtn" class="btn btn-lg btn-success" onclick="sendSMS()">
+                      <i class="bi bi-send-fill"></i> SMS Yuborish (<%= matchedPhones.length %> ta raqamga)
+                    </button>
+                  </div>
+                <% } else { %>
+                  <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Oxirgi <strong><%= route.time_window_minutes %></strong> daqiqada hech qanday raqam topilmadi.
+                  </div>
+                  <p class="text-muted small">
+                    Telefon raqamlar topilishi uchun:
+                  </p>
+                  <ul class="text-muted small">
+                    <li>Telegram guruhlarida "dan" va "ga" kalit so'zlarga mos xabarlar bo'lishi kerak</li>
+                    <li>Xabarlarda telefon raqamlar mavjud bo'lishi kerak</li>
+                    <li>Vaqt oynasi ichida yangi xabarlar kelishi kerak</li>
+                  </ul>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- Result Section (Hidden initially) -->
+            <div id="resultSection" class="card mb-3" style="display: none;">
+              <div class="card-header" id="resultHeader">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Natija</h5>
+              </div>
+              <div class="card-body" id="resultBody">
+                <!-- Result will be inserted here -->
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <!-- Preview Card -->
+            <div class="card bg-light mb-3">
+              <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-eye"></i> SMS Ko'rinishi</h5>
+                <p class="card-text small text-muted mb-2">SMS qanday ko'rinadi (misol):</p>
+                <div class="preview-box">
+                  <% if (matchedPhones && matchedPhones.length > 0) { %>
+                    <%= route.sms_template.replace(/\{\{phone\}\}/g, matchedPhones[0].phone) %>
+                  <% } else { %>
+                    <%= route.sms_template.replace(/\{\{phone\}\}/g, '+998901234567') %>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+
+            <!-- Statistics Card -->
+            <div class="card bg-light mb-3">
+              <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-graph-up"></i> Statistika</h5>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-muted">Jami yuborilgan:</span>
+                  <strong><%= route.totalSent || 0 %></strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-muted">Muvaffaqiyatli:</span>
+                  <strong class="text-success"><%= route.successSent || 0 %></strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted">Xatolik:</span>
+                  <strong class="text-danger"><%= (route.totalSent || 0) - (route.successSent || 0) %></strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card bg-light">
+              <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-info-circle"></i> Eslatma</h5>
+                <p class="card-text small">
+                  SMS yuborilgandan keyin natijalar "SMS loglar" sahifasida ko'rinadi.
+                </p>
+                <p class="card-text small">
+                  Har bir raqamga faqat bir marta SMS yuboriladi (duplikatlar yo'q).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    async function sendSMS() {
+      const btn = document.getElementById('sendSmsBtn');
+      const resultSection = document.getElementById('resultSection');
+      const resultHeader = document.getElementById('resultHeader');
+      const resultBody = document.getElementById('resultBody');
+
+      // Disable button and show loading
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>SMS yuborilmoqda...';
+
+      try {
+        const response = await fetch('/routes/send/<%= route.id %>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        // Show result section
+        resultSection.style.display = 'block';
+
+        if (result.success) {
+          // Success result
+          resultHeader.className = 'card-header bg-success text-white';
+          resultHeader.innerHTML = '<h5 class="mb-0"><i class="bi bi-check-circle"></i> SMS muvaffaqiyatli yuborildi</h5>';
+
+          resultBody.innerHTML = `
+            <div class="alert alert-success mb-3">
+              <i class="bi bi-check-circle"></i> ${result.message}
+            </div>
+            <div class="row">
+              <div class="col-6">
+                <div class="text-center">
+                  <h3 class="text-success">${result.sent || 0}</h3>
+                  <p class="text-muted small mb-0">Yuborildi</p>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="text-center">
+                  <h3 class="text-danger">${result.failed || 0}</h3>
+                  <p class="text-muted small mb-0">Xatolik</p>
+                </div>
+              </div>
+            </div>
+            ${result.details ? `
+              <hr>
+              <p class="small text-muted mb-1">Tafsilotlar:</p>
+              <pre class="small bg-light p-2 rounded">${JSON.stringify(result.details, null, 2)}</pre>
+            ` : ''}
+            <hr>
+            <a href="/sms" class="btn btn-primary btn-sm">
+              <i class="bi bi-chat-dots"></i> SMS loglarni ko'rish
+            </a>
+            <a href="/routes" class="btn btn-secondary btn-sm">
+              <i class="bi bi-arrow-left"></i> Yo'nalishlarga qaytish
+            </a>
+          `;
+
+          // Scroll to result
+          resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          // Reset button after delay
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send-fill"></i> SMS Yuborish (<%= matchedPhones ? matchedPhones.length : 0 %> ta raqamga)';
+          }, 3000);
+
+        } else {
+          // Error result
+          resultHeader.className = 'card-header bg-danger text-white';
+          resultHeader.innerHTML = '<h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Xatolik</h5>';
+
+          resultBody.innerHTML = `
+            <div class="alert alert-danger">
+              <i class="bi bi-exclamation-triangle"></i> ${result.error || 'SMS yuborishda xatolik yuz berdi'}
+            </div>
+            ${result.details ? `
+              <p class="small text-muted mb-1">Tafsilotlar:</p>
+              <pre class="small bg-light p-2 rounded">${JSON.stringify(result.details, null, 2)}</pre>
+            ` : ''}
+            <button onclick="location.reload()" class="btn btn-primary btn-sm">
+              <i class="bi bi-arrow-clockwise"></i> Qayta urinish
+            </button>
+          `;
+
+          // Scroll to result
+          resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          // Re-enable button
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-send-fill"></i> SMS Yuborish (<%= matchedPhones ? matchedPhones.length : 0 %> ta raqamga)';
+        }
+
+      } catch (error) {
+        // Network or other error
+        resultSection.style.display = 'block';
+        resultHeader.className = 'card-header bg-danger text-white';
+        resultHeader.innerHTML = '<h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Xatolik</h5>';
+
+        resultBody.innerHTML = `
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> Serverga ulanishda xatolik: ${error.message}
+          </div>
+          <button onclick="location.reload()" class="btn btn-primary btn-sm">
+            <i class="bi bi-arrow-clockwise"></i> Sahifani yangilash
+          </button>
+        `;
+
+        // Scroll to result
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Re-enable button
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send-fill"></i> SMS Yuborish (<%= matchedPhones ? matchedPhones.length : 0 %> ta raqamga)';
+      }
+    }
+  </script>
+</body>
+</html>
