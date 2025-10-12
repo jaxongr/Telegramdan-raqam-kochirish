@@ -34,17 +34,21 @@ router.get('/', async (req, res) => {
       })
     );
 
-    // Viloyatlar bo'yicha guruhlash
+    // YANGI: Shaharlar bo'yicha guruhlash (viloyat emas, aniq shahar!)
+    // Har bir route uchun from_keywords'dagi BIRINCHI shaharni olish
     const groupedRoutes = {};
     routesWithStats.forEach(route => {
-      // Route name'dan "Dan" qismini olish (masalan: "toshkent → andijon" dan "toshkent")
-      const fromRegion = route.name.split(' → ')[0].trim();
-      const regionKey = fromRegion.charAt(0).toUpperCase() + fromRegion.slice(1);
+      // from_keywords'dan birinchi kalit so'zni olish (aniq shahar nomi)
+      const fromKeywords = route.from_keywords.split(',').map(k => k.trim());
+      const firstCity = fromKeywords[0] || route.name.split(' → ')[0].trim();
 
-      if (!groupedRoutes[regionKey]) {
-        groupedRoutes[regionKey] = [];
+      // Capitalize qilish
+      const cityKey = firstCity.charAt(0).toUpperCase() + firstCity.slice(1);
+
+      if (!groupedRoutes[cityKey]) {
+        groupedRoutes[cityKey] = [];
       }
-      groupedRoutes[regionKey].push(route);
+      groupedRoutes[cityKey].push(route);
     });
 
     // Viloyatlarni alfabetik tartibda saralash
