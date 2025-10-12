@@ -71,14 +71,76 @@ router.get('/add', (req, res) => {
   res.render('routes/add_simple', { page: 'routes', username: req.session.username });
 });
 
-// YANGI: Toshkentdan viloyatlarga (GET)
-router.get('/add/from-tashkent', (req, res) => {
-  res.render('routes/add_from_tashkent', { page: 'routes', username: req.session.username });
+// YANGI: Toshkentdan viloyatlarga (GET) - Yo'nalishlar ro'yxati
+router.get('/add/from-tashkent', async (req, res) => {
+  try {
+    const allRoutes = await getAllRoutes();
+    // Faqat Toshkentdan boshlanuvchi yo'nalishlar
+    const fromTashkentRoutes = allRoutes.filter(route =>
+      route.from_keywords && route.from_keywords.toLowerCase().includes('toshkent')
+    );
+
+    // Har bir route uchun statistika
+    const routesWithStats = await Promise.all(
+      fromTashkentRoutes.map(async (route) => {
+        const stats = await getRouteStatistics(route.id);
+        const messageCount = await getRouteMessageCount(route.id);
+        return {
+          ...route,
+          totalSent: stats.total,
+          successSent: stats.success,
+          messageCount: messageCount
+        };
+      })
+    );
+
+    res.render('routes/direction_list', {
+      routes: routesWithStats,
+      direction: 'from-tashkent',
+      title: 'Toshkentdan viloyatlarga',
+      page: 'routes',
+      username: req.session.username
+    });
+  } catch (error) {
+    console.error('From Tashkent list error:', error);
+    res.redirect('/routes?error=' + encodeURIComponent(error.message));
+  }
 });
 
-// YANGI: Viloyatlardan Toshkentga (GET)
-router.get('/add/to-tashkent', (req, res) => {
-  res.render('routes/add_to_tashkent', { page: 'routes', username: req.session.username });
+// YANGI: Viloyatlardan Toshkentga (GET) - Yo'nalishlar ro'yxati
+router.get('/add/to-tashkent', async (req, res) => {
+  try {
+    const allRoutes = await getAllRoutes();
+    // Faqat Toshkentga ketuvchi yo'nalishlar
+    const toTashkentRoutes = allRoutes.filter(route =>
+      route.to_keywords && route.to_keywords.toLowerCase().includes('toshkent')
+    );
+
+    // Har bir route uchun statistika
+    const routesWithStats = await Promise.all(
+      toTashkentRoutes.map(async (route) => {
+        const stats = await getRouteStatistics(route.id);
+        const messageCount = await getRouteMessageCount(route.id);
+        return {
+          ...route,
+          totalSent: stats.total,
+          successSent: stats.success,
+          messageCount: messageCount
+        };
+      })
+    );
+
+    res.render('routes/direction_list', {
+      routes: routesWithStats,
+      direction: 'to-tashkent',
+      title: 'Viloyatlardan Toshkentga',
+      page: 'routes',
+      username: req.session.username
+    });
+  } catch (error) {
+    console.error('To Tashkent list error:', error);
+    res.redirect('/routes?error=' + encodeURIComponent(error.message));
+  }
 });
 
 // YANGI: Toshkentdan viloyatlarga (POST)
@@ -203,10 +265,10 @@ router.post('/edit/:id', async (req, res) => {
 router.post('/delete/:id', async (req, res) => {
   try {
     await deleteRoute(parseInt(req.params.id));
-    res.redirect('/routes?success=deleted');
+    res.json({ success: true, message: 'Yo\'nalish o\'chirildi' });
   } catch (error) {
     console.error('Route delete error:', error);
-    res.redirect('/routes?error=' + encodeURIComponent(error.message));
+    res.json({ success: false, error: error.message });
   }
 });
 
