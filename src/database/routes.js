@@ -301,14 +301,15 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
   // CRITICAL FIX: Dublikat telefon raqamlarni olib tashlash
   const uniquePhones = [...new Set(phoneNumbers)];
 
-  // Dublikat xabarni tekshirish (bir xil xabar va guruh)
+  // CRITICAL FIX: Dublikat xabarni tekshirish (BARCHA yo'nalishlarda, faqat group_id va message_text bo'yicha)
+  // Bir xil xabar bir nechta yo'nalishda paydo bo'lmasligi kerak!
   const existing = await query(
-    'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND group_id = ? AND message_text = ?',
-    [routeId, groupId, messageText]
+    'SELECT id, phone_numbers, route_id FROM route_messages WHERE group_id = ? AND message_text = ? ORDER BY created_at DESC LIMIT 1',
+    [groupId, messageText]
   );
 
   if (existing && existing.length > 0) {
-    // Agar xabar bor bo'lsa, telefon raqamlarni yangilash (yangi raqamlar qo'shish)
+    // Agar xabar BIROR yo'nalishda bor bo'lsa, telefon raqamlarni yangilash (yangi yo'nalishga SAQLAMASLIK!)
     const existingPhones = JSON.parse(existing[0].phone_numbers || '[]');
     const combinedPhones = [...new Set([...existingPhones, ...uniquePhones])]; // Unikal qilish
 
@@ -317,10 +318,10 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
       [JSON.stringify(combinedPhones), messageDate, existing[0].id]
     );
 
-    return existing[0].id;
+    return existing[0].id; // Mavjud xabar ID qaytarish (yangi yaratmaslik!)
   }
 
-  // Yangi xabar yaratish
+  // Yangi xabar yaratish (faqat birinchi marta topilganda)
   const result = await query(
     'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
     [routeId, groupId, messageText, JSON.stringify(uniquePhones), messageDate]
