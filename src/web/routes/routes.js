@@ -448,4 +448,67 @@ router.post('/messages/:messageId/send', async (req, res) => {
   }
 });
 
+// YANGI: Bulk SMS yuborish (tanlangan raqamlarga)
+router.post('/bulk-sms', async (req, res) => {
+  try {
+    const { phones, message, routeId } = req.body;
+
+    if (!phones || !Array.isArray(phones) || phones.length === 0) {
+      return res.json({ success: false, error: 'Telefon raqamlar tanlanmadi' });
+    }
+
+    if (!message || message.trim().length === 0) {
+      return res.json({ success: false, error: 'SMS matni kiritilmadi' });
+    }
+
+    // SMS yuborish
+    const { sendSMS } = require('../../services/smsService');
+    const { logRouteSMS } = require('../../database/routes');
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const phone of phones) {
+      try {
+        const result = await sendSMS(phone, null, message, {});
+
+        if (result.success) {
+          sentCount++;
+          // Route SMS log
+          if (routeId) {
+            await logRouteSMS(parseInt(routeId), phone, message, 'success');
+          }
+        } else {
+          failedCount++;
+          if (routeId) {
+            await logRouteSMS(parseInt(routeId), phone, message, 'failed');
+          }
+        }
+      } catch (smsError) {
+        console.error(`Bulk SMS error for ${phone}:`, smsError);
+        failedCount++;
+        if (routeId) {
+          await logRouteSMS(parseInt(routeId), phone, message, 'error');
+        }
+      }
+
+      // Har bir SMS orasida 1 soniya kutish (rate limit uchun)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    res.json({
+      success: true,
+      message: `SMS yuborish tugadi!`,
+      sent: sentCount,
+      failed: failedCount,
+      total: phones.length
+    });
+  } catch (error) {
+    console.error('Bulk SMS error:', error);
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

@@ -26,6 +26,27 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
+    /* SMS Panel Sticky */
+    .sms-panel {
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+    }
+    .phone-checkbox {
+      cursor: pointer;
+      user-select: none;
+    }
+    .selected-phone {
+      background: #e7f3ff;
+      border-left: 3px solid #0d6efd;
+      padding: 5px 10px;
+      margin: 3px 0;
+      border-radius: 4px;
+    }
+    .template-btn {
+      margin: 5px;
+    }
   </style>
 </head>
 <body>
@@ -115,10 +136,12 @@
             <i class="bi bi-info-circle"></i> Hozircha bu yo'nalish bo'yicha e'lonlar yo'q. Telegram guruhlaridan yangi xabarlar kelishi bilan bu yerda paydo bo'ladi.
           </div>
         <% } else { %>
+          <!-- IKKI KOLONKA: Chap - E'lonlar, O'ng - SMS Panel -->
           <div class="row">
-            <% messages.forEach((msg, index) => { %>
-              <div class="col-12 mb-3">
-                <div class="card message-card">
+            <!-- CHAP: E'lonlar ro'yxati (60%) -->
+            <div class="col-lg-7 col-md-12">
+              <% messages.forEach((msg, index) => { %>
+                <div class="card message-card mb-3">
                   <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                       <h6 class="card-subtitle text-muted">
@@ -129,42 +152,101 @@
                       </small>
                     </div>
 
-                    <div class="card-text mb-3">
+                    <div class="card-text mb-3" style="white-space: pre-wrap; font-size: 0.9rem;">
                       <%= msg.message_text %>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <span class="badge bg-primary">
-                          <i class="bi bi-telephone"></i> <%= msg.phone_numbers.length %> ta raqam
+                    <div class="mb-2">
+                      <span class="badge bg-primary">
+                        <i class="bi bi-telephone"></i> <%= msg.phone_numbers.length %> ta raqam
+                      </span>
+                      <% if (msg.sms_sent) { %>
+                        <span class="badge bg-success">
+                          <i class="bi bi-check-circle"></i> SMS yuborilgan
                         </span>
-                        <% if (msg.sms_sent) { %>
-                          <span class="badge bg-success">
-                            <i class="bi bi-check-circle"></i> SMS yuborilgan
-                          </span>
-                        <% } %>
-                      </div>
-
-                      <% if (!msg.sms_sent) { %>
-                        <button onclick="sendMessageSMS(<%= msg.id %>, <%= msg.phone_numbers.length %>)" class="btn btn-sm btn-success">
-                          <i class="bi bi-send"></i> SMS yuborish
-                        </button>
                       <% } %>
                     </div>
 
-                    <!-- Telefon raqamlar ro'yxati -->
+                    <!-- Telefon raqamlar checkboxlar bilan -->
                     <div class="mt-2">
-                      <small class="text-muted">
-                        <strong>Raqamlar:</strong>
-                        <% msg.phone_numbers.forEach((phone, i) => { %>
-                          <%= phone %><% if (i < msg.phone_numbers.length - 1) { %>, <% } %>
-                        <% }) %>
-                      </small>
+                      <strong class="text-muted d-block mb-2">
+                        <i class="bi bi-telephone-fill"></i> Raqamlar (tanlang):
+                      </strong>
+                      <% msg.phone_numbers.forEach((phone, i) => { %>
+                        <div class="form-check phone-checkbox">
+                          <input class="form-check-input phone-selector" type="checkbox" value="<%= phone %>" id="phone-<%= msg.id %>-<%= i %>">
+                          <label class="form-check-label" for="phone-<%= msg.id %>-<%= i %>">
+                            <%= phone %>
+                          </label>
+                        </div>
+                      <% }) %>
                     </div>
                   </div>
                 </div>
+              <% }) %>
+            </div>
+
+            <!-- O'NG: SMS Yuborish Paneli (40%) -->
+            <div class="col-lg-5 col-md-12">
+              <div class="card sms-panel bg-light shadow">
+                <div class="card-header bg-success text-white">
+                  <h5 class="mb-0">
+                    <i class="bi bi-send-fill"></i> SMS Yuborish
+                  </h5>
+                </div>
+                <div class="card-body">
+                  <!-- Tanlangan raqamlar -->
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-check-circle"></i> Tanlangan raqamlar (<span id="selectedCount">0</span> ta):
+                    </label>
+                    <div id="selectedPhones" class="border rounded p-2" style="min-height: 100px; max-height: 200px; overflow-y: auto; background: white;">
+                      <small class="text-muted">Chapdan raqam tanlang...</small>
+                    </div>
+                  </div>
+
+                  <!-- SMS Shablonlar -->
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-layout-text-sidebar"></i> Shablonlar:
+                    </label>
+                    <div>
+                      <button class="btn btn-sm btn-outline-primary template-btn" onclick="useTemplate('<%= route.sms_template || 'Assalomu alaykum!' %>')">
+                        <i class="bi bi-star"></i> Standart
+                      </button>
+                      <button class="btn btn-sm btn-outline-secondary template-btn" onclick="useTemplate('Assalomu alaykum! <%= route.name %> yo\\'nalishiga yo\\'lovchi kerak.')">
+                        <i class="bi bi-geo-alt"></i> Yo'nalish
+                      </button>
+                      <button class="btn btn-sm btn-outline-info template-btn" onclick="useTemplate('Assalomu alaykum! Toshkentga yo\\'lovchi kerakmi?')">
+                        <i class="bi bi-question-circle"></i> So'rov
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- SMS Matni -->
+                  <div class="mb-3">
+                    <label for="smsText" class="form-label fw-bold">
+                      <i class="bi bi-chat-text"></i> SMS matni:
+                    </label>
+                    <textarea id="smsText" class="form-control" rows="4" placeholder="SMS matnini kiriting..."><%= route.sms_template || '' %></textarea>
+                    <small class="text-muted">
+                      <span id="charCount">0</span> belgi
+                    </small>
+                  </div>
+
+                  <!-- Yuborish tugmasi -->
+                  <button id="sendBtn" class="btn btn-success w-100" onclick="sendBulkSMS()" disabled>
+                    <i class="bi bi-send-fill"></i> SMS Yuborish
+                  </button>
+
+                  <div class="mt-3">
+                    <small class="text-muted">
+                      <i class="bi bi-info-circle"></i> Raqamlarni tanlang va SMS yuborish tugmasini bosing.
+                    </small>
+                  </div>
+                </div>
               </div>
-            <% }) %>
+            </div>
           </div>
         <% } %>
       </main>
@@ -173,37 +255,119 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // E'lon bo'yicha SMS yuborish
-    async function sendMessageSMS(messageId, phoneCount) {
-      const confirmMessage = `${phoneCount} ta telefon raqamga SMS yubormoqchimisiz?`;
+    // Tanlangan raqamlar
+    const selectedPhones = new Set();
 
+    // Sahifa yuklanganda
+    document.addEventListener('DOMContentLoaded', () => {
+      // Barcha checkboxlarni tinglash
+      document.querySelectorAll('.phone-selector').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedPhones);
+      });
+
+      // SMS matn o'zgarishi
+      const smsTextarea = document.getElementById('smsText');
+      if (smsTextarea) {
+        smsTextarea.addEventListener('input', updateCharCount);
+        updateCharCount(); // Boshlang'ich hisoblash
+      }
+    });
+
+    // Tanlangan raqamlarni yangilash
+    function updateSelectedPhones() {
+      selectedPhones.clear();
+
+      document.querySelectorAll('.phone-selector:checked').forEach(checkbox => {
+        selectedPhones.add(checkbox.value);
+      });
+
+      // UI yangilash
+      const selectedPhonesDiv = document.getElementById('selectedPhones');
+      const selectedCountSpan = document.getElementById('selectedCount');
+      const sendBtn = document.getElementById('sendBtn');
+
+      selectedCountSpan.textContent = selectedPhones.size;
+
+      if (selectedPhones.size === 0) {
+        selectedPhonesDiv.innerHTML = '<small class="text-muted">Chapdan raqam tanlang...</small>';
+        sendBtn.disabled = true;
+      } else {
+        selectedPhonesDiv.innerHTML = '';
+        selectedPhones.forEach(phone => {
+          const phoneDiv = document.createElement('div');
+          phoneDiv.className = 'selected-phone';
+          phoneDiv.innerHTML = `<i class="bi bi-telephone-fill text-success"></i> ${phone}`;
+          selectedPhonesDiv.appendChild(phoneDiv);
+        });
+        sendBtn.disabled = false;
+      }
+    }
+
+    // Shablon ishlatish
+    function useTemplate(template) {
+      const smsTextarea = document.getElementById('smsText');
+      smsTextarea.value = template;
+      updateCharCount();
+    }
+
+    // Belgilar sonini hisoblash
+    function updateCharCount() {
+      const smsTextarea = document.getElementById('smsText');
+      const charCount = document.getElementById('charCount');
+      charCount.textContent = smsTextarea.value.length;
+    }
+
+    // Bulk SMS yuborish
+    async function sendBulkSMS() {
+      if (selectedPhones.size === 0) {
+        alert('❌ Telefon raqam tanlanmagan!');
+        return;
+      }
+
+      const smsText = document.getElementById('smsText').value.trim();
+      if (!smsText) {
+        alert('❌ SMS matni kiritilmagan!');
+        return;
+      }
+
+      const confirmMessage = `${selectedPhones.size} ta telefon raqamga SMS yubormoqchimisiz?\n\nMatn: ${smsText.substring(0, 50)}...`;
       if (!confirm(confirmMessage)) {
         return;
       }
 
-      const button = event.target;
-      button.disabled = true;
-      button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Yuborilmoqda...';
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Yuborilmoqda...';
 
       try {
-        const response = await fetch(`/routes/messages/${messageId}/send`, {
-          method: 'POST'
+        const response = await fetch('/routes/bulk-sms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            phones: Array.from(selectedPhones),
+            message: smsText,
+            routeId: <%= route.id %>
+          })
         });
 
         const result = await response.json();
 
         if (result.success) {
-          alert('✅ ' + result.message);
-          window.location.reload();
+          alert(`✅ ${result.message}\n\nYuborildi: ${result.sent}\nXato: ${result.failed || 0}`);
+
+          // Checkboxlarni tozalash
+          document.querySelectorAll('.phone-selector:checked').forEach(cb => cb.checked = false);
+          updateSelectedPhones();
         } else {
           alert('❌ Xato: ' + result.error);
-          button.disabled = false;
-          button.innerHTML = '<i class="bi bi-send"></i> SMS yuborish';
         }
       } catch (error) {
         alert('❌ Xato: ' + error.message);
-        button.disabled = false;
-        button.innerHTML = '<i class="bi bi-send"></i> SMS yuborish';
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="bi bi-send-fill"></i> SMS Yuborish';
       }
     }
   </script>
