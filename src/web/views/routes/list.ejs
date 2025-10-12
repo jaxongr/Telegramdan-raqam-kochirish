@@ -91,9 +91,11 @@
       <main class="col-md-10 ms-sm-auto px-md-4">
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           <h1 class="h2">Yo'nalishlar</h1>
-          <a href="/routes/add" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Yangi yo'nalish
-          </a>
+          <% if (sortedRegions.length > 0) { %>
+            <a href="/routes/add" class="btn btn-primary">
+              <i class="bi bi-plus-circle"></i> Yangi yo'nalish
+            </a>
+          <% } %>
         </div>
 
         <!-- Success/Error Alerts -->
@@ -112,8 +114,57 @@
         <% } %>
 
         <% if (sortedRegions.length === 0) { %>
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Hozircha yo'nalishlar yo'q. Yangi yo'nalish qo'shing.
+          <!-- Bo'sh bo'lganda: Ikkita katta kartochka -->
+          <div class="row">
+            <!-- 1. VILOYATLARDAN → TOSHKENTGA -->
+            <div class="col-md-6 mb-4">
+              <div class="card h-100 border-success" style="min-height: 400px; cursor: pointer; transition: all 0.3s;"
+                   onclick="window.location.href='/routes/add/to-tashkent'"
+                   onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.3)';"
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='';">
+                <div class="card-body text-center p-5 d-flex flex-column justify-content-center">
+                  <h1 class="display-1 text-success mb-4">
+                    <i class="bi bi-arrow-left-circle-fill"></i>
+                  </h1>
+                  <h2 class="card-title mb-4">VILOYATLARDAN</h2>
+                  <h3 class="text-muted mb-4">↓</h3>
+                  <h2 class="text-primary mb-4">TOSHKENTGA</h2>
+                  <p class="text-muted fs-5 mt-3">
+                    Andijon, Farg'ona, Samarqand,<br>
+                    Buxoro va boshqa viloyatlardan<br>
+                    Toshkent shahriga
+                  </p>
+                  <button class="btn btn-success btn-lg mt-4">
+                    <i class="bi bi-plus-circle-fill"></i> ICHIGA KIRISH
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. TOSHKENTDAN → VILOYATLARGA -->
+            <div class="col-md-6 mb-4">
+              <div class="card h-100 border-primary" style="min-height: 400px; cursor: pointer; transition: all 0.3s;"
+                   onclick="window.location.href='/routes/add/from-tashkent'"
+                   onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.3)';"
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='';">
+                <div class="card-body text-center p-5 d-flex flex-column justify-content-center">
+                  <h1 class="display-1 text-primary mb-4">
+                    <i class="bi bi-arrow-right-circle-fill"></i>
+                  </h1>
+                  <h2 class="card-title mb-4">TOSHKENTDAN</h2>
+                  <h3 class="text-muted mb-4">↓</h3>
+                  <h2 class="text-success mb-4">VILOYATLARGA</h2>
+                  <p class="text-muted fs-5 mt-3">
+                    Toshkent shahridan<br>
+                    Andijon, Farg'ona, Samarqand,<br>
+                    Buxoro va boshqa viloyatlarga
+                  </p>
+                  <button class="btn btn-primary btn-lg mt-4">
+                    <i class="bi bi-plus-circle-fill"></i> ICHIGA KIRISH
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         <% } else { %>
           <!-- Viloyatlar bo'yicha guruhlangan ko'rinish -->
