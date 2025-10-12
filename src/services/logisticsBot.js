@@ -67,7 +67,9 @@ function setTelegramClient(client) {
  * Kuzatiladigan guruhlarni o'rnatish
  */
 function setMonitoredGroups(groups) {
-  monitoredGroups = groups.filter(g => g.active && g.keywords && g.keywords.length > 0);
+  // YANGI: Keywords shart emas - BARCHA faol guruhlar kuzatiladi
+  // monitoredGroups = groups.filter(g => g.active && g.keywords && g.keywords.length > 0); // ESKI
+  monitoredGroups = groups.filter(g => g.active); // YANGI - faqat faol guruhlar
   console.log(`✅ ${monitoredGroups.length} ta logistics guruh kuzatilmoqda`);
 }
 
@@ -295,9 +297,10 @@ Muvaffaqiyatlar!
  */
 async function processNewMessage(message, groupId, groupName) {
   try {
-    // Faqat kalit so'zli guruhlar
+    // YANGI: Barcha faol guruhlarni qabul qilish
+    // Eski: Faqat kalit so'zli guruhlar
     const group = monitoredGroups.find(g => g.id === groupId);
-    if (!group) return;
+    // O'chirildi: if (!group) return; // Endi barcha guruhlardan qabul qiladi
 
     const messageText = message.message || '';
     const userId = message.senderId?.value || message.fromId?.userId?.value;
