@@ -108,38 +108,45 @@ async function findMatchingPhones(routeId, timeWindowMinutes = 120) {
 function matchesRoute(message, fromKeywords, toKeywords) {
   const messageLower = message.toLowerCase();
 
-  // FROM location + aniqlovchi (dan/дан)
+  // YANGILANGAN: Ko'p shaharli e'lonlarni qo'llab-quvvatlash
+  // Misol: "YAKKABOG' SHAXRISABZ KITOBDAN TOSHKENTGA"
+  // Bu 3 ta alohida yo'nalishga mos kelishi kerak
+
+  // FROM location tekshirish (dan/дан bilan yoki bo'lmasa ham)
   const fromMatched = fromKeywords.some(keyword => {
-    // Regex: keyword + optional space + (dan/дан) + word boundary
-    const patterns = [
-      new RegExp('\\b' + escapeRegex(keyword) + '\\s*(dan|дан)\\b', 'i'),
-      new RegExp('\\b' + escapeRegex(keyword) + '\\b', 'i') // Aniqlovchisiz ham qabul qilish
-    ];
-    return patterns.some(pattern => pattern.test(messageLower));
+    const keywordLower = keyword.toLowerCase();
+
+    // Turli variantlarni tekshirish:
+    // 1. keyword + "dan" = "kitobdan", "yakkabog'dan"
+    // 2. keyword + " " = "kitob ", "yakkabog' "
+    // 3. keyword o'zi = "kitob", "yakkabog'"
+
+    // Apostrof muammosini hal qilish uchun normalize qilish
+    const normalizedMessage = messageLower.replace(/['`']/g, "'");
+    const normalizedKeyword = keywordLower.replace(/['`']/g, "'");
+
+    return normalizedMessage.includes(normalizedKeyword);
   });
 
-  // TO location + aniqlovchi (ga/ка/га)
+  // TO location tekshirish (ga/ка/га bilan yoki bo'lmasa ham)
   const toMatched = toKeywords.some(keyword => {
-    const patterns = [
-      new RegExp('\\b' + escapeRegex(keyword) + '\\s*(ga|га|ка)\\b', 'i'),
-      new RegExp('\\b' + escapeRegex(keyword) + '\\b', 'i')
-    ];
-    return patterns.some(pattern => pattern.test(messageLower));
+    const keywordLower = keyword.toLowerCase();
+
+    // Apostrof muammosini hal qilish
+    const normalizedMessage = messageLower.replace(/['`']/g, "'");
+    const normalizedKeyword = keywordLower.replace(/['`']/g, "'");
+
+    return normalizedMessage.includes(normalizedKeyword);
   });
 
-  // YANGI: FROM yoki TO bo'lsa ham qabul qilamiz (ko'proq e'lon topish uchun)
-  // Agar ikkala yo'nalish ham bo'lsa - ideal
-  // Agar faqat FROM yoki faqat TO bo'lsa ham - qabul qilamiz
-  
+  // MUHIM: Ko'p shaharli e'lonlar uchun
+  // Agar FROM shaharlardan BIRI bor va TO shahar bor bo'lsa - MOS KELADI
+
   if (fromMatched && toMatched) {
-    return true; // Ideal: ikkala yo'nalish ham bor
+    return true; // ✅ Yo'nalish topildi
   }
-  
-  if (fromMatched || toMatched) {
-    return true; // Yaxshi: kamida bittasi bor
-  }
-  
-  return false; // Hech narsa mos kelmadi
+
+  return false; // Yo'nalish topilmadi
 }
 
 /**
