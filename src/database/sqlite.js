@@ -134,6 +134,22 @@ function initDatabase() {
     )
   `);
 
+  // Yo'nalish bo'yicha topilgan e'lonlar (REAL-TIME)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS route_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      route_id INTEGER NOT NULL,
+      group_id INTEGER NOT NULL,
+      message_text TEXT NOT NULL,
+      phone_numbers TEXT,
+      message_date DATETIME NOT NULL,
+      sms_sent INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (route_id) REFERENCES routes(id),
+      FOREIGN KEY (group_id) REFERENCES groups(id)
+    )
+  `);
+
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_phones_group ON phones(group_id);
     CREATE INDEX IF NOT EXISTS idx_phones_phone ON phones(phone);
@@ -144,6 +160,8 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_semysms_status ON semysms_phones(status);
     CREATE INDEX IF NOT EXISTS idx_semysms_last_used ON semysms_phones(last_used);
     CREATE INDEX IF NOT EXISTS idx_route_logs_sent ON route_sms_logs(sent_at);
+    CREATE INDEX IF NOT EXISTS idx_route_messages_route ON route_messages(route_id);
+    CREATE INDEX IF NOT EXISTS idx_route_messages_date ON route_messages(message_date);
   `);
 
   console.log('✓ SQLite database initialized:', dbPath);

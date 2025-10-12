@@ -259,6 +259,109 @@ async function findMatchingMessages(routeId, timeWindowMinutes = 120) {
   return matchedMessages;
 }
 
+// ==================== ROUTE MESSAGES (REAL-TIME E'LONLAR) ====================
+
+/**
+ * Yo'nalishga mos keluvchi xabarni saqlash
+ * @param {number} routeId - Route ID
+ * @param {number} groupId - Guruh ID
+ * @param {string} messageText - Xabar matni
+ * @param {Array<string>} phoneNumbers - Topilgan telefon raqamlar
+ * @param {string} messageDate - Xabar sanasi
+ * @returns {Promise<number>} - Yaratilgan message ID
+ */
+async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, messageDate) {
+  // Dublikat xabarni tekshirish (bir xil xabar va guruh)
+  const existing = await query(
+    'SELECT id FROM route_messages WHERE route_id = ? AND group_id = ? AND message_text = ?',
+    [routeId, groupId, messageText]
+  );
+
+  if (existing && existing.length > 0) {
+    return existing[0].id; // Dublikat, yangi record yaratmaymiz
+  }
+
+  const result = await query(
+    'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
+    [routeId, groupId, messageText, JSON.stringify(phoneNumbers), messageDate]
+  );
+
+  return result.lastID || result.insertId;
+}
+
+/**
+ * Yo'nalish bo'yicha e'lonlarni olish
+ * @param {number} routeId - Route ID
+ * @param {number} limit - Maksimal e'lonlar soni
+ * @param {number} offset - Offset
+ * @returns {Promise<Array>} - E'lonlar ro'yxati
+ */
+async function getRouteMessages(routeId, limit = 50, offset = 0) {
+  const messages = await query(
+    `SELECT rm.*, g.name as group_name
+     FROM route_messages rm
+     JOIN groups g ON rm.group_id = g.id
+     WHERE rm.route_id = ?
+     ORDER BY rm.message_date DESC
+     LIMIT ? OFFSET ?`,
+    [routeId, limit, offset]
+  );
+
+  // JSON phone_numbers ni parse qilish
+  return messages.map(msg => ({
+    ...msg,
+    phone_numbers: msg.phone_numbers ? JSON.parse(msg.phone_numbers) : []
+  }));
+}
+
+/**
+ * Yo'nalish bo'yicha e'lonlar sonini olish
+ * @param {number} routeId - Route ID
+ * @returns {Promise<number>} - E'lonlar soni
+ */
+async function getRouteMessageCount(routeId) {
+  const result = await query(
+    'SELECT COUNT(*) as count FROM route_messages WHERE route_id = ?',
+    [routeId]
+  );
+  return result[0].count || result[0].COUNT || 0;
+}
+
+/**
+ * E'lon bo'yicha SMS yuborish
+ * @param {number} messageId - Message ID
+ * @returns {Promise<Object>} - Natija
+ */
+async function getRouteMessageById(messageId) {
+  const messages = await query(
+    `SELECT rm.*, g.name as group_name, r.sms_template, r.name as route_name
+     FROM route_messages rm
+     JOIN groups g ON rm.group_id = g.id
+     JOIN routes r ON rm.route_id = r.id
+     WHERE rm.id = ?`,
+    [messageId]
+  );
+
+  if (!messages || messages.length === 0) return null;
+
+  const msg = messages[0];
+  return {
+    ...msg,
+    phone_numbers: msg.phone_numbers ? JSON.parse(msg.phone_numbers) : []
+  };
+}
+
+/**
+ * E'lonni SMS yuborilgan deb belgilash
+ * @param {number} messageId - Message ID
+ */
+async function markMessageAsSent(messageId) {
+  return await query(
+    'UPDATE route_messages SET sms_sent = 1 WHERE id = ?',
+    [messageId]
+  );
+}
+
 // ==================== EXPORTS ====================
 
 module.exports = {
@@ -274,5 +377,11 @@ module.exports = {
   matchesRoute,
   getRouteStatistics,
   wasSmsSentRecently,
-  findMatchingMessages
+  findMatchingMessages,
+  // Route messages (real-time)
+  saveRouteMessage,
+  getRouteMessages,
+  getRouteMessageCount,
+  getRouteMessageById,
+  markMessageAsSent
 };

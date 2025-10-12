@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= route.name %> - E'lonlar - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+    .message-card {
+      transition: all 0.2s;
+    }
+    .message-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history/results">
+                <i class="bi bi-archive"></i> Arxiv natijalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/routes">
+                <i class="bi bi-signpost"></i> Yo'nalishlar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">
+            <a href="/routes" class="text-decoration-none text-muted">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <%= route.name %> - E'lonlar
+          </h1>
+          <div>
+            <span class="badge bg-info fs-6">
+              <i class="bi bi-chat-text"></i> <%= messageCount %> ta e'lon
+            </span>
+          </div>
+        </div>
+
+        <% if (messages.length === 0) { %>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Hozircha bu yo'nalish bo'yicha e'lonlar yo'q. Telegram guruhlaridan yangi xabarlar kelishi bilan bu yerda paydo bo'ladi.
+          </div>
+        <% } else { %>
+          <div class="row">
+            <% messages.forEach((msg, index) => { %>
+              <div class="col-12 mb-3">
+                <div class="card message-card">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <h6 class="card-subtitle text-muted">
+                        <i class="bi bi-building"></i> <%= msg.group_name %>
+                      </h6>
+                      <small class="text-muted">
+                        <i class="bi bi-clock"></i> <%= new Date(msg.message_date).toLocaleString('uz-UZ') %>
+                      </small>
+                    </div>
+
+                    <div class="card-text mb-3">
+                      <%= msg.message_text %>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span class="badge bg-primary">
+                          <i class="bi bi-telephone"></i> <%= msg.phone_numbers.length %> ta raqam
+                        </span>
+                        <% if (msg.sms_sent) { %>
+                          <span class="badge bg-success">
+                            <i class="bi bi-check-circle"></i> SMS yuborilgan
+                          </span>
+                        <% } %>
+                      </div>
+
+                      <% if (!msg.sms_sent) { %>
+                        <button onclick="sendMessageSMS(<%= msg.id %>, <%= msg.phone_numbers.length %>)" class="btn btn-sm btn-success">
+                          <i class="bi bi-send"></i> SMS yuborish
+                        </button>
+                      <% } %>
+                    </div>
+
+                    <!-- Telefon raqamlar ro'yxati -->
+                    <div class="mt-2">
+                      <small class="text-muted">
+                        <strong>Raqamlar:</strong>
+                        <% msg.phone_numbers.forEach((phone, i) => { %>
+                          <%= phone %><% if (i < msg.phone_numbers.length - 1) { %>, <% } %>
+                        <% }) %>
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // E'lon bo'yicha SMS yuborish
+    async function sendMessageSMS(messageId, phoneCount) {
+      const confirmMessage = `${phoneCount} ta telefon raqamga SMS yubormoqchimisiz?`;
+
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+      const button = event.target;
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Yuborilmoqda...';
+
+      try {
+        const response = await fetch(`/routes/messages/${messageId}/send`, {
+          method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ ' + result.message);
+          window.location.reload();
+        } else {
+          alert('❌ Xato: ' + result.error);
+          button.disabled = false;
+          button.innerHTML = '<i class="bi bi-send"></i> SMS yuborish';
+        }
+      } catch (error) {
+        alert('❌ Xato: ' + error.message);
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-send"></i> SMS yuborish';
+      }
+    }
+  </script>
+</body>
+</html>

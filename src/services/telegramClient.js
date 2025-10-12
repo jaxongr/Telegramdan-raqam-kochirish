@@ -4,6 +4,7 @@ const { StringSession } = require('telegram/sessions');
 const input = require('input');
 const { extractPhones } = require('./phoneExtractor');
 const { getActiveGroups, savePhone, getGroupByTelegramId } = require('../database/models');
+const { getActiveRoutes, matchesRoute, saveRouteMessage } = require('../database/routes');
 const logger = require('../utils/logger');
 
 let client = null;
@@ -154,6 +155,33 @@ async function startMonitoring() {
                 logger.error(`  ❌ SMS xatosi: ${phone}`, smsError);
               }
             }
+          }
+
+          // YANGI: Yo'nalishlarga mos kelishini tekshirish (REAL-TIME)
+          try {
+            const activeRoutes = await getActiveRoutes();
+
+            for (const route of activeRoutes) {
+              const fromKeywords = route.from_keywords.toLowerCase().split(',').map(k => k.trim());
+              const toKeywords = route.to_keywords.toLowerCase().split(',').map(k => k.trim());
+
+              if (matchesRoute(message.text.toLowerCase(), fromKeywords, toKeywords)) {
+                // E'lon yo'nalishga mos keldi! Saqlash
+                const messageDate = message.date ? new Date(message.date * 1000).toISOString() : new Date().toISOString();
+
+                await saveRouteMessage(
+                  route.id,
+                  group.id,
+                  message.text,
+                  phones,
+                  messageDate
+                );
+
+                logger.info(`  🎯 Yo'nalishga mos keldi: ${route.name} (${phones.length} ta raqam)`);
+              }
+            }
+          } catch (routeError) {
+            logger.error('Yo\'nalishlarni tekshirishda xato:', routeError);
           }
         }
 

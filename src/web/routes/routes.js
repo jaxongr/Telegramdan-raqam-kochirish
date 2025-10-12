@@ -7,7 +7,11 @@ const {
   updateRoute,
   deleteRoute,
   findMatchingPhones,
-  getRouteStatistics
+  getRouteStatistics,
+  getRouteMessages,
+  getRouteMessageCount,
+  getRouteMessageById,
+  markMessageAsSent
 } = require('../../database/routes');
 const { sendRouteSMS } = require('../../services/routeSmsService');
 
@@ -16,14 +20,16 @@ router.get('/', async (req, res) => {
   try {
     const routes = await getAllRoutes();
 
-    // Har bir route uchun statistika
+    // Har bir route uchun statistika va e'lonlar soni
     const routesWithStats = await Promise.all(
       routes.map(async (route) => {
         const stats = await getRouteStatistics(route.id);
+        const messageCount = await getRouteMessageCount(route.id);
         return {
           ...route,
           totalSent: stats.total,
-          successSent: stats.success
+          successSent: stats.success,
+          messageCount: messageCount
         };
       })
     );
@@ -180,6 +186,81 @@ router.post('/send/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Route send error:', error);
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// E'lonlarni ko'rish sahifasi
+router.get('/messages/:id', async (req, res) => {
+  try {
+    const routeId = parseInt(req.params.id);
+    const route = await getRouteById(routeId);
+
+    if (!route) {
+      return res.redirect('/routes?error=notfound');
+    }
+
+    const messages = await getRouteMessages(routeId, 100);
+    const messageCount = await getRouteMessageCount(routeId);
+
+    res.render('routes/messages', {
+      route,
+      messages,
+      messageCount,
+      page: 'routes',
+      username: req.session.username
+    });
+  } catch (error) {
+    console.error('Route messages error:', error);
+    res.redirect('/routes?error=' + encodeURIComponent(error.message));
+  }
+});
+
+// E'lon bo'yicha SMS yuborish (POST)
+router.post('/messages/:messageId/send', async (req, res) => {
+  try {
+    const messageId = parseInt(req.params.messageId);
+    const message = await getRouteMessageById(messageId);
+
+    if (!message) {
+      return res.json({ success: false, error: 'E\'lon topilmadi' });
+    }
+
+    // SMS yuborish
+    const { sendSMS } = require('../../services/smsService');
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const phone of message.phone_numbers) {
+      try {
+        const smsText = message.sms_template || `Assalomu alaykum! ${message.route_name} yo'nalishi bo'yicha taklifimiz bor.`;
+        const result = await sendSMS(phone, message.group_id, smsText, {});
+
+        if (result.success) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
+      } catch (smsError) {
+        console.error(`SMS error for ${phone}:`, smsError);
+        failedCount++;
+      }
+    }
+
+    // E'lonni yuborilgan deb belgilash
+    await markMessageAsSent(messageId);
+
+    res.json({
+      success: true,
+      message: `✅ ${sentCount} ta SMS yuborildi!`,
+      sentCount,
+      failedCount
+    });
+  } catch (error) {
+    console.error('Message send error:', error);
     res.json({
       success: false,
       error: error.message
