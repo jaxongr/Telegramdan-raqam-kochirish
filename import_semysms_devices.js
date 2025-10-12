@@ -62,11 +62,11 @@ async function importSemySMSDevices() {
 
     for (const device of devices) {
       try {
-        // Device ma'lumotlarini olish
-        const deviceId = device.id_device || device.id || device.device_id;
-        const deviceName = device.name || device.device_name || `Device ${deviceId}`;
-        const deviceNumber = device.device_number || device.phone || device.number;
-        const isActive = device.is_work === 1 || device.status === 'active' || device.work_status === 1;
+        // Device ma'lumotlarini olish (SemySMS API format)
+        const deviceId = device.id; // SemySMS'da 'id' maydoni device ID
+        const deviceName = device.device_name || device.name || `Device ${deviceId}`;
+        const deviceNumber = device.dop_name || device.phone_number || device.phone || ''; // dop_name = telefon raqam
+        const isActive = device.is_work === 1 || device.status === 'active';
 
         console.log(`📱 Qurilma: ${deviceName}`);
         console.log(`   ID: ${deviceId}`);
