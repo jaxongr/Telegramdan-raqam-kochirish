@@ -55,13 +55,25 @@ async function logRouteSMS(routeId, toPhone, message, status = 'success') {
 }
 
 async function getRouteSMSLogs(routeId = null, limit = 100) {
+  let logs;
   if (routeId) {
-    return await query(
+    logs = await query(
       'SELECT * FROM route_sms_logs WHERE route_id = ? ORDER BY sent_at DESC LIMIT ?',
       [routeId, limit]
     );
+  } else {
+    logs = await query('SELECT * FROM route_sms_logs ORDER BY sent_at DESC LIMIT ?', [limit]);
   }
-  return await query('SELECT * FROM route_sms_logs ORDER BY sent_at DESC LIMIT ?', [limit]);
+
+  // UTC timezone marker qo'shish (database'da sent_at UTC formatda lekin 'Z' yo'q)
+  // Bu JavaScript new Date() uchun to'g'ri parse qilish uchun kerak
+  logs.forEach(log => {
+    if (log.sent_at && !log.sent_at.endsWith('Z')) {
+      log.sent_at = log.sent_at + 'Z';
+    }
+  });
+
+  return logs;
 }
 
 // ==================== KEYWORD MATCHING ====================
