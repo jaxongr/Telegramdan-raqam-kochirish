@@ -52,6 +52,10 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
       if (hoursSinceLastSMS < SMS_COOLDOWN_HOURS) {
         const remainingMinutes = Math.ceil((SMS_COOLDOWN_HOURS - hoursSinceLastSMS) * 60);
         logger.warn(`⏸ ${toPhone} uchun cooldown: ${remainingMinutes} daqiqa qoldi`);
+
+        // Log qilish (cooldown aktiv bo'lganini yozish)
+        await logSMS(toPhone, groupId, messageText, null, 'cooldown', `Cooldown active: ${remainingMinutes} minutes remaining`);
+
         return { success: false, error: 'cooldown_active', remainingMinutes };
       }
     }
@@ -377,24 +381,25 @@ async function updateAllBalances() {
 }
 
 /**
- * Oxirgi SMS yuborilgan vaqtni olish
+ * Oxirgi SMS yuborilgan vaqtni olish (faqat success)
  */
 async function getLastSMSTime(toPhone) {
   try {
     const { query } = require('../database/index');
     const logs = await query(
-      'SELECT * FROM sms_logs WHERE to_phone = ? AND status = ? ORDER BY sent_at DESC LIMIT 1',
+      'SELECT sent_at, status FROM sms_logs WHERE to_phone = ? AND status = ? ORDER BY sent_at DESC LIMIT 1',
       [toPhone, 'success']
     );
 
-    logger.info(`📊 getLastSMSTime query result for ${toPhone}: ${JSON.stringify(logs)}`);
+    logger.info(`📊 getLastSMSTime query for ${toPhone}: found ${logs?.length || 0} records`);
 
     if (logs && logs.length > 0) {
-      logger.info(`✅ Found last SMS: ${logs[0].sent_at}`);
-      return logs[0].sent_at;
+      const sentAt = logs[0].sent_at || logs[0].SENT_AT;
+      logger.info(`✅ Last success SMS: ${sentAt} (type: ${typeof sentAt})`);
+      return sentAt;
     }
 
-    logger.info(`❌ No SMS found for ${toPhone}`);
+    logger.info(`❌ No success SMS found for ${toPhone}`);
     return null;
   } catch (error) {
     logger.error('Oxirgi SMS vaqtini olishda xato:', error);
