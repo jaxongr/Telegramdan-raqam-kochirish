@@ -108,7 +108,7 @@
               <tbody>
                 <% logs.forEach(log => { %>
                   <tr>
-                    <td><%= new Date(log.sent_at).toLocaleString('uz-UZ') %></td>
+                    <td><%= new Date(log.sent_at).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></td>
                     <td><strong><%= log.to_phone %></strong></td>
                     <td><%= log.group_name || 'N/A' %></td>
                     <td><%= (log.message || '').substring(0, 50) %>...</td>

@@ -154,7 +154,7 @@
                     <td><%= msg.total_groups %></td>
                     <td class="text-success"><%= msg.sent_count %></td>
                     <td class="text-danger"><%= msg.failed_count %></td>
-                    <td><%= new Date(msg.created_at).toLocaleString('uz-UZ') %></td>
+                    <td><%= new Date(msg.created_at).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></td>
                     <td>
                       <a href="/broadcast/status/<%= msg.id %>" class="btn btn-sm btn-info">
                         <i class="bi bi-eye"></i> Ko'rish

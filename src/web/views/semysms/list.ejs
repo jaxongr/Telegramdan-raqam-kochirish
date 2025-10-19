@@ -143,7 +143,7 @@
                       <% } %>
                     </td>
                     <td><%= phone.total_sent || 0 %></td>
-                    <td><%= phone.last_used ? new Date(phone.last_used).toLocaleString('uz-UZ') : 'Hech qachon' %></td>
+                    <td><%= phone.last_used ? new Date(phone.last_used).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : 'Hech qachon' %></td>
                     <td>
                       <form method="POST" action="/semysms/delete/<%= phone.phone %>" style="display: inline;">
                         <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Ishonchingiz komilmi?')">

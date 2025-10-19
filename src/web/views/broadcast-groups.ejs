@@ -63,7 +63,7 @@
                   </td>
                   <td><%= group.total_broadcasts %></td>
                   <td>
-                    <small><%= group.last_broadcast_time ? new Date(group.last_broadcast_time).toLocaleString('uz-UZ') : '-' %></small>
+                    <small><%= group.last_broadcast_time ? new Date(group.last_broadcast_time).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : '-' %></small>
                   </td>
                 </tr>
               <% }) %>

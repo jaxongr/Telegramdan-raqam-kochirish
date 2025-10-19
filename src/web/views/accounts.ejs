@@ -152,7 +152,7 @@
                   </td>
                   <td><%= account.total_messages_sent || 0 %> ta</td>
                   <td>
-                    <%= account.last_message_time ? new Date(account.last_message_time).toLocaleString('uz-UZ') : '-' %>
+                    <%= account.last_message_time ? new Date(account.last_message_time).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : '-' %>
                   </td>
                   <td>
                     <form action="/accounts/delete/<%= account.id %>" method="POST" style="display: inline">

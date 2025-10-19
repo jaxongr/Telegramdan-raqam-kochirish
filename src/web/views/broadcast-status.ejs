@@ -68,11 +68,11 @@
         <div class="row">
           <div class="col-md-4">
             <small><strong>Boshlangan:</strong></small><br>
-            <%= status.startedAt ? new Date(status.startedAt).toLocaleString('uz-UZ') : '-' %>
+            <%= status.startedAt ? new Date(status.startedAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : '-' %>
           </div>
           <div class="col-md-4">
             <small><strong>Tugagan:</strong></small><br>
-            <%= status.completedAt ? new Date(status.completedAt).toLocaleString('uz-UZ') : '-' %>
+            <%= status.completedAt ? new Date(status.completedAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : '-' %>
           </div>
         </div>
       </div>
@@ -115,7 +115,7 @@
                     <small class="text-danger"><%= log.error || '-' %></small>
                   </td>
                   <td>
-                    <small><%= log.sent_at ? new Date(log.sent_at).toLocaleString('uz-UZ') : '-' %></small>
+                    <small><%= log.sent_at ? new Date(log.sent_at).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : '-' %></small>
                   </td>
                 </tr>
               <% }) %>

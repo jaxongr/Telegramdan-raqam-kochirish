@@ -351,7 +351,7 @@
               <% } else { %>
                 <% recentSMS.forEach(sms => { %>
                   <tr>
-                    <td><%= new Date(sms.sent_at).toLocaleString('uz-UZ') %></td>
+                    <td><%= new Date(sms.sent_at).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></td>
                     <td><%= sms.to_phone %></td>
                     <td><%= sms.group_name || 'N/A' %></td>
                     <td><%= sms.message.substring(0, 50) %>...</td>

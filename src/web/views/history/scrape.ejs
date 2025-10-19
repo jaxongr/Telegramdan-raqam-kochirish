@@ -665,7 +665,7 @@
           // Hozirgi sanani ko'rsatish
           if (progress.currentDate) {
             const currentDate = new Date(progress.currentDate);
-            document.getElementById('currentDateText').textContent = currentDate.toLocaleDateString('uz-UZ');
+            document.getElementById('currentDateText').textContent = currentDate.toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' });
           }
         }
 

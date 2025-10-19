@@ -232,7 +232,7 @@
                         </td>
                         <td class="text-center text-muted">
                           <small>
-                            <%= new Date(file.created).toLocaleDateString('uz-UZ') %><br>
+                            <%= new Date(file.created).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %><br>
                             <%= new Date(file.created).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) %>
                           </small>
                         </td>

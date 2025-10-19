@@ -195,8 +195,8 @@
                   <tr>
                     <td><strong><%= phone.phone %></strong></td>
                     <td><%= phone.group_name || 'N/A' %></td>
-                    <td><%= new Date(phone.first_date).toLocaleDateString('uz-UZ') %></td>
-                    <td><%= new Date(phone.last_date).toLocaleDateString('uz-UZ') %></td>
+                    <td><%= new Date(phone.first_date).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></td>
+                    <td><%= new Date(phone.last_date).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></td>
                     <td><span class="badge bg-secondary"><%= phone.repeat_count %></span></td>
                     <td>
                       <% if (phone.first_message || phone.last_message) { %>
