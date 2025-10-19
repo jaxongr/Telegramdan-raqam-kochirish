@@ -247,15 +247,18 @@ async function getStatistics() {
   const uniquePhoneCount = await query('SELECT COUNT(DISTINCT phone) as count FROM phones');
   stats.uniquePhones = uniquePhoneCount[0].count || uniquePhoneCount[0].COUNT || 0;
 
+  // Faqat SUCCESS statusdagi SMS larni sanash (cooldown/failed sanalmaydi)
   const todaySMS = await query(
-    `SELECT COUNT(*) as count FROM sms_logs WHERE DATE(sent_at) = ?`,
-    [new Date().toISOString().split('T')[0]]
+    `SELECT COUNT(*) as count FROM sms_logs WHERE DATE(sent_at) = ? AND status = ?`,
+    [new Date().toISOString().split('T')[0], 'success']
   );
   stats.smsSentToday = todaySMS[0].count || todaySMS[0].COUNT || 0;
 
-  const totalSMS = await query('SELECT COUNT(*) as count FROM sms_logs');
+  // Faqat SUCCESS statusdagi SMS larni sanash
+  const totalSMS = await query('SELECT COUNT(*) as count FROM sms_logs WHERE status = ?', ['success']);
   stats.totalSMS = totalSMS[0].count || totalSMS[0].COUNT || 0;
 
+  // successSMS allaqachon to'g'ri ishlaydi
   const successSMS = await query('SELECT COUNT(*) as count FROM sms_logs WHERE status = ?', ['success']);
   stats.successSMS = successSMS[0].count || successSMS[0].COUNT || 0;
 
