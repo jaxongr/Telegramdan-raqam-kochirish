@@ -1,4 +1,9 @@
 require('dotenv').config();
+
+// Set timezone to Uzbekistan (Asia/Tashkent, UTC+5)
+process.env.TZ = process.env.TIMEZONE || 'Asia/Tashkent';
+console.log(`⏰ Timezone set to: ${process.env.TZ}`);
+
 const { initDatabase } = require('./database');
 const { initBroadcastDatabase } = require('./database/sqlite');
 const app = require('./web/app');
