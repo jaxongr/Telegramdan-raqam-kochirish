@@ -109,4 +109,104 @@ router.get('/export', async (req, res) => {
   }
 });
 
+// TXT export (group specific)
+router.get('/export-txt', async (req, res) => {
+  try {
+    const groupId = req.query.group_id;
+
+    // Build WHERE clause
+    let whereClause = '1=1';
+    let params = [];
+
+    if (groupId) {
+      whereClause = 'p.group_id = ?';
+      params.push(groupId);
+    }
+
+    // Get phones with group info
+    const phones = await query(`
+      SELECT
+        p.phone,
+        g.name as group_name
+      FROM phones p
+      LEFT JOIN groups g ON p.group_id = g.id
+      WHERE ${whereClause}
+      ORDER BY p.last_date DESC
+    `, params);
+
+    // Generate TXT content (one phone per line)
+    const txtContent = phones.map(p => p.phone).join('\n');
+
+    // Generate filename
+    const groupName = groupId ? phones[0]?.group_name || 'unknown' : 'all';
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `${groupName.replace(/[^a-zA-Z0-9]/g, '_')}_${date}.txt`;
+
+    res.header('Content-Type', 'text/plain; charset=utf-8');
+    res.header('Content-Disposition', `attachment; filename=${fileName}`);
+    res.send(txtContent);
+  } catch (error) {
+    console.error('TXT export error:', error);
+    res.status(500).send('Export xatosi: ' + error.message);
+  }
+});
+
+// Save to file on server
+router.post('/save-to-file', async (req, res) => {
+  try {
+    const groupId = req.body.group_id;
+
+    // Build WHERE clause
+    let whereClause = '1=1';
+    let params = [];
+
+    if (groupId) {
+      whereClause = 'p.group_id = ?';
+      params.push(groupId);
+    }
+
+    // Get phones with group info
+    const phones = await query(`
+      SELECT
+        p.phone,
+        g.name as group_name
+      FROM phones p
+      LEFT JOIN groups g ON p.group_id = g.id
+      WHERE ${whereClause}
+      ORDER BY p.last_date DESC
+    `, params);
+
+    // Generate file content
+    const content = phones.map(p => p.phone).join('\n');
+
+    // Generate filename
+    const groupName = groupId ? phones[0]?.group_name || 'unknown' : 'all';
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `phones_${groupName.replace(/[^a-zA-Z0-9]/g, '_')}_${date}.txt`;
+
+    // Ensure exports directory exists
+    const exportsDir = path.join(__dirname, '../../../exports');
+    if (!fs.existsSync(exportsDir)) {
+      fs.mkdirSync(exportsDir, { recursive: true });
+    }
+
+    // Save file
+    const filePath = path.join(exportsDir, fileName);
+    fs.writeFileSync(filePath, content, 'utf8');
+
+    res.json({
+      success: true,
+      message: `${phones.length} ta telefon raqam saqlandi!`,
+      fileName: fileName,
+      filePath: filePath
+    });
+  } catch (error) {
+    console.error('Save to file error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
