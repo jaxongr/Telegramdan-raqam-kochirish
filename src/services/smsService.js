@@ -26,19 +26,19 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
       return { success: false, error: 'invalid_input' };
     }
 
-    // Qora ro'yxat tekshirish
-    const blacklisted = await isBlacklisted(toPhone);
-    if (blacklisted) {
-      logger.warn(`🚫 Qora ro'yxatda: ${toPhone} - SMS yuborilmaydi`);
-      await logSMS(toPhone, groupId, messageText, null, 'blocked', 'Blacklisted');
-      return { success: false, error: 'blacklisted' };
-    }
-
     // Agar shablon o'zgaruvchilari berilgan bo'lsa, shablonni render qilish
     let renderedText = messageText;
     if (templateVars) {
       renderedText = renderSMSTemplate(messageText, templateVars);
       logger.info(`📝 SMS shablon render qilindi: ${renderedText.substring(0, 50)}...`);
+    }
+
+    // Qora ro'yxat tekshirish
+    const blacklisted = await isBlacklisted(toPhone);
+    if (blacklisted) {
+      logger.warn(`🚫 Qora ro'yxatda: ${toPhone} - SMS yuborilmaydi`);
+      await logSMS(toPhone, groupId, renderedText, null, 'blocked', 'Blacklisted');
+      return { success: false, error: 'blacklisted' };
     }
 
     // Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
@@ -54,7 +54,7 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
         logger.warn(`⏸ ${toPhone} uchun cooldown: ${remainingMinutes} daqiqa qoldi`);
 
         // Log qilish (cooldown aktiv bo'lganini yozish)
-        await logSMS(toPhone, groupId, messageText, null, 'cooldown', `Cooldown active: ${remainingMinutes} minutes remaining`);
+        await logSMS(toPhone, groupId, renderedText, null, 'cooldown', `Cooldown active: ${remainingMinutes} minutes remaining`);
 
         return { success: false, error: 'cooldown_active', remainingMinutes };
       }
@@ -71,7 +71,7 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
     const semysmsPhones = await getActiveSemySMSPhones();
     if (semysmsPhones.length === 0) {
       logger.error('SemySMS telefon raqamlar yo\'q!');
-      await logSMS(toPhone, groupId, messageText, null, 'failed', 'No active SemySMS phones');
+      await logSMS(toPhone, groupId, renderedText, null, 'failed', 'No active SemySMS phones');
       return { success: false, error: 'no_semysms_phones' };
     }
 
@@ -79,7 +79,7 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
     const senderPhone = selectNextPhone(semysmsPhones);
     if (!senderPhone) {
       logger.error('Barcha SemySMS telefonlar ishlamayapti');
-      await logSMS(toPhone, groupId, messageText, null, 'failed', 'All phones unavailable');
+      await logSMS(toPhone, groupId, renderedText, null, 'failed', 'All phones unavailable');
       return { success: false, error: 'all_phones_unavailable' };
     }
 
@@ -88,7 +88,7 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
     if (balance !== null && balance < 1) {
       logger.warn(`${senderPhone.phone} balans yetarli emas (${balance})`);
       await updateSemySMSPhone(senderPhone.phone, { status: 'low_balance' });
-      return await sendSMS(toPhone, groupId, messageText); // Keyingisi bilan urinish
+      return await sendSMS(toPhone, groupId, messageText, templateVars); // Keyingisi bilan urinish
     }
 
     // SMS matnini tayyorlash (rendered text ishlatamiz)
@@ -121,7 +121,7 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
       // Agar telefon ishlamasa, keyingisi bilan urinish
       if (result.error.includes('invalid') || result.error.includes('blocked')) {
         await updateSemySMSPhone(senderPhone.phone, { status: 'inactive' });
-        return await sendSMS(toPhone, groupId, messageText);
+        return await sendSMS(toPhone, groupId, messageText, templateVars);
       }
 
       return { success: false, error: result.error };
@@ -129,7 +129,7 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
 
   } catch (error) {
     logger.error('SMS yuborishda xato:', error);
-    await logSMS(toPhone, groupId, messageText, null, 'failed', error.message);
+    await logSMS(toPhone, groupId, renderedText, null, 'failed', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -140,8 +140,8 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
 function selectNextPhone(phones) {
   if (phones.length === 0) return null;
 
-  // Faqat faol va balansi yetarli bo'lganlarni filtr qilish
-  const availablePhones = phones.filter(p => p.status === 'active' && (p.balance === null || p.balance >= 1));
+  // Faqat faol va balansi yetarli bo'lganlarni filtr qilish (0 balans ham ruxsat beriladi)
+  const availablePhones = phones.filter(p => p.status === 'active' && (p.balance === null || p.balance >= 0));
 
   if (availablePhones.length === 0) return null;
 
