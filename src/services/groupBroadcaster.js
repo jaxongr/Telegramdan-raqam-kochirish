@@ -223,6 +223,14 @@ function getBroadcastLogs(messageId, limit = 100) {
     LIMIT ?
   `).all(messageId, limit);
 
+  // UTC timezone marker qo'shish (database'da sent_at UTC formatda lekin 'Z' yo'q)
+  // Bu JavaScript new Date() uchun to'g'ri parse qilish uchun kerak
+  logs.forEach(log => {
+    if (log.sent_at && !log.sent_at.endsWith('Z')) {
+      log.sent_at = log.sent_at + 'Z';
+    }
+  });
+
   return logs;
 }
 
