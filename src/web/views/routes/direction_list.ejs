@@ -114,8 +114,16 @@
             // Viloyatlar bo'yicha guruhlash
             const regionStats = {};
             routes.forEach(route => {
-              // Yo'nalish nomidan viloyatni olish (masalan: "Qashqadaryo → Toshkent" dan "Qashqadaryo")
-              const regionName = route.name.split('→')[0].trim();
+              // Yo'nalish nomidan viloyatni olish
+              // Masalan: "Qashqadaryo (Qarshi) → Toshkent" dan "Qashqadaryo"
+              // yoki "Qashqadaryo → Toshkent" dan "Qashqadaryo"
+              let regionName = route.name.split('→')[0].trim();
+
+              // Agar tuman nomi bo'lsa (qavs ichida), uni olib tashlash
+              const parenIndex = regionName.indexOf('(');
+              if (parenIndex !== -1) {
+                regionName = regionName.substring(0, parenIndex).trim();
+              }
 
               if (!regionStats[regionName]) {
                 regionStats[regionName] = {
