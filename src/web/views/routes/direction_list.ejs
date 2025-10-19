@@ -120,7 +120,7 @@
               if (direction === 'from-tashkent') {
                 // "Toshkent → Chiroqchi" dan "Chiroqchi"ni olish
                 const parts = route.name.split('→');
-                districtName = parts[1] ? parts[1].trim() : 'Noma\'lum';
+                districtName = parts[1] ? parts[1].trim() : "Noma'lum";
               } else {
                 // "Qashqadaryo (Qarshi) → Toshkent" dan "Qashqadaryo"ni olish
                 let regionName = route.name.split('→')[0].trim();
@@ -154,8 +154,17 @@
           <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3">
             <% regions.forEach(region => { %>
               <div class="col">
+                <%
+                  // Agar bitta yo'nalish bo'lsa, to'g'ridan-to'g'ri unga o'tish
+                  let clickUrl;
+                  if (region.routes.length === 1) {
+                    clickUrl = '/routes/messages/' + region.routes[0].id;
+                  } else {
+                    clickUrl = '/routes/region/' + encodeURIComponent(region.routes[0].name.split('→')[0].trim());
+                  }
+                %>
                 <div class="card h-100 shadow-sm" style="cursor: pointer; transition: all 0.3s; border-radius: 12px;"
-                     onclick="window.location.href='/routes/region/<%= encodeURIComponent(region.name) %>'"
+                     onclick="window.location.href='<%= clickUrl %>'"
                      onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)';"
                      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='';">
                   <div class="card-body text-center p-4">
@@ -190,7 +199,7 @@
           <div class="mt-4">
             <p class="text-muted">
               <i class="bi bi-info-circle"></i>
-              Jami: <strong><%= regions.length %></strong> ta viloyat
+              Jami: <strong><%= regions.length %></strong> ta yo'nalish
             </p>
           </div>
         <% } %>
