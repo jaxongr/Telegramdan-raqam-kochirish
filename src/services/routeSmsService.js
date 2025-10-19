@@ -1,12 +1,11 @@
 const { findMatchingPhones, logRouteSMS, getRouteById } = require('../database/routes');
-const { renderSMSTemplate, getLastSMSTime } = require('./smsService');
+const { renderSMSTemplate } = require('./smsService');
 const { getActiveSemySMSPhones } = require('../database/models');
 const logger = require('../utils/logger');
 const axios = require('axios');
 
 const SEMYSMS_API_KEY = process.env.SEMYSMS_API_KEY;
 const SEMYSMS_API_URL = 'https://semysms.net/api/3';
-const SMS_COOLDOWN_HOURS = parseInt(process.env.SMS_COOLDOWN_HOURS) || 2; // 2 soat cooldown
 
 // Round-robin index
 let currentPhoneIndex = 0;
@@ -54,19 +53,9 @@ async function sendRouteSMS(routeId) {
     for (const phoneRecord of matchedPhones) {
       const toPhone = phoneRecord.phone;
 
-      // 1. Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
-      const lastSMS = await getLastSMSTime(toPhone);
-
-      if (lastSMS) {
-        const hoursSinceLastSMS = (Date.now() - new Date(lastSMS).getTime()) / (1000 * 60 * 60);
-
-        if (hoursSinceLastSMS < SMS_COOLDOWN_HOURS) {
-          const remainingMinutes = Math.ceil((SMS_COOLDOWN_HOURS - hoursSinceLastSMS) * 60);
-          logger.warn(`   ⏸ ${toPhone} uchun cooldown: ${remainingMinutes} daqiqa qoldi - o'tkazib yuborildi`);
-          failedCount++;
-          continue; // Keyingi raqamga o'tish
-        }
-      }
+      // YO'NALISH BO'YICHA SMS - COOLDOWN YO'Q!
+      // Yo'nalish bo'yicha SMS istalgancha yuborilishi mumkin
+      logger.info(`   📞 Yo'nalish SMS: ${toPhone} (cooldown tekshirilmaydi)`);
 
       // Template variables
       const templateVars = {
