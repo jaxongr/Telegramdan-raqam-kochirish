@@ -71,14 +71,26 @@ router.get('/add', (req, res) => {
   res.render('routes/add_simple', { page: 'routes', username: req.session.username });
 });
 
-// YANGI: Toshkentdan viloyatlarga (GET) - Yo'nalishlar ro'yxati
+// YANGI: Toshkentdan viloyatlarga (GET) - FAQAT VILOYATLAR
 router.get('/add/from-tashkent', async (req, res) => {
   try {
     const allRoutes = await getAllRoutes();
-    // Faqat Toshkentdan boshlanuvchi yo'nalishlar
-    const fromTashkentRoutes = allRoutes.filter(route =>
-      route.from_keywords && route.from_keywords.toLowerCase().includes('toshkent')
-    );
+
+    // FAQAT viloyat yo'nalishlari: "Toshkent → Viloyat" (tumanlar yo'q!)
+    const fromTashkentRoutes = allRoutes.filter(route => {
+      if (!route.from_keywords || !route.from_keywords.toLowerCase().includes('toshkent')) {
+        return false;
+      }
+
+      // Yo'nalish nomi: "Toshkent → X" formatida bo'lishi kerak
+      const routeName = route.name.trim();
+      const parts = routeName.split('→').map(p => p.trim());
+
+      if (parts.length !== 2) return false;
+
+      // Birinchi qism FAQAT "Toshkent" bo'lishi kerak (tumanlar yo'q!)
+      return parts[0].toLowerCase() === 'toshkent';
+    });
 
     // Har bir route uchun statistika
     const routesWithStats = await Promise.all(
@@ -107,14 +119,26 @@ router.get('/add/from-tashkent', async (req, res) => {
   }
 });
 
-// YANGI: Viloyatlardan Toshkentga (GET) - Yo'nalishlar ro'yxati
+// YANGI: Viloyatlardan Toshkentga (GET) - FAQAT VILOYATLAR
 router.get('/add/to-tashkent', async (req, res) => {
   try {
     const allRoutes = await getAllRoutes();
-    // Faqat Toshkentga ketuvchi yo'nalishlar
-    const toTashkentRoutes = allRoutes.filter(route =>
-      route.to_keywords && route.to_keywords.toLowerCase().includes('toshkent')
-    );
+
+    // FAQAT viloyat yo'nalishlari: "Viloyat → Toshkent" (tumanlar yo'q!)
+    const toTashkentRoutes = allRoutes.filter(route => {
+      if (!route.to_keywords || !route.to_keywords.toLowerCase().includes('toshkent')) {
+        return false;
+      }
+
+      // Yo'nalish nomi: "X → Toshkent" formatida bo'lishi kerak
+      const routeName = route.name.trim();
+      const parts = routeName.split('→').map(p => p.trim());
+
+      if (parts.length !== 2) return false;
+
+      // Ikkinchi qism FAQAT "Toshkent" bo'lishi kerak (tumanlar yo'q!)
+      return parts[1].toLowerCase() === 'toshkent';
+    });
 
     // Har bir route uchun statistika
     const routesWithStats = await Promise.all(
