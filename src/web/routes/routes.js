@@ -13,7 +13,7 @@ const {
   getRouteMessageById,
   markMessageAsSent
 } = require('../../database/routes');
-const { sendRouteSMS } = require('../../services/routeSmsService');
+const { sendRouteSMS, sendRouteSMSToPhones } = require('../../services/routeSmsService');
 
 // Ro'yxat - Viloyatlar bo'yicha guruhlangan
 router.get('/', async (req, res) => {
@@ -399,7 +399,7 @@ router.get('/messages/:id', async (req, res) => {
   }
 });
 
-// E'lon bo'yicha SMS yuborish (POST)
+// E'lon bo'yicha SMS yuborish (POST) - COOLDOWN YO'Q!
 router.post('/messages/:messageId/send', async (req, res) => {
   try {
     const messageId = parseInt(req.params.messageId);
@@ -409,35 +409,23 @@ router.post('/messages/:messageId/send', async (req, res) => {
       return res.json({ success: false, error: 'E\'lon topilmadi' });
     }
 
-    // SMS yuborish
-    const { sendSMS } = require('../../services/smsService');
-    let sentCount = 0;
-    let failedCount = 0;
+    // SMS matni
+    const smsText = message.sms_template || `Assalomu alaykum! ${message.route_name} yo'nalishi bo'yicha taklifimiz bor.`;
 
-    for (const phone of message.phone_numbers) {
-      try {
-        const smsText = message.sms_template || `Assalomu alaykum! ${message.route_name} yo'nalishi bo'yicha taklifimiz bor.`;
-        const result = await sendSMS(phone, message.group_id, smsText, {});
-
-        if (result.success) {
-          sentCount++;
-        } else {
-          failedCount++;
-        }
-      } catch (smsError) {
-        console.error(`SMS error for ${phone}:`, smsError);
-        failedCount++;
-      }
-    }
+    // YO'NALISH BO'YICHA SMS - COOLDOWN YO'Q!
+    // sendRouteSMSToPhones() funksiyasi cooldown tekshirmaydi
+    const result = await sendRouteSMSToPhones(message.route_id, message.phone_numbers, smsText);
 
     // E'lonni yuborilgan deb belgilash
-    await markMessageAsSent(messageId);
+    if (result.success && result.sentCount > 0) {
+      await markMessageAsSent(messageId);
+    }
 
     res.json({
-      success: true,
-      message: `✅ ${sentCount} ta SMS yuborildi!`,
-      sentCount,
-      failedCount
+      success: result.success,
+      message: result.success ? `✅ ${result.sentCount} ta SMS yuborildi!` : result.error,
+      sentCount: result.sentCount,
+      failedCount: result.failedCount
     });
   } catch (error) {
     console.error('Message send error:', error);
@@ -461,47 +449,51 @@ router.post('/bulk-sms', async (req, res) => {
       return res.json({ success: false, error: 'SMS matni kiritilmadi' });
     }
 
-    // SMS yuborish
-    const { sendSMS } = require('../../services/smsService');
-    const { logRouteSMS } = require('../../database/routes');
-    let sentCount = 0;
-    let failedCount = 0;
+    // Agar routeId bo'lsa, yo'nalish SMS (cooldown yo'q)
+    // Aks holda, oddiy SMS (cooldown bor)
+    if (routeId) {
+      // YO'NALISH BO'YICHA BULK SMS - COOLDOWN YO'Q!
+      const result = await sendRouteSMSToPhones(parseInt(routeId), phones, message);
 
-    for (const phone of phones) {
-      try {
-        const result = await sendSMS(phone, null, message, {});
+      res.json({
+        success: result.success,
+        message: result.success ? `SMS yuborish tugadi!` : result.error,
+        sent: result.sentCount,
+        failed: result.failedCount,
+        total: phones.length
+      });
+    } else {
+      // Oddiy bulk SMS - cooldown bor
+      const { sendSMS } = require('../../services/smsService');
+      let sentCount = 0;
+      let failedCount = 0;
 
-        if (result.success) {
-          sentCount++;
-          // Route SMS log
-          if (routeId) {
-            await logRouteSMS(parseInt(routeId), phone, message, 'success');
+      for (const phone of phones) {
+        try {
+          const result = await sendSMS(phone, null, message, {});
+
+          if (result.success) {
+            sentCount++;
+          } else {
+            failedCount++;
           }
-        } else {
+        } catch (smsError) {
+          console.error(`Bulk SMS error for ${phone}:`, smsError);
           failedCount++;
-          if (routeId) {
-            await logRouteSMS(parseInt(routeId), phone, message, 'failed');
-          }
         }
-      } catch (smsError) {
-        console.error(`Bulk SMS error for ${phone}:`, smsError);
-        failedCount++;
-        if (routeId) {
-          await logRouteSMS(parseInt(routeId), phone, message, 'error');
-        }
+
+        // Har bir SMS orasida 1 soniya kutish (rate limit uchun)
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      // Har bir SMS orasida 1 soniya kutish (rate limit uchun)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      res.json({
+        success: true,
+        message: `SMS yuborish tugadi!`,
+        sent: sentCount,
+        failed: failedCount,
+        total: phones.length
+      });
     }
-
-    res.json({
-      success: true,
-      message: `SMS yuborish tugadi!`,
-      sent: sentCount,
-      failed: failedCount,
-      total: phones.length
-    });
   } catch (error) {
     console.error('Bulk SMS error:', error);
     res.json({

@@ -141,6 +141,100 @@ async function sendRouteSMS(routeId) {
   }
 }
 
+/**
+ * Yo'nalish bo'yicha SMS yuborish - maxsus telefon raqamlarga (limitiz)
+ * @param {number} routeId - Route ID
+ * @param {Array<string>} phones - Telefon raqamlar ro'yxati
+ * @param {string} message - SMS matni
+ * @returns {Promise<Object>} - Natija
+ */
+async function sendRouteSMSToPhones(routeId, phones, message) {
+  try {
+    logger.info(`\n📤 Yo'nalish SMS yuborish (maxsus raqamlarga)`);
+    logger.info(`   Route ID: ${routeId}`);
+    logger.info(`   Telefon soni: ${phones.length}`);
+
+    if (phones.length === 0) {
+      return { success: true, sentCount: 0, failedCount: 0, message: 'Telefon raqam yo\'q' };
+    }
+
+    // SemySMS telefonlarni olish
+    const semysmsPhones = await getActiveSemySMSPhones();
+    if (semysmsPhones.length === 0) {
+      logger.error('   ❌ SemySMS telefonlar topilmadi');
+      return { success: false, error: 'SemySMS telefonlar topilmadi', sentCount: 0, failedCount: 0 };
+    }
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    // Har bir telefonga SMS yuborish
+    for (const toPhone of phones) {
+      // YO'NALISH BO'YICHA SMS - COOLDOWN YO'Q!
+      logger.info(`   📞 Yo'nalish SMS: ${toPhone} (cooldown tekshirilmaydi)`);
+
+      // Round-robin phone tanlash
+      const semysmsPhone = semysmsPhones[currentPhoneIndex % semysmsPhones.length];
+      currentPhoneIndex++;
+
+      try {
+        // Telefon raqamni to'g'ri formatda yuborish
+        let cleanedPhone = toPhone.replace(/\D/g, ''); // faqat raqamlar
+        if (!cleanedPhone.startsWith('998')) {
+          cleanedPhone = '998' + cleanedPhone; // Uzbekistan country code
+        }
+        cleanedPhone = '+' + cleanedPhone; // + qo'shish
+
+        // SemySMS orqali SMS yuborish (GET request bilan)
+        const response = await axios.get(SEMYSMS_API_URL + '/sms.php', {
+          params: {
+            token: SEMYSMS_API_KEY,
+            device: semysmsPhone.device_id,
+            phone: cleanedPhone,
+            msg: message
+          },
+          timeout: 10000
+        });
+
+        // SemySMS response: {"code":"0","id_device":...,"id":...}
+        // code="0" = success
+        if (response.data && response.data.code === "0") {
+          logger.info(`   ✅ SMS yuborildi: ${toPhone}`);
+          await logRouteSMS(routeId, toPhone, message, 'success', null);
+          sentCount++;
+        } else {
+          const errorMsg = response.data?.error || response.data?.message || `Error code: ${response.data?.code || 'unknown'}`;
+          logger.warn(`   ❌ SMS yuborilmadi: ${toPhone} (${errorMsg})`);
+          await logRouteSMS(routeId, toPhone, message, 'failed', errorMsg);
+          failedCount++;
+        }
+
+        // Har bir SMS o'rtasida 1 soniya kutish
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+      } catch (error) {
+        logger.error(`   ❌ SMS xatosi: ${toPhone}`, error.message);
+        await logRouteSMS(routeId, toPhone, message, 'failed', error.message);
+        failedCount++;
+      }
+    }
+
+    logger.info(`\n📊 Natija: ${sentCount} muvaffaqiyatli, ${failedCount} xato`);
+
+    return {
+      success: true,
+      sentCount,
+      failedCount,
+      totalPhones: phones.length
+    };
+
+  } catch (error) {
+    logger.error('❌ sendRouteSMSToPhones xatosi:', error);
+    return { success: false, error: error.message, sentCount: 0, failedCount: 0 };
+  }
+}
+
 module.exports = {
-  sendRouteSMS
+  sendRouteSMS,
+  sendRouteSMSToPhones
 };
