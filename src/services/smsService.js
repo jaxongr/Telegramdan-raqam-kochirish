@@ -394,7 +394,15 @@ async function getLastSMSTime(toPhone) {
     logger.info(`📊 getLastSMSTime query for ${toPhone}: found ${logs?.length || 0} records`);
 
     if (logs && logs.length > 0) {
-      const sentAt = logs[0].sent_at || logs[0].SENT_AT;
+      let sentAt = logs[0].sent_at || logs[0].SENT_AT;
+
+      // CRITICAL FIX: Database sent_at UTC formatda lekin 'Z' yo'q
+      // JavaScript new Date() uni local time deb parse qiladi
+      // Shuning uchun 'Z' qo'shish kerak (UTC marker)
+      if (sentAt && !sentAt.endsWith('Z')) {
+        sentAt = sentAt + 'Z';
+      }
+
       logger.info(`✅ Last success SMS: ${sentAt} (type: ${typeof sentAt})`);
       return sentAt;
     }
