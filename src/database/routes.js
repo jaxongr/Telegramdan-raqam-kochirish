@@ -47,10 +47,10 @@ async function deleteRoute(id) {
 
 // ==================== SMS LOGS ====================
 
-async function logRouteSMS(routeId, toPhone, message, status = 'success') {
+async function logRouteSMS(routeId, toPhone, message, status = 'success', error = null) {
   return await query(
-    'INSERT INTO route_sms_logs (route_id, to_phone, message, status) VALUES (?, ?, ?, ?)',
-    [routeId, toPhone, message, status]
+    'INSERT INTO route_sms_logs (route_id, to_phone, message, status, error) VALUES (?, ?, ?, ?, ?)',
+    [routeId, toPhone, message, status, error]
   );
 }
 

@@ -107,12 +107,12 @@ async function sendRouteSMS(routeId) {
         // code="0" = success
         if (response.data && response.data.code === "0") {
           logger.info(`   ✅ SMS yuborildi: ${toPhone}`);
-          await logRouteSMS(routeId, toPhone, smsText, 'success');
+          await logRouteSMS(routeId, toPhone, smsText, 'success', null);
           sentCount++;
         } else {
           const errorMsg = response.data?.error || response.data?.message || `Error code: ${response.data?.code || 'unknown'}`;
           logger.warn(`   ❌ SMS yuborilmadi: ${toPhone} (${errorMsg})`);
-          await logRouteSMS(routeId, toPhone, smsText, 'failed');
+          await logRouteSMS(routeId, toPhone, smsText, 'failed', errorMsg);
           failedCount++;
         }
 
@@ -121,7 +121,7 @@ async function sendRouteSMS(routeId) {
 
       } catch (error) {
         logger.error(`   ❌ SMS xatosi: ${toPhone}`, error.message);
-        await logRouteSMS(routeId, toPhone, smsText, 'error');
+        await logRouteSMS(routeId, toPhone, smsText, 'failed', error.message);
         failedCount++;
       }
     }
