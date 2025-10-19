@@ -115,9 +115,36 @@
                     <td><%= log.semysms_phone || 'N/A' %></td>
                     <td>
                       <% if (log.status === 'success') { %>
-                        <span class="badge bg-success">Yuborildi</span>
+                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Yuborildi</span>
+                      <% } else if (log.status === 'cooldown') { %>
+                        <%
+                          // Cooldown vaqtini parse qilish
+                          let remainingTime = '';
+                          if (log.error && log.error.includes('minutes remaining')) {
+                            const match = log.error.match(/(\d+) minutes remaining/);
+                            if (match) {
+                              const minutes = parseInt(match[1]);
+                              const hours = Math.floor(minutes / 60);
+                              const mins = minutes % 60;
+
+                              if (hours > 0) {
+                                remainingTime = `${hours} soat ${mins} daqiqa qoldi`;
+                              } else {
+                                remainingTime = `${mins} daqiqa qoldi`;
+                              }
+                            }
+                          }
+                        %>
+                        <span class="badge bg-warning text-dark" title="2 soatlik limitda kutish">
+                          <i class="bi bi-clock"></i> Kutilmoqda
+                          <% if (remainingTime) { %>
+                            <br><small><%= remainingTime %></small>
+                          <% } %>
+                        </span>
+                      <% } else if (log.status === 'blocked') { %>
+                        <span class="badge bg-secondary" title="<%= log.error %>"><i class="bi bi-ban"></i> Bloklangan</span>
                       <% } else { %>
-                        <span class="badge bg-danger" title="<%= log.error %>">Xato</span>
+                        <span class="badge bg-danger" title="<%= log.error %>"><i class="bi bi-x-circle"></i> Xato</span>
                       <% } %>
                     </td>
                   </tr>

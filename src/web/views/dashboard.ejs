@@ -357,9 +357,32 @@
                     <td><%= sms.message.substring(0, 50) %>...</td>
                     <td>
                       <% if (sms.status === 'success') { %>
-                        <span class="badge bg-success">Yuborildi</span>
+                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Yuborildi</span>
+                      <% } else if (sms.status === 'cooldown') { %>
+                        <%
+                          // Cooldown vaqtini parse qilish
+                          let remainingTime = '';
+                          if (sms.error && sms.error.includes('minutes remaining')) {
+                            const match = sms.error.match(/(\d+) minutes remaining/);
+                            if (match) {
+                              const minutes = parseInt(match[1]);
+                              const hours = Math.floor(minutes / 60);
+                              const mins = minutes % 60;
+                              if (hours > 0) {
+                                remainingTime = `${hours}s ${mins}d`;
+                              } else {
+                                remainingTime = `${mins}d`;
+                              }
+                            }
+                          }
+                        %>
+                        <span class="badge bg-warning text-dark" title="2 soatlik limitda kutish">
+                          <i class="bi bi-clock"></i> <%= remainingTime ? remainingTime + ' qoldi' : 'Kutilmoqda' %>
+                        </span>
+                      <% } else if (sms.status === 'blocked') { %>
+                        <span class="badge bg-secondary"><i class="bi bi-ban"></i> Bloklangan</span>
                       <% } else { %>
-                        <span class="badge bg-danger">Xato</span>
+                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Xato</span>
                       <% } %>
                     </td>
                   </tr>
