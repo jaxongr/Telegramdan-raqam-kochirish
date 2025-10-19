@@ -111,17 +111,19 @@
           </div>
         <% } else { %>
           <%
-            // Tumanlar/shaharlar bo'yicha guruhlash
-            const districtStats = {};
+            // Direction ga qarab guruhlash
+            const groupStats = {};
+
             routes.forEach(route => {
-              // Direction ga qarab to'g'ri qismni olish
-              let districtName;
+              let groupName;
 
               if (direction === 'from-tashkent') {
+                // TOSHKENTDAN: Har bir tuman alohida
                 // "Toshkent → Chiroqchi" dan "Chiroqchi"ni olish
                 const parts = route.name.split('→');
-                districtName = parts[1] ? parts[1].trim() : "Noma'lum";
+                groupName = parts[1] ? parts[1].trim() : "Noma'lum";
               } else {
+                // VILOYATLARDAN TOSHKENTGA: Faqat viloyatlar (tumanlarni birlashtirish)
                 // "Qashqadaryo (Qarshi) → Toshkent" dan "Qashqadaryo"ni olish
                 let regionName = route.name.split('→')[0].trim();
 
@@ -130,24 +132,24 @@
                 if (parenIndex !== -1) {
                   regionName = regionName.substring(0, parenIndex).trim();
                 }
-                districtName = regionName;
+                groupName = regionName;
               }
 
-              if (!districtStats[districtName]) {
-                districtStats[districtName] = {
-                  name: districtName,
+              if (!groupStats[groupName]) {
+                groupStats[groupName] = {
+                  name: groupName,
                   routes: [],
                   totalMessages: 0,
                   totalPhones: 0
                 };
               }
 
-              districtStats[districtName].routes.push(route);
-              districtStats[districtName].totalMessages += route.messageCount || 0;
+              groupStats[groupName].routes.push(route);
+              groupStats[groupName].totalMessages += route.messageCount || 0;
               // TODO: Unikal raqamlar sonini hisoblash
             });
 
-            const regions = Object.values(districtStats);
+            const regions = Object.values(groupStats);
           %>
 
           <!-- Viloyatlar ro'yxati - kichik kartochkalar (4 ta bir qatorda) -->
