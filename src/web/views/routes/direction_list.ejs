@@ -162,7 +162,7 @@
                   if (region.routes.length === 1) {
                     clickUrl = '/routes/messages/' + region.routes[0].id;
                   } else {
-                    clickUrl = '/routes/region/' + encodeURIComponent(region.routes[0].name.split('→')[0].trim());
+                    clickUrl = '/routes/region/' + encodeURIComponent(region.name);
                   }
                 %>
                 <div class="card h-100 shadow-sm" style="cursor: pointer; transition: all 0.3s; border-radius: 12px;"
