@@ -266,7 +266,8 @@ async function getDialogs() {
   }
 
   try {
-    const dialogs = await client.getDialogs({ limit: 100 });
+    // LIMIT 500 ga oshirildi (ko'proq guruhlarni ko'rish uchun)
+    const dialogs = await client.getDialogs({ limit: 500 });
 
     const result = dialogs
       .filter(d => d.isGroup || d.isChannel)
