@@ -178,7 +178,7 @@ async function sendViaSemySMS(fromPhone, toPhone, text) {
     // Lekin avval fromPhone dan deviceId ni topish kerak
     const { getActiveSemySMSPhones: getPhones } = require('../database/models');
     const phones = await getPhones();
-    const senderPhone = phones.find(p => p.phone === fromPhone.replace(/\D/g, ''));
+    const senderPhone = phones.find(p => p.phone.replace(/\D/g, '') === fromPhone.replace(/\D/g, ''));
 
     if (!senderPhone || !senderPhone.device_id) {
       throw new Error(`Device ID topilmadi: ${fromPhone}`);
