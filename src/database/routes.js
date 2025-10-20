@@ -328,9 +328,11 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
   // CRITICAL FIX: Dublikat telefon raqamlarni olib tashlash (shu xabar ichida)
   const uniquePhones = [...new Set(phoneNumbers)];
 
-  // YANGI LOGIKA (2-SOATLIK REAL-TIME UCHUN):
-  // Faqat 15 daqiqa ichidagi dublikatlarni tekshirish (spam oldini olish)
-  // 15 daqiqadan keyin bir xil raqam yana paydo bo'lishi mumkin (shoshilinch elon!)
+  if (uniquePhones.length === 0) {
+    return null; // Bo'sh e'lon saqlanmaydi
+  }
+
+  // SPAM TEKSHIRUVI: 15 daqiqa ichidagi bir xil raqamlar
   const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
   const recentMessages = await query(
@@ -345,7 +347,7 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
       const phones = JSON.parse(msg.phone_numbers || '[]');
       phones.forEach(phone => recentPhones.add(phone));
     } catch (e) {
-      // JSON parse xato - o'tkazib yuborish
+      // JSON parse xato
     }
   });
 
@@ -358,34 +360,46 @@ async function saveRouteMessage(routeId, groupId, messageText, phoneNumbers, mes
     return null; // Saqlanmadi
   }
 
-  // Dublikat xabarni tekshirish (bir yo'nalishda bir xil matn 15 daqiqa ichida faqat 1 marta!)
-  const existing = await query(
-    'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND message_text = ? AND message_date >= ? ORDER BY created_at DESC LIMIT 1',
-    [routeId, messageText, fifteenMinutesAgo]
+  // YANGI LOGIKA: Bir xil telefon raqamlar bilan eski e'lonlarni o'chirish
+  // (15 daqiqadan ESKI e'lonlarni - qayta post qilingan e'lonlar)
+  const phoneKey = uniquePhones.sort().join(',');
+
+  const oldMessages = await query(
+    'SELECT id, phone_numbers FROM route_messages WHERE route_id = ? AND message_date < ?',
+    [routeId, fifteenMinutesAgo]
   );
 
-  if (existing && existing.length > 0) {
-    // Agar 15 daqiqa ichida bir xil matnli xabar bor bo'lsa, FAQAT YANGI raqamlarni qo'shish
-    const existingMessagePhones = JSON.parse(existing[0].phone_numbers || '[]');
-    const combinedPhones = [...new Set([...existingMessagePhones, ...newPhones])];
+  const toDelete = [];
+  oldMessages.forEach(msg => {
+    try {
+      const existingPhones = JSON.parse(msg.phone_numbers || '[]');
+      const existingKey = existingPhones.sort().join(',');
 
+      // Agar bir xil telefon raqamlar bo'lsa, eski versiyani o'chirish
+      if (existingKey === phoneKey) {
+        toDelete.push(msg.id);
+      }
+    } catch (e) {
+      // JSON parse xato
+    }
+  });
+
+  if (toDelete.length > 0) {
     await query(
-      'UPDATE route_messages SET phone_numbers = ?, message_date = ? WHERE id = ?',
-      [JSON.stringify(combinedPhones), messageDate, existing[0].id]
+      `DELETE FROM route_messages WHERE id IN (${toDelete.join(',')})`,
+      []
     );
-
-    console.log(`✓ Route ${routeId}: ${newPhones.length} ta yangi raqam qoshildi (ID: ${existing[0].id})`);
-    return existing[0].id;
+    console.log(`🗑️  Route ${routeId}: ${toDelete.length} ta eski e'lon o'chirildi (bir xil raqamlar, qayta post)`);
   }
 
-  // Yangi xabar yaratish (barcha raqamlar bilan - 15 daqiqadan keyin dublikat bo'lishi mumkin!)
+  // Yangi xabar yaratish (barcha raqamlar bilan)
   try {
     const result = await query(
       'INSERT INTO route_messages (route_id, group_id, message_text, phone_numbers, message_date) VALUES (?, ?, ?, ?, ?)',
-      [routeId, groupId, messageText, JSON.stringify(newPhones), messageDate]
+      [routeId, groupId, messageText, JSON.stringify(uniquePhones), messageDate]
     );
 
-    console.log(`✓ Route ${routeId}: Yangi elon saqlandi - ${newPhones.length} ta raqam`);
+    console.log(`✓ Route ${routeId}: Yangi elon saqlandi - ${uniquePhones.length} ta raqam`);
     return result.lastID || result.insertId;
   } catch (error) {
     // UNIQUE constraint error (race condition) - mavjud xabarni yangilash
