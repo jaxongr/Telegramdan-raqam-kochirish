@@ -127,6 +127,11 @@ async function main() {
           console.error('Auto-resume xatosi:', err);
         }
       }, 15000);
+
+      // Route SMS Service - avtomatik SMS yuborish
+      console.log('[SMS] Route SMS service ishga tushirilmoqda...');
+      const { startRouteSmsService } = require('./services/routeSmsService');
+      startRouteSmsService();
     } else {
       console.log("[2/3] LOKAL REJIM (Telegram o'chirilgan - faqat web dashboard)");
     }
