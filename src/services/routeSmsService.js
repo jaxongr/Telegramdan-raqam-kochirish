@@ -18,9 +18,16 @@ const SMS_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 soat
  * Telefon raqamga oxirgi SMS yuborilgan vaqtni tekshirish
  * @param {number} routeId - Route ID
  * @param {string} toPhone - Telefon raqam
+ * @param {boolean} skipCooldown - Cooldown tekshiruvini skip qilish (qo'lda yuborish uchun)
  * @returns {Promise<boolean>} - true agar yuborish mumkin bo'lsa
  */
-async function canSendSMS(routeId, toPhone) {
+async function canSendSMS(routeId, toPhone, skipCooldown = false) {
+  // Agar qo'lda yuborilsa (skipCooldown=true), cooldown tekshirmaydi
+  if (skipCooldown) {
+    console.log(`   ✋ Qo'lda yuborilmoqda: ${toPhone} (cooldown skip)`);
+    return true;
+  }
+
   try {
     // PENDING VA SUCCESS statuslarni tekshirish (race condition oldini olish)
     const logs = await query(
@@ -60,11 +67,12 @@ async function canSendSMS(routeId, toPhone) {
 }
 
 /**
- * Yo'nalish bo'yicha SMS yuborish (limitiz)
+ * Yo'nalish bo'yicha SMS yuborish
  * @param {number} routeId - Route ID
+ * @param {boolean} skipCooldown - Cooldown tekshiruvini skip qilish (qo'lda yuborish uchun)
  * @returns {Promise<Object>} - Natija
  */
-async function sendRouteSMS(routeId) {
+async function sendRouteSMS(routeId, skipCooldown = false) {
   try {
     const route = await getRouteById(routeId);
     if (!route) {
@@ -102,8 +110,8 @@ async function sendRouteSMS(routeId) {
     for (const phoneRecord of matchedPhones) {
       const toPhone = phoneRecord.phone;
 
-      // 2 SOATLIK COOLDOWN TEKSHIRUVI
-      const canSend = await canSendSMS(routeId, toPhone);
+      // 2 SOATLIK COOLDOWN TEKSHIRUVI (qo'lda yuborilsa skip qilinadi)
+      const canSend = await canSendSMS(routeId, toPhone, skipCooldown);
       if (!canSend) {
         continue; // Keyingisiga o'tish (log canSendSMS ichida)
       }
@@ -225,13 +233,14 @@ async function sendRouteSMS(routeId) {
 }
 
 /**
- * Yo'nalish bo'yicha SMS yuborish - maxsus telefon raqamlarga (limitiz)
+ * Yo'nalish bo'yicha SMS yuborish - maxsus telefon raqamlarga
  * @param {number} routeId - Route ID
  * @param {Array<string>} phones - Telefon raqamlar ro'yxati
- * @param {string} message - SMS matni
+ * @param {string} customMessage - SMS matni
+ * @param {boolean} skipCooldown - Cooldown tekshiruvini skip qilish (qo'lda yuborish uchun)
  * @returns {Promise<Object>} - Natija
  */
-async function sendRouteSMSToPhones(routeId, phones, customMessage = null) {
+async function sendRouteSMSToPhones(routeId, phones, customMessage = null, skipCooldown = false) {
   try {
     const route = await getRouteById(routeId);
     if (!route) {
@@ -257,8 +266,8 @@ async function sendRouteSMSToPhones(routeId, phones, customMessage = null) {
 
     // Har bir telefonga SMS yuborish
     for (const toPhone of phones) {
-      // 2 SOATLIK COOLDOWN TEKSHIRUVI
-      const canSend = await canSendSMS(routeId, toPhone);
+      // 2 SOATLIK COOLDOWN TEKSHIRUVI (qo'lda yuborilsa skip qilinadi)
+      const canSend = await canSendSMS(routeId, toPhone, skipCooldown);
       if (!canSend) {
         continue; // Keyingisiga o'tish (log canSendSMS ichida)
       }

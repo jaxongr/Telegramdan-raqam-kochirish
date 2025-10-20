@@ -368,11 +368,12 @@ router.get('/send/:id', async (req, res) => {
   }
 });
 
-// SMS yuborish (POST)
+// SMS yuborish (POST) - QO'LDA YUBORISH (cooldown skip)
 router.post('/send/:id', async (req, res) => {
   try {
     const routeId = parseInt(req.params.id);
-    const result = await sendRouteSMS(routeId);
+    // Qo'lda yuborilganda cooldown skip qilinadi
+    const result = await sendRouteSMS(routeId, true); // skipCooldown = true
 
     if (result.success) {
       res.json({
@@ -436,9 +437,8 @@ router.post('/messages/:messageId/send', async (req, res) => {
     // SMS matni
     const smsText = message.sms_template || `Assalomu alaykum! ${message.route_name} yo'nalishi bo'yicha taklifimiz bor.`;
 
-    // YO'NALISH BO'YICHA SMS - COOLDOWN YO'Q!
-    // sendRouteSMSToPhones() funksiyasi cooldown tekshirmaydi
-    const result = await sendRouteSMSToPhones(message.route_id, message.phone_numbers, smsText);
+    // YO'NALISH BO'YICHA SMS - COOLDOWN YO'Q! (qo'lda yuborilganda)
+    const result = await sendRouteSMSToPhones(message.route_id, message.phone_numbers, smsText, true); // skipCooldown = true
 
     // E'lonni yuborilgan deb belgilash
     if (result.success && result.sentCount > 0) {
@@ -473,11 +473,11 @@ router.post('/bulk-sms', async (req, res) => {
       return res.json({ success: false, error: 'SMS matni kiritilmadi' });
     }
 
-    // Agar routeId bo'lsa, yo'nalish SMS (cooldown yo'q)
+    // Agar routeId bo'lsa, yo'nalish SMS (cooldown yo'q - qo'lda yuborish)
     // Aks holda, oddiy SMS (cooldown bor)
     if (routeId) {
-      // YO'NALISH BO'YICHA BULK SMS - COOLDOWN YO'Q!
-      const result = await sendRouteSMSToPhones(parseInt(routeId), phones, message);
+      // YO'NALISH BO'YICHA BULK SMS - COOLDOWN YO'Q! (qo'lda yuborish)
+      const result = await sendRouteSMSToPhones(parseInt(routeId), phones, message, true); // skipCooldown = true
 
       res.json({
         success: result.success,
