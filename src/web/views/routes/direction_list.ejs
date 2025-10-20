@@ -118,10 +118,18 @@
               let groupName;
 
               if (direction === 'from-tashkent') {
-                // TOSHKENTDAN: Har bir tuman alohida
-                // "Toshkent → Chiroqchi" dan "Chiroqchi"ni olish
+                // TOSHKENTDAN: Viloyatlar bo'yicha guruhlash
+                // "Toshkent → Qashqadaryo" yoki "Toshkent → Kasbi" dan viloyatni olish
                 const parts = route.name.split('→');
-                groupName = parts[1] ? parts[1].trim() : "Noma'lum";
+                let regionName = parts[1] ? parts[1].trim() : "Noma'lum";
+
+                // Agar "Kasbi", "Dehqonobod" kabi tuman bo'lsa, "Qashqadaryo" deb guruhlash
+                const qashqadaryoDistricts = ['Kasbi', 'Dehqonobod', 'Yakkabog\'', 'Qarshi', 'Shahrisabz', 'G\'uzor', 'Koson', 'Nishon', 'Qamashi', 'Muborak'];
+                if (qashqadaryoDistricts.includes(regionName)) {
+                  groupName = 'Qashqadaryo';
+                } else {
+                  groupName = regionName;
+                }
               } else {
                 // VILOYATLARDAN TOSHKENTGA: Faqat viloyatlar (tumanlarni birlashtirish)
                 // "Qashqadaryo (Qarshi) → Toshkent" dan "Qashqadaryo"ni olish
