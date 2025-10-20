@@ -37,6 +37,7 @@ const isProd = process.env.NODE_ENV === 'production';
 // View engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.set('view cache', false); // Disable EJS caching for development
 
 // Middleware
 app.disable('x-powered-by');
