@@ -66,13 +66,13 @@ router.post('/add', async (req, res) => {
   try {
     const { name, telegram_id, keywords, sms_template } = req.body;
 
-    // Max 50 ta limit
+    // Max 100 ta limit
     const allGroups = await getAllGroups();
-    if (allGroups.length >= 50) {
+    if (allGroups.length >= 100) {
       const dialogs = await getDialogs();
       return res.render('groups/add', {
         dialogs,
-        error: 'Maksimum 50 ta guruh qo\'shish mumkin',
+        error: 'Maksimum 100 ta guruh qo\'shish mumkin',
         username: req.session.username
       });
     }
