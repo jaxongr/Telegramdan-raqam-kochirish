@@ -129,6 +129,7 @@ function initDatabase() {
       to_phone TEXT NOT NULL,
       message TEXT,
       status TEXT DEFAULT 'pending',
+      error TEXT,
       sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (route_id) REFERENCES routes(id)
     )
@@ -163,6 +164,20 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_route_messages_route ON route_messages(route_id);
     CREATE INDEX IF NOT EXISTS idx_route_messages_date ON route_messages(message_date);
   `);
+
+  // Migration: Add 'error' column to route_sms_logs if it doesn't exist
+  try {
+    const tableInfo = db.prepare('PRAGMA table_info(route_sms_logs)').all();
+    const hasErrorColumn = tableInfo.some(col => col.name === 'error');
+
+    if (!hasErrorColumn) {
+      console.log('🔧 Migration: Adding "error" column to route_sms_logs...');
+      db.exec('ALTER TABLE route_sms_logs ADD COLUMN error TEXT');
+      console.log('✓ Migration completed: error column added');
+    }
+  } catch (migrationError) {
+    console.error('Migration error:', migrationError);
+  }
 
   console.log('✓ SQLite database initialized:', dbPath);
   return db;
