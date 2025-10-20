@@ -1,4 +1,4 @@
-const { findMatchingPhones, logRouteSMS, getRouteById } = require('../database/routes');
+const { findMatchingPhones, logRouteSMS, updateRouteSMSLog, getRouteById } = require('../database/routes');
 const { renderSMSTemplate } = require('./smsService');
 const { getActiveSemySMSPhones } = require('../database/models');
 const { query } = require('../database/sqlite');
@@ -22,9 +22,10 @@ const SMS_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 soat
  */
 async function canSendSMS(routeId, toPhone) {
   try {
+    // PENDING VA SUCCESS statuslarni tekshirish (race condition oldini olish)
     const logs = await query(
-      `SELECT sent_at FROM route_sms_logs
-       WHERE route_id = ? AND to_phone = ? AND status = 'success'
+      `SELECT sent_at, status FROM route_sms_logs
+       WHERE route_id = ? AND to_phone = ? AND (status = 'success' OR status = 'pending')
        ORDER BY sent_at DESC LIMIT 1`,
       [routeId, toPhone]
     );
@@ -132,6 +133,10 @@ async function sendRouteSMS(routeId) {
         logger.error(`   ❌ Template vars: ${JSON.stringify(templateVars)}`);
       }
 
+      // PENDING log - SMS yuborishdan OLDIN (race condition oldini olish)
+      await logRouteSMS(routeId, toPhone, smsText, 'pending', 'SMS yuborilmoqda...');
+      console.log(`   📝 Pending log qilindi: ${toPhone}`);
+
       // Round-robin phone tanlash
       const semysmsPhone = semysmsPhones[currentPhoneIndex % semysmsPhones.length];
       currentPhoneIndex++;
@@ -159,12 +164,12 @@ async function sendRouteSMS(routeId) {
         // code="0" = success
         if (response.data && response.data.code === "0") {
           console.log(`   ✅ SMS yuborildi: ${toPhone}`);
-          await logRouteSMS(routeId, toPhone, smsText, 'success', null);
+          await updateRouteSMSLog(routeId, toPhone, 'success', null);
           sentCount++;
         } else {
           const errorMsg = response.data?.error || response.data?.message || `Error code: ${response.data?.code || 'unknown'}`;
           logger.warn(`   ❌ SMS yuborilmadi: ${toPhone} (${errorMsg})`);
-          await logRouteSMS(routeId, toPhone, smsText, 'failed', errorMsg);
+          await updateRouteSMSLog(routeId, toPhone, 'failed', errorMsg);
           failedCount++;
         }
 
@@ -173,7 +178,7 @@ async function sendRouteSMS(routeId) {
 
       } catch (error) {
         logger.error(`   ❌ SMS xatosi: ${toPhone}`, error.message);
-        await logRouteSMS(routeId, toPhone, smsText, 'failed', error.message);
+        await updateRouteSMSLog(routeId, toPhone, 'failed', error.message);
         failedCount++;
       }
     }
@@ -260,10 +265,6 @@ async function sendRouteSMSToPhones(routeId, phones, customMessage = null) {
 
       console.log(`   📞 SMS: ${toPhone}`);
 
-      // Round-robin phone tanlash
-      const semysmsPhone = semysmsPhones[currentPhoneIndex % semysmsPhones.length];
-      currentPhoneIndex++;
-
       try {
         // SMS matn - shablon yoki custom message
         const templateVars = {
@@ -271,6 +272,14 @@ async function sendRouteSMSToPhones(routeId, phones, customMessage = null) {
         };
 
         const smsText = customMessage || renderSMSTemplate(route.sms_template, templateVars);
+
+        // PENDING log - SMS yuborishdan OLDIN (race condition oldini olish)
+        await logRouteSMS(routeId, toPhone, smsText, 'pending', 'SMS yuborilmoqda...');
+        console.log(`   📝 Pending log qilindi: ${toPhone}`);
+
+        // Round-robin phone tanlash
+        const semysmsPhone = semysmsPhones[currentPhoneIndex % semysmsPhones.length];
+        currentPhoneIndex++;
 
         // Telefon raqamni to'g'ri formatda yuborish
         let cleanedPhone = toPhone.replace(/\D/g, ''); // faqat raqamlar
@@ -294,12 +303,12 @@ async function sendRouteSMSToPhones(routeId, phones, customMessage = null) {
         // code="0" = success
         if (response.data && response.data.code === "0") {
           console.log(`   ✅ SMS yuborildi: ${toPhone}`);
-          await logRouteSMS(routeId, toPhone, smsText, 'success', null);
+          await updateRouteSMSLog(routeId, toPhone, 'success', null);
           sentCount++;
         } else {
           const errorMsg = response.data?.error || response.data?.message || `Error code: ${response.data?.code || 'unknown'}`;
           console.log(`   ❌ SMS yuborilmadi: ${toPhone} (${errorMsg})`);
-          await logRouteSMS(routeId, toPhone, smsText, 'failed', errorMsg);
+          await updateRouteSMSLog(routeId, toPhone, 'failed', errorMsg);
           failedCount++;
         }
 
@@ -308,7 +317,7 @@ async function sendRouteSMSToPhones(routeId, phones, customMessage = null) {
 
       } catch (error) {
         console.error(`   ❌ SMS xatosi: ${toPhone}`, error.message);
-        await logRouteSMS(routeId, toPhone, smsText || '', 'failed', error.message);
+        await updateRouteSMSLog(routeId, toPhone, 'failed', error.message);
         failedCount++;
       }
     }

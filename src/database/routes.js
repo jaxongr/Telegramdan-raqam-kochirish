@@ -48,9 +48,24 @@ async function deleteRoute(id) {
 // ==================== SMS LOGS ====================
 
 async function logRouteSMS(routeId, toPhone, message, status = 'success', error = null) {
-  return await query(
+  const result = await query(
     'INSERT INTO route_sms_logs (route_id, to_phone, message, status, error) VALUES (?, ?, ?, ?, ?)',
     [routeId, toPhone, message, status, error]
+  );
+  return result.lastInsertRowid; // Return inserted ID
+}
+
+async function updateRouteSMSLog(routeId, toPhone, status, error = null) {
+  // Eng oxirgi pending logni yangilash
+  return await query(
+    `UPDATE route_sms_logs
+     SET status = ?, error = ?
+     WHERE id = (
+       SELECT id FROM route_sms_logs
+       WHERE route_id = ? AND to_phone = ? AND status = 'pending'
+       ORDER BY sent_at DESC LIMIT 1
+     )`,
+    [status, error, routeId, toPhone]
   );
 }
 
@@ -481,6 +496,7 @@ module.exports = {
   updateRoute,
   deleteRoute,
   logRouteSMS,
+  updateRouteSMSLog,
   getRouteSMSLogs,
   findMatchingPhones,
   matchesRoute,
