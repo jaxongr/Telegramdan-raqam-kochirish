@@ -17,9 +17,17 @@ let currentPhoneIndex = 0; // Round-robin uchun
  * @param {number} groupId - Guruh ID
  * @param {string} messageText - SMS matni (shablon bo'lishi mumkin)
  * @param {Object} templateVars - Shablon o'zgaruvchilari (optional)
+ * @param {number} retryCount - Retry counter (internal use)
  */
-async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
+async function sendSMS(toPhone, groupId, messageText, templateVars = null, retryCount = 0) {
   try {
+    // Retry limit (cheksiz rekursiya oldini olish)
+    if (retryCount >= 4) {
+      logger.error(`❌ ${toPhone} uchun maksimal retry limitga yetildi (${retryCount})`);
+      await logSMS(toPhone, groupId, messageText, null, 'failed', 'Max retry limit reached');
+      return { success: false, error: 'max_retry_limit' };
+    }
+
     // Input validation
     if (!toPhone || !messageText) {
       logger.error('SMS yuborish: telefon yoki xabar bo\'sh');
@@ -43,7 +51,7 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
 
     // Cooldown tekshirish (oxirgi SMS dan 2 soat o'tganmi?)
     const lastSMS = await getLastSMSTime(toPhone);
-    logger.info(`🔍 Cooldown check: ${toPhone} - Last SMS: ${lastSMS || 'none'}`);
+    logger.info(`🔍 Cooldown check (retry: ${retryCount}): ${toPhone} - Last SMS: ${lastSMS || 'none'}`);
 
     if (lastSMS) {
       const hoursSinceLastSMS = (Date.now() - new Date(lastSMS).getTime()) / (1000 * 60 * 60);
@@ -58,6 +66,12 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
 
         return { success: false, error: 'cooldown_active', remainingMinutes };
       }
+    }
+
+    // Birinchi urinishda "pending" log qilish (cooldown uchun)
+    if (retryCount === 0) {
+      await logSMS(toPhone, groupId, renderedText, null, 'pending', 'SMS yuborilmoqda...');
+      logger.info(`📝 Pending log qilindi: ${toPhone}`);
     }
 
     // Kunlik limit tekshirish (faqat backup)
@@ -86,9 +100,9 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null) {
     // Balansni tekshirish
     const balance = await checkBalance(senderPhone.phone);
     if (balance !== null && balance < 1) {
-      logger.warn(`${senderPhone.phone} balans yetarli emas (${balance})`);
+      logger.warn(`${senderPhone.phone} balans yetarli emas (${balance}) - keyingi telefon bilan urinish (retry: ${retryCount + 1})`);
       await updateSemySMSPhone(senderPhone.phone, { status: 'low_balance' });
-      return await sendSMS(toPhone, groupId, messageText, templateVars); // Keyingisi bilan urinish
+      return await sendSMS(toPhone, groupId, messageText, templateVars, retryCount + 1); // Keyingisi bilan urinish
     }
 
     // SMS matnini tayyorlash (rendered text ishlatamiz)
@@ -381,14 +395,14 @@ async function updateAllBalances() {
 }
 
 /**
- * Oxirgi SMS yuborilgan vaqtni olish (faqat success)
+ * Oxirgi SMS yuborilgan vaqtni olish (success yoki pending)
  */
 async function getLastSMSTime(toPhone) {
   try {
     const { query } = require('../database/index');
     const logs = await query(
-      'SELECT sent_at, status FROM sms_logs WHERE to_phone = ? AND status = ? ORDER BY sent_at DESC LIMIT 1',
-      [toPhone, 'success']
+      'SELECT sent_at, status FROM sms_logs WHERE to_phone = ? AND (status = ? OR status = ?) ORDER BY sent_at DESC LIMIT 1',
+      [toPhone, 'success', 'pending']
     );
 
     logger.info(`📊 getLastSMSTime query for ${toPhone}: found ${logs?.length || 0} records`);
@@ -403,11 +417,11 @@ async function getLastSMSTime(toPhone) {
         sentAt = sentAt + 'Z';
       }
 
-      logger.info(`✅ Last success SMS: ${sentAt} (type: ${typeof sentAt})`);
+      logger.info(`✅ Last SMS (${logs[0].status}): ${sentAt} (type: ${typeof sentAt})`);
       return sentAt;
     }
 
-    logger.info(`❌ No success SMS found for ${toPhone}`);
+    logger.info(`❌ No SMS found for ${toPhone}`);
     return null;
   } catch (error) {
     logger.error('Oxirgi SMS vaqtini olishda xato:', error);
