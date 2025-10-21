@@ -180,7 +180,9 @@
                     <!-- O'chirish tugmasi (faqat admin uchun) -->
                     <div class="position-absolute top-0 end-0 p-2">
                       <button class="btn btn-sm btn-outline-danger"
-                              onclick="deleteRegion('<%= region.name %>', '<%= direction %>')"
+                              onclick="deleteRegion(this.getAttribute('data-region'), this.getAttribute('data-direction'))"
+                              data-region="<%= region.name %>"
+                              data-direction="<%= direction %>"
                               title="O'chirish">
                         <i class="bi bi-trash"></i>
                       </button>
