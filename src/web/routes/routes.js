@@ -171,12 +171,25 @@ router.get('/add/to-tashkent', async (req, res) => {
 router.get('/region/:regionName', async (req, res) => {
   try {
     const regionName = decodeURIComponent(req.params.regionName);
+    const direction = req.query.direction || 'to-tashkent'; // Default: viloyatdan Toshkentga
     const allRoutes = await getAllRoutes();
 
-    // Shu viloyatdan boshlanuvchi barcha yo'nalishlar
-    const regionRoutes = allRoutes.filter(route =>
-      route.name.toLowerCase().startsWith(regionName.toLowerCase())
-    );
+    // Direction ga qarab yo'nalishlarni filtrlash
+    let regionRoutes;
+    if (direction === 'from-tashkent') {
+      // Toshkentdan viloyatga: "Toshkent → Qashqadaryo (Tuman)"
+      regionRoutes = allRoutes.filter(route => {
+        const routeName = route.name.toLowerCase();
+        return routeName.startsWith('toshkent →') &&
+               routeName.includes(regionName.toLowerCase());
+      });
+    } else {
+      // Viloyatdan Toshkentga: "Qashqadaryo (Tuman) → Toshkent"
+      regionRoutes = allRoutes.filter(route =>
+        route.name.toLowerCase().startsWith(regionName.toLowerCase()) &&
+        route.name.toLowerCase().includes('toshkent')
+      );
+    }
 
     if (regionRoutes.length === 0) {
       return res.redirect('/routes?error=' + encodeURIComponent('Viloyat topilmadi'));
