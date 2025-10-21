@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Dashboard - Telegram SMS Tizim</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+    .stat-card {
+      border-left: 4px solid;
+      transition: transform 0.2s, box-shadow 0.2s;
+      height: 100%;
+    }
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .stat-card .stat-icon {
+      font-size: 2.5rem;
+      opacity: 0.3;
+    }
+    .stat-card.phones { border-color: #0d6efd; }
+    .stat-card.groups { border-color: #198754; }
+    .stat-card.sms-sent { border-color: #20c997; }
+    .stat-card.sms-failed { border-color: #dc3545; }
+    .chart-container {
+      position: relative;
+      height: 350px;
+    }
+    .period-selector {
+      display: inline-flex;
+      gap: 0.5rem;
+    }
+    .period-btn {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/analytics">
+                <i class="bi bi-graph-up"></i> Analytics
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/routes">
+                <i class="bi bi-signpost-2"></i> Yo'nalishlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">
+            <i class="bi bi-graph-up-arrow"></i> Analytics Dashboard
+          </h1>
+          <div class="period-selector">
+            <a href="?period=1" class="btn period-btn <%= period == 1 ? 'btn-primary' : 'btn-outline-secondary' %>">1 kun</a>
+            <a href="?period=7" class="btn period-btn <%= period == 7 ? 'btn-primary' : 'btn-outline-secondary' %>">7 kun</a>
+            <a href="?period=30" class="btn period-btn <%= period == 30 ? 'btn-primary' : 'btn-outline-secondary' %>">30 kun</a>
+            <a href="?period=90" class="btn period-btn <%= period == 90 ? 'btn-primary' : 'btn-outline-secondary' %>">90 kun</a>
+          </div>
+        </div>
+
+        <!-- Overview Statistics -->
+        <div class="row mb-4">
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card phones">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">Unikal raqamlar</p>
+                    <h3 class="mb-0"><%= overview.total_unique_phones.toLocaleString() %></h3>
+                    <small class="text-muted">Jami: <%= overview.total_appearances.toLocaleString() %> ko'rinish</small>
+                  </div>
+                  <i class="bi bi-telephone-fill stat-icon text-primary"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card groups">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">Faol guruhlar</p>
+                    <h3 class="mb-0"><%= overview.active_groups %></h3>
+                    <small class="text-muted">Telegram guruhlar</small>
+                  </div>
+                  <i class="bi bi-collection-fill stat-icon text-success"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card sms-sent">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">SMS yuborildi</p>
+                    <h3 class="mb-0"><%= overview.total_sms_sent.toLocaleString() %></h3>
+                    <%
+                      const totalSms = overview.total_sms_sent + overview.total_sms_failed;
+                      const successRate = totalSms > 0 ? ((overview.total_sms_sent / totalSms) * 100).toFixed(1) : 0;
+                    %>
+                    <small class="text-muted"><%= successRate %>% muvaffaqiyat</small>
+                  </div>
+                  <i class="bi bi-check-circle-fill stat-icon text-info"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card sms-failed">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">SMS xatolik</p>
+                    <h3 class="mb-0"><%= overview.total_sms_failed.toLocaleString() %></h3>
+                    <small class="text-muted">Yuborilmagan</small>
+                  </div>
+                  <i class="bi bi-x-circle-fill stat-icon text-danger"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row mb-4">
+          <!-- Daily Trend Chart -->
+          <div class="col-md-8 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-graph-up"></i> Kunlik Trend - Oxirgi <%= period %> kun
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="dailyTrendChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Peak Hours Chart -->
+          <div class="col-md-4 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-clock"></i> Eng faol soatlar
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="peakHoursChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+          <!-- SMS Conversion Chart -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-pie-chart"></i> SMS Conversion Rate
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="smsConversionChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Repeat Distribution Chart -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-bar-chart"></i> Takrorlanish Taqsimoti
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="repeatDistChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tables Row -->
+        <div class="row mb-4">
+          <!-- Top Groups Table -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-trophy"></i> Eng Faol Guruhlar (Top 10)
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Guruh</th>
+                        <th>Unikal</th>
+                        <th>Jami</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% topGroups.forEach((group, idx) => { %>
+                        <tr>
+                          <td><%= idx + 1 %></td>
+                          <td><%= group.name || 'N/A' %></td>
+                          <td><span class="badge bg-primary"><%= group.unique_phones %></span></td>
+                          <td><span class="badge bg-success"><%= group.total_appearances %></span></td>
+                        </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Repeated Phones Table -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-star"></i> Eng Ko'p Takrorlangan Raqamlar
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Telefon</th>
+                        <th>Guruh</th>
+                        <th>Takror</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% topRepeatedPhones.forEach((phone, idx) => { %>
+                        <tr>
+                          <td><%= idx + 1 %></td>
+                          <td><strong><%= phone.phone %></strong></td>
+                          <td><small><%= phone.group_name || 'N/A' %></small></td>
+                          <td>
+                            <%
+                              let badgeClass = 'bg-secondary';
+                              if (phone.repeat_count >= 100) badgeClass = 'bg-danger';
+                              else if (phone.repeat_count >= 50) badgeClass = 'bg-warning';
+                              else if (phone.repeat_count >= 10) badgeClass = 'bg-info';
+                            %>
+                            <span class="badge <%= badgeClass %>"><%= phone.repeat_count %></span>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Prepare data
+    const dailyTrendData = <%- JSON.stringify(dailyTrend) %>;
+    const hourlyActivityData = <%- JSON.stringify(hourlyActivity) %>;
+    const smsConversionData = <%- JSON.stringify(smsConversion) %>;
+    const repeatDistData = <%- JSON.stringify(repeatDistribution) %>;
+
+    // 1. Daily Trend Chart
+    const dailyCtx = document.getElementById('dailyTrendChart').getContext('2d');
+    new Chart(dailyCtx, {
+      type: 'line',
+      data: {
+        labels: dailyTrendData.map(d => d.date),
+        datasets: [{
+          label: 'Yangi raqamlar',
+          data: dailyTrendData.map(d => d.new_phones),
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.4,
+          fill: true
+        }, {
+          label: 'Ko\'rinishlar',
+          data: dailyTrendData.map(d => d.appearances),
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' },
+          title: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // 2. Peak Hours Chart
+    const hoursCtx = document.getElementById('peakHoursChart').getContext('2d');
+    new Chart(hoursCtx, {
+      type: 'bar',
+      data: {
+        labels: hourlyActivityData.map(h => h.hour + ':00'),
+        datasets: [{
+          label: 'Faollik',
+          data: hourlyActivityData.map(h => h.count),
+          backgroundColor: 'rgba(54, 162, 235, 0.7)',
+          borderColor: 'rgb(54, 162, 235)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // 3. SMS Conversion Chart
+    const conversionCtx = document.getElementById('smsConversionChart').getContext('2d');
+    new Chart(conversionCtx, {
+      type: 'line',
+      data: {
+        labels: smsConversionData.map(d => d.date),
+        datasets: [{
+          label: 'Muvaffaqiyatli',
+          data: smsConversionData.map(d => d.successful),
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.4
+        }, {
+          label: 'Xatolik',
+          data: smsConversionData.map(d => d.failed),
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // 4. Repeat Distribution Chart
+    const repeatCtx = document.getElementById('repeatDistChart').getContext('2d');
+    new Chart(repeatCtx, {
+      type: 'doughnut',
+      data: {
+        labels: repeatDistData.map(d => d.range_label),
+        datasets: [{
+          data: repeatDistData.map(d => d.count),
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(153, 102, 255, 0.7)',
+            'rgba(255, 159, 64, 0.7)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right' }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -25,6 +25,7 @@ const messagesRouter = require('./routes/messages');
 const blacklistRouter = require('./routes/blacklist');
 const routesRouter = require('./routes/routes');
 const telegramGroupsRouter = require('./routes/telegramGroups');
+const analyticsRouter = require('./routes/analytics');
 
 // YANGI: Broadcast routes
 const accountsRouter = require('./routes/accounts');
@@ -162,6 +163,7 @@ app.use('/messages', requireAuth, messagesRouter);
 app.use('/blacklist', requireAuth, blacklistRouter);
 app.use('/routes', requireAuth, routesRouter);
 app.use('/telegram-groups', requireAuth, telegramGroupsRouter);
+app.use('/analytics', requireAuth, analyticsRouter);
 
 // YANGI: Broadcast routes
 app.use('/accounts', requireAuth, accountsRouter);
