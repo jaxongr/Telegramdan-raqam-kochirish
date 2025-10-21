@@ -543,6 +543,8 @@ router.post('/bulk-sms', async (req, res) => {
 // Viloyat yo'nalishlarini o'chirish
 router.delete('/delete-region/:regionName', async (req, res) => {
   try {
+    console.log('🗑️  DELETE region request:', req.params.regionName, 'direction:', req.query.direction);
+
     const regionName = decodeURIComponent(req.params.regionName);
     const direction = req.query.direction || 'to-tashkent';
 
