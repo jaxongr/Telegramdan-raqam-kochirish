@@ -233,12 +233,24 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     function deleteRegion(regionName, direction) {
+      console.log('deleteRegion called:', regionName, direction);
+
       if (confirm(`${regionName} viloyatining barcha yo'nalishlarini o'chirishni xohlaysizmi?`)) {
-        fetch(`/routes/delete-region/${encodeURIComponent(regionName)}?direction=${direction}`, {
-          method: 'DELETE'
+        const url = `/routes/delete-region/${encodeURIComponent(regionName)}?direction=${direction}`;
+        console.log('Sending DELETE request to:', url);
+
+        fetch(url, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         })
-        .then(response => response.json())
+        .then(response => {
+          console.log('Response status:', response.status);
+          return response.json();
+        })
         .then(data => {
+          console.log('Response data:', data);
           if (data.success) {
             alert(`${regionName} yo'nalishlari o'chirildi!`);
             window.location.reload();
@@ -247,6 +259,7 @@
           }
         })
         .catch(err => {
+          console.error('Fetch error:', err);
           alert('Xatolik yuz berdi: ' + err.message);
         });
       }
