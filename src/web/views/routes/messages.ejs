@@ -394,6 +394,11 @@
       sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Yuborilmoqda...';
 
       try {
+        const phoneCount = selectedPhones.size;
+        const estimatedTime = Math.ceil(phoneCount * 1.2); // ~1.2 sekund har bir SMS uchun
+
+        console.log(`SMS yuborish boshlandi: ${phoneCount} ta raqam, taxminiy vaqt: ${estimatedTime}s`);
+
         const response = await fetch('/routes/bulk-sms', {
           method: 'POST',
           headers: {
@@ -406,10 +411,17 @@
           })
         });
 
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+          throw new Error(`Server xatosi: ${response.status}`);
+        }
+
         const result = await response.json();
+        console.log('Response data:', result);
 
         if (result.success) {
-          alert(`✅ ${result.message}\n\nYuborildi: ${result.sent}\nXato: ${result.failed || 0}`);
+          alert(`✅ ${result.message}\n\nJami: ${result.total}\nYuborildi: ${result.sent}\nXato: ${result.failed || 0}`);
 
           // Checkboxlarni tozalash
           document.querySelectorAll('.phone-selector:checked').forEach(cb => cb.checked = false);
@@ -418,7 +430,8 @@
           alert('❌ Xato: ' + result.error);
         }
       } catch (error) {
-        alert('❌ Xato: ' + error.message);
+        console.error('SMS yuborish xatosi:', error);
+        alert('❌ Xato: ' + error.message + '\n\nIltimos, serverga ulanishni tekshiring.');
       } finally {
         sendBtn.disabled = false;
         sendBtn.innerHTML = '<i class="bi bi-send-fill"></i> SMS Yuborish';
