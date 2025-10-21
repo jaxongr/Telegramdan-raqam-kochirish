@@ -106,6 +106,9 @@ router.get('/add/from-tashkent', async (req, res) => {
       })
     );
 
+    console.log(`📊 From-Tashkent routes: ${routesWithStats.length} ta yo'nalish`);
+    routesWithStats.forEach(r => console.log(`  - ${r.name}`));
+
     res.render('routes/direction_list', {
       routes: routesWithStats,
       direction: 'from-tashkent',
