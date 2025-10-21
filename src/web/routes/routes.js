@@ -287,6 +287,50 @@ router.post('/add/to-tashkent', async (req, res) => {
   }
 });
 
+// YANGI: Custom viloyat qo'shish (JSON API)
+router.post('/add/custom-region', express.json(), async (req, res) => {
+  try {
+    const { regionName, keywords, smsTemplate, direction } = req.body;
+
+    if (!regionName || !keywords || !smsTemplate) {
+      return res.json({ success: false, error: 'Barcha maydonlar to\'ldirilishi kerak' });
+    }
+
+    // Keywords ni string ga aylantirish (vergul bilan ajratilgan)
+    const keywordsString = Array.isArray(keywords) ? keywords.join(',') : keywords;
+
+    // Yo'nalishga qarab to_keywords ni aniqlash
+    let toKeywords = '';
+    let routeName = '';
+
+    if (direction === 'to-tashkent') {
+      toKeywords = 'toshkent,toshkentga,тошкент,tashkent,Toshkent,TOSHKENT';
+      routeName = `${regionName} → Toshkent`;
+    } else if (direction === 'from-tashkent') {
+      toKeywords = keywordsString;
+      routeName = `Toshkent → ${regionName}`;
+    } else {
+      return res.json({ success: false, error: 'Noto\'g\'ri yo\'nalish' });
+    }
+
+    // Yo'nalishni yaratish
+    const fromKeywords = direction === 'to-tashkent' ? keywordsString : 'toshkent,toshkentga,тошкент,tashkent,Toshkent,TOSHKENT';
+
+    await createRoute(
+      routeName,
+      fromKeywords,
+      toKeywords,
+      smsTemplate,
+      30 // Default time window
+    );
+
+    res.json({ success: true, message: 'Viloyat muvaffaqiyatli qo\'shildi' });
+  } catch (error) {
+    console.error('Custom region add error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // Qo'shish (POST)
 router.post('/add', async (req, res) => {
   try {

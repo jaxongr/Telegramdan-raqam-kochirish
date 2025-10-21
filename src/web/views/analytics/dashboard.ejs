@@ -8,35 +8,83 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
+    body {
+      background: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
     .sidebar {
       min-height: 100vh;
-      background: #212529;
+      background: linear-gradient(180deg, #1e3a5f 0%, #2c5282 100%);
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
     }
     .sidebar .nav-link {
-      color: #adb5bd;
+      color: #cbd5e0;
       padding: 0.8rem 1rem;
+      border-radius: 8px;
+      margin: 0.2rem 0.5rem;
+      transition: all 0.3s;
     }
-    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+    .sidebar .nav-link:hover {
       color: #fff;
-      background: #343a40;
+      background: rgba(255,255,255,0.1);
+      transform: translateX(5px);
+    }
+    .sidebar .nav-link.active {
+      color: #fff;
+      background: rgba(255,255,255,0.2);
+      border-left: 4px solid #4fd1c5;
     }
     .stat-card {
-      border-left: 4px solid;
-      transition: transform 0.2s, box-shadow 0.2s;
+      border: none;
+      border-radius: 12px;
+      transition: all 0.3s;
       height: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+      position: relative;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
     }
     .stat-card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12);
     }
     .stat-card .stat-icon {
       font-size: 2.5rem;
-      opacity: 0.3;
+      opacity: 0.15;
     }
-    .stat-card.phones { border-color: #0d6efd; }
-    .stat-card.groups { border-color: #198754; }
-    .stat-card.sms-sent { border-color: #20c997; }
-    .stat-card.sms-failed { border-color: #dc3545; }
+    .stat-card.phones::before { background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); }
+    .stat-card.phones .stat-icon { color: #667eea; }
+    .stat-card.groups::before { background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card.groups .stat-icon { color: #f5576c; }
+    .stat-card.sms-sent::before { background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); }
+    .stat-card.sms-sent .stat-icon { color: #4facfe; }
+    .stat-card.sms-failed::before { background: linear-gradient(90deg, #fa709a 0%, #fee140 100%); }
+    .stat-card.sms-failed .stat-icon { color: #fa709a; }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: box-shadow 0.3s;
+    }
+    .card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+    .card-header {
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px 12px 0 0 !important;
+      font-weight: 600;
+      padding: 1rem 1.25rem;
+    }
     .chart-container {
       position: relative;
       height: 350px;
@@ -44,10 +92,229 @@
     .period-selector {
       display: inline-flex;
       gap: 0.5rem;
+      background: white;
+      padding: 0.25rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     .period-btn {
-      padding: 0.25rem 0.75rem;
+      padding: 0.4rem 1rem;
       font-size: 0.875rem;
+      border-radius: 6px;
+      border: none;
+      transition: all 0.3s;
+    }
+    .period-btn.btn-primary {
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .period-btn.btn-outline-secondary {
+      background: transparent;
+      color: #6c757d;
+    }
+    .period-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .live-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #48bb78;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+      margin-right: 8px;
+      box-shadow: 0 0 8px #48bb78;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
+    }
+
+    .today-stats-panel {
+      padding: 0;
+    }
+
+    .today-stat-card {
+      background: white;
+      padding: 1.25rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.3s;
+      height: 100%;
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+    .today-stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+
+    .stat-icon-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: white;
+      flex-shrink: 0;
+    }
+    .bg-gradient-purple {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .bg-gradient-green {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    }
+    .bg-gradient-orange {
+      background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    }
+    .bg-gradient-blue {
+      background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.25rem;
+    }
+    .stat-label-small {
+      font-size: 0.7rem;
+      color: #a0aec0;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #2d3748;
+      line-height: 1;
+    }
+    .stat-unit {
+      font-size: 0.875rem;
+      color: #718096;
+      margin-left: 0.25rem;
+      font-weight: 500;
+    }
+
+    .text-success-custom { color: #48bb78 !important; }
+    .text-warning-custom { color: #ed8936 !important; }
+    .text-info-custom { color: #4299e1 !important; }
+    .text-danger-custom { color: #f56565 !important; }
+
+    .growth-badge {
+      font-size: 0.75rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 20px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+    }
+    .growth-up {
+      background: rgba(72, 187, 120, 0.2);
+      color: #2f855a;
+      border: 1px solid rgba(72, 187, 120, 0.3);
+    }
+    .growth-down {
+      background: rgba(245, 101, 101, 0.2);
+      color: #c53030;
+      border: 1px solid rgba(245, 101, 101, 0.3);
+    }
+
+    .heatmap-cell {
+      width: 12px;
+      height: 12px;
+      margin: 1px;
+      border-radius: 3px;
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+    .heatmap-cell:hover {
+      transform: scale(1.3);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      color: #718096;
+    }
+
+    .table {
+      margin-bottom: 0;
+    }
+    .table thead th {
+      background: #f7fafc;
+      color: #4a5568;
+      font-weight: 600;
+      border: none;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+    .table tbody tr {
+      transition: background 0.2s;
+    }
+    .table tbody tr:hover {
+      background: #f7fafc;
+    }
+
+    h1, h2, h3, h4, h5 {
+      color: #2d3748;
+    }
+
+    .text-success { color: #48bb78 !important; }
+    .text-warning { color: #ed8936 !important; }
+    .text-info { color: #4299e1 !important; }
+    .text-danger { color: #f56565 !important; }
+
+    /* Custom badges for groups table */
+    .badge-custom-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.35rem 0.65rem;
+      font-weight: 600;
+    }
+    .badge-custom-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+      padding: 0.35rem 0.65rem;
+      font-weight: 600;
+    }
+    .badge-custom-success {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+      color: white;
+      padding: 0.35rem 0.65rem;
+      font-weight: 700;
+    }
+
+    .group-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.1rem;
+    }
+
+    .today-stat {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .table tbody tr {
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .table tbody tr:last-child {
+      border-bottom: none;
     }
   </style>
 </head>
@@ -123,12 +390,93 @@
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           <h1 class="h2">
             <i class="bi bi-graph-up-arrow"></i> Analytics Dashboard
+            <span class="live-indicator"></span>
+            <small class="text-muted" style="font-size: 0.9rem;">Real-time</small>
           </h1>
           <div class="period-selector">
             <a href="?period=1" class="btn period-btn <%= period == 1 ? 'btn-primary' : 'btn-outline-secondary' %>">1 kun</a>
             <a href="?period=7" class="btn period-btn <%= period == 7 ? 'btn-primary' : 'btn-outline-secondary' %>">7 kun</a>
             <a href="?period=30" class="btn period-btn <%= period == 30 ? 'btn-primary' : 'btn-outline-secondary' %>">30 kun</a>
             <a href="?period=90" class="btn period-btn <%= period == 90 ? 'btn-primary' : 'btn-outline-secondary' %>">90 kun</a>
+          </div>
+        </div>
+
+        <!-- Real-time Today Stats -->
+        <div class="today-stats-panel mb-4" id="todayStats">
+          <div class="row g-3">
+            <!-- Yangi Raqamlar -->
+            <div class="col-md-3">
+              <div class="today-stat-card">
+                <div class="d-flex align-items-center mb-2">
+                  <div class="stat-icon-circle bg-gradient-purple">
+                    <i class="bi bi-telephone-plus"></i>
+                  </div>
+                  <div class="ms-3">
+                    <div class="stat-label">Yangi raqamlar</div>
+                    <div class="d-flex align-items-baseline">
+                      <span id="todayPhones" class="stat-value">---</span>
+                      <span class="stat-unit">ta</span>
+                      <span id="phoneGrowth" class="growth-badge ms-2">---</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SMS Yuborildi -->
+            <div class="col-md-3">
+              <div class="today-stat-card">
+                <div class="d-flex align-items-center mb-2">
+                  <div class="stat-icon-circle bg-gradient-green">
+                    <i class="bi bi-check-circle"></i>
+                  </div>
+                  <div class="ms-3">
+                    <div class="stat-label">SMS yuborildi</div>
+                    <div class="d-flex align-items-baseline">
+                      <span id="todaySMSSent" class="stat-value text-success-custom">---</span>
+                      <span id="smsGrowth" class="growth-badge ms-2">---</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cooldown -->
+            <div class="col-md-3">
+              <div class="today-stat-card">
+                <div class="d-flex align-items-center mb-2">
+                  <div class="stat-icon-circle bg-gradient-orange">
+                    <i class="bi bi-clock-history"></i>
+                  </div>
+                  <div class="ms-3">
+                    <div class="stat-label">Cooldown</div>
+                    <div class="d-flex align-items-baseline">
+                      <span id="todaySMSCooldown" class="stat-value text-warning-custom">---</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kutilmoqda / Xatolik -->
+            <div class="col-md-3">
+              <div class="today-stat-card">
+                <div class="d-flex align-items-center mb-2">
+                  <div class="stat-icon-circle bg-gradient-blue">
+                    <i class="bi bi-hourglass-split"></i>
+                  </div>
+                  <div class="ms-3">
+                    <div class="stat-label">Kutilmoqda</div>
+                    <div class="d-flex align-items-baseline">
+                      <span id="todaySMSPending" class="stat-value text-info-custom">---</span>
+                    </div>
+                    <div class="stat-label-small mt-1">
+                      Xatolik: <span id="todaySMSFailed" class="text-danger-custom fw-bold">---</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -229,15 +577,15 @@
 
         <!-- Charts Row 2 -->
         <div class="row mb-4">
-          <!-- SMS Conversion Chart -->
+          <!-- Geographic Distribution -->
           <div class="col-md-6 mb-3">
             <div class="card">
               <div class="card-header">
-                <i class="bi bi-pie-chart"></i> SMS Conversion Rate
+                <i class="bi bi-geo-alt"></i> Viloyatlar bo'yicha taqsimot
               </div>
               <div class="card-body">
                 <div class="chart-container">
-                  <canvas id="smsConversionChart"></canvas>
+                  <canvas id="geoChart"></canvas>
                 </div>
               </div>
             </div>
@@ -258,32 +606,117 @@
           </div>
         </div>
 
-        <!-- Tables Row -->
+        <!-- SMS Statistika Chart -->
         <div class="row mb-4">
-          <!-- Top Groups Table -->
-          <div class="col-md-6 mb-3">
+          <div class="col-md-12 mb-3">
             <div class="card">
               <div class="card-header">
-                <i class="bi bi-trophy"></i> Eng Faol Guruhlar (Top 10)
+                <i class="bi bi-pie-chart"></i> SMS Statistika (Oxirgi <%= period %> kun)
+                <small class="text-muted">- Faqat yuborilgan SMS lar ko'rsatilgan</small>
               </div>
               <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="smsConversionChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendar Heatmap -->
+        <div class="row mb-4">
+          <div class="col-md-12 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-calendar3"></i> Faollik Kalendari (Oxirgi 90 kun)
+              </div>
+              <div class="card-body">
+                <div id="heatmapContainer" style="overflow-x: auto;">
+                  <div id="heatmap"></div>
+                </div>
+                <div class="heatmap-legend mt-2">
+                  <span>Kam</span>
+                  <span class="heatmap-cell" style="background: #ebedf0;"></span>
+                  <span class="heatmap-cell" style="background: #c4ddff;"></span>
+                  <span class="heatmap-cell" style="background: #7eb5ff;"></span>
+                  <span class="heatmap-cell" style="background: #4facfe;"></span>
+                  <span class="heatmap-cell" style="background: #0078d4;"></span>
+                  <span>Ko'p</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- All Groups Table -->
+        <div class="row mb-4">
+          <div class="col-md-12 mb-3">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="bi bi-list-ul"></i> Barcha Guruhlar Statistika
+                  <span class="badge bg-light text-dark ms-2"><%= allGroups.length %> ta guruh</span>
+                </div>
+                <small class="text-white-50">Oxirgi <%= period %> kun</small>
+              </div>
+              <div class="card-body p-0">
                 <div class="table-responsive">
-                  <table class="table table-sm">
+                  <table class="table table-sm table-hover mb-0">
                     <thead>
                       <tr>
-                        <th>#</th>
-                        <th>Guruh</th>
-                        <th>Unikal</th>
-                        <th>Jami</th>
+                        <th style="width: 40px;">#</th>
+                        <th>Guruh nomi</th>
+                        <th class="text-center" style="width: 100px;">
+                          <i class="bi bi-calendar-day text-info"></i> Bugun<br>
+                          <small class="text-muted" style="font-size: 0.7rem;">raqam/xabar</small>
+                        </th>
+                        <th class="text-center" style="width: 100px;">
+                          <i class="bi bi-telephone text-primary"></i> Unikal
+                        </th>
+                        <th class="text-center" style="width: 100px;">
+                          <i class="bi bi-file-text text-secondary"></i> Xabarlar
+                        </th>
+                        <th class="text-center" style="width: 120px;">
+                          <i class="bi bi-arrow-repeat text-success"></i> Jami Ko'rinish
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      <% topGroups.forEach((group, idx) => { %>
+                      <% allGroups.forEach((group, idx) => { %>
                         <tr>
-                          <td><%= idx + 1 %></td>
-                          <td><%= group.name || 'N/A' %></td>
-                          <td><span class="badge bg-primary"><%= group.unique_phones %></span></td>
-                          <td><span class="badge bg-success"><%= group.total_appearances %></span></td>
+                          <td class="text-center">
+                            <% if (idx < 3) { %>
+                              <span class="badge" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"><%= idx + 1 %></span>
+                            <% } else { %>
+                              <span class="text-muted"><%= idx + 1 %></span>
+                            <% } %>
+                          </td>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="group-icon me-2">
+                                <i class="bi bi-telegram"></i>
+                              </div>
+                              <div>
+                                <div class="fw-semibold"><%= group.name || 'N/A' %></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="text-center">
+                            <div class="today-stat">
+                              <span class="badge bg-info"><%= group.today_phones || 0 %></span>
+                              <span class="text-muted">/</span>
+                              <span class="badge bg-light text-dark"><%= group.today_messages || 0 %></span>
+                            </div>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-custom-primary"><%= group.unique_phones %></span>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-custom-secondary"><%= group.total_records %></span>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-custom-success fs-6"><%= group.total_appearances.toLocaleString() %></span>
+                          </td>
                         </tr>
                       <% }) %>
                     </tbody>
@@ -301,7 +734,7 @@
               </div>
               <div class="card-body">
                 <div class="table-responsive">
-                  <table class="table table-sm">
+                  <table class="table table-sm table-hover">
                     <thead>
                       <tr>
                         <th>#</th>
@@ -313,7 +746,7 @@
                     <tbody>
                       <% topRepeatedPhones.forEach((phone, idx) => { %>
                         <tr>
-                          <td><%= idx + 1 %></td>
+                          <td><span class="badge bg-secondary"><%= idx + 1 %></span></td>
                           <td><strong><%= phone.phone %></strong></td>
                           <td><small><%= phone.group_name || 'N/A' %></small></td>
                           <td>
@@ -349,6 +782,14 @@
 
     // 1. Daily Trend Chart
     const dailyCtx = document.getElementById('dailyTrendChart').getContext('2d');
+    const dailyGradient1 = dailyCtx.createLinearGradient(0, 0, 0, 350);
+    dailyGradient1.addColorStop(0, 'rgba(102, 126, 234, 0.3)');
+    dailyGradient1.addColorStop(1, 'rgba(118, 75, 162, 0.05)');
+
+    const dailyGradient2 = dailyCtx.createLinearGradient(0, 0, 0, 350);
+    dailyGradient2.addColorStop(0, 'rgba(240, 147, 251, 0.3)');
+    dailyGradient2.addColorStop(1, 'rgba(245, 87, 108, 0.05)');
+
     new Chart(dailyCtx, {
       type: 'line',
       data: {
@@ -356,28 +797,54 @@
         datasets: [{
           label: 'Yangi raqamlar',
           data: dailyTrendData.map(d => d.new_phones),
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: '#667eea',
+          backgroundColor: dailyGradient1,
+          borderWidth: 3,
           tension: 0.4,
-          fill: true
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#667eea',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
         }, {
           label: 'Ko\'rinishlar',
           data: dailyTrendData.map(d => d.appearances),
-          borderColor: 'rgb(255, 99, 132)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: '#f5576c',
+          backgroundColor: dailyGradient2,
+          borderWidth: 3,
           tension: 0.4,
-          fill: true
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#f5576c',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'top' },
-          title: { display: false }
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: { size: 12, weight: '600' }
+            }
+          }
         },
         scales: {
-          y: { beginAtZero: true }
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { font: { size: 11 } }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          }
         }
       }
     });
@@ -391,9 +858,16 @@
         datasets: [{
           label: 'Faollik',
           data: hourlyActivityData.map(h => h.count),
-          backgroundColor: 'rgba(54, 162, 235, 0.7)',
-          borderColor: 'rgb(54, 162, 235)',
-          borderWidth: 1
+          backgroundColor: hourlyActivityData.map((h, i) => {
+            const gradient = hoursCtx.createLinearGradient(0, 0, 0, 350);
+            gradient.addColorStop(0, 'rgba(74, 172, 254, 0.8)');
+            gradient.addColorStop(1, 'rgba(0, 242, 254, 0.5)');
+            return gradient;
+          }),
+          borderColor: '#4facfe',
+          borderWidth: 2,
+          borderRadius: 8,
+          borderSkipped: false
         }]
       },
       options: {
@@ -403,39 +877,85 @@
           legend: { display: false }
         },
         scales: {
-          y: { beginAtZero: true }
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { font: { size: 11 } }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 10 } }
+          }
         }
       }
     });
 
-    // 3. SMS Conversion Chart
+    // 3. SMS Statistika Chart (Faqat yuborilganlar)
     const conversionCtx = document.getElementById('smsConversionChart').getContext('2d');
+    const smsGradient = conversionCtx.createLinearGradient(0, 0, 0, 350);
+    smsGradient.addColorStop(0, 'rgba(72, 187, 120, 0.3)');
+    smsGradient.addColorStop(1, 'rgba(72, 187, 120, 0.05)');
+
     new Chart(conversionCtx, {
       type: 'line',
       data: {
         labels: smsConversionData.map(d => d.date),
         datasets: [{
-          label: 'Muvaffaqiyatli',
+          label: 'Yuborildi (Success)',
           data: smsConversionData.map(d => d.successful),
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.4
-        }, {
-          label: 'Xatolik',
-          data: smsConversionData.map(d => d.failed),
-          borderColor: 'rgb(255, 99, 132)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          tension: 0.4
+          borderColor: '#48bb78',
+          backgroundColor: smsGradient,
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#48bb78',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'top' }
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: { size: 12, weight: '600' }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            padding: 12,
+            cornerRadius: 8,
+            callbacks: {
+              afterLabel: function(context) {
+                const index = context.dataIndex;
+                const total = smsConversionData[index].total;
+                const cooldown = smsConversionData[index].cooldown;
+                const failed = smsConversionData[index].failed;
+                return [
+                  'Cooldown: ' + cooldown,
+                  'Xatolik: ' + failed,
+                  'Jami: ' + total
+                ];
+              }
+            }
+          }
         },
         scales: {
-          y: { beginAtZero: true }
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { font: { size: 11 } }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          }
         }
       }
     });
@@ -449,23 +969,133 @@
         datasets: [{
           data: repeatDistData.map(d => d.count),
           backgroundColor: [
-            'rgba(255, 99, 132, 0.7)',
-            'rgba(54, 162, 235, 0.7)',
-            'rgba(255, 206, 86, 0.7)',
-            'rgba(75, 192, 192, 0.7)',
-            'rgba(153, 102, 255, 0.7)',
-            'rgba(255, 159, 64, 0.7)'
-          ]
+            '#667eea',
+            '#f5576c',
+            '#4facfe',
+            '#fa709a',
+            '#764ba2',
+            '#ed8936'
+          ],
+          borderWidth: 3,
+          borderColor: '#fff',
+          hoverBorderWidth: 4,
+          hoverBorderColor: '#fff'
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'right' }
+          legend: {
+            position: 'right',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: { size: 11, weight: '600' }
+            }
+          }
         }
       }
     });
+
+    // 5. Geographic Distribution Chart (Load via AJAX)
+    let geoChart;
+    fetch('/analytics/api/geographic')
+      .then(res => res.json())
+      .then(data => {
+        const geoCtx = document.getElementById('geoChart').getContext('2d');
+        geoChart = new Chart(geoCtx, {
+          type: 'bar',
+          data: {
+            labels: data.map(d => d.region),
+            datasets: [{
+              label: 'Unikal raqamlar',
+              data: data.map(d => d.phone_count),
+              backgroundColor: data.map((d, i) => {
+                const colors = ['#667eea', '#f5576c', '#4facfe', '#fa709a', '#764ba2', '#ed8936', '#48bb78', '#4299e1'];
+                return colors[i % colors.length];
+              }),
+              borderRadius: 6,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                ticks: { font: { size: 11 } }
+              },
+              y: {
+                grid: { display: false },
+                ticks: { font: { size: 11, weight: '600' } }
+              }
+            }
+          }
+        });
+      })
+      .catch(err => console.error('Geographic data error:', err));
+
+    // 6. Calendar Heatmap (Load via AJAX)
+    fetch('/analytics/api/heatmap')
+      .then(res => res.json())
+      .then(data => {
+        const heatmapEl = document.getElementById('heatmap');
+
+        // Calculate max for color scale
+        const maxCount = Math.max(...data.map(d => d.count));
+
+        // Generate heatmap cells
+        const cellsHtml = data.map(d => {
+          const intensity = d.count === 0 ? 0 : Math.ceil((d.count / maxCount) * 4);
+          const colors = ['#ebedf0', '#c4ddff', '#7eb5ff', '#4facfe', '#0078d4'];
+          const color = colors[intensity];
+
+          return `<span class="heatmap-cell" style="background: ${color};" title="${d.date}: ${d.count} raqam"></span>`;
+        }).join('');
+
+        heatmapEl.innerHTML = cellsHtml;
+      })
+      .catch(err => console.error('Heatmap data error:', err));
+
+    // 7. Real-time Stats Update (every 30 seconds)
+    function updateLiveStats() {
+      fetch('/analytics/api/live-stats')
+        .then(res => res.json())
+        .then(data => {
+          // Yangi raqamlar
+          document.getElementById('todayPhones').textContent = data.today_phones;
+
+          // SMS statistika
+          document.getElementById('todaySMSSent').textContent = data.today_sms_sent;
+          document.getElementById('todaySMSCooldown').textContent = data.today_sms_cooldown;
+          document.getElementById('todaySMSPending').textContent = data.today_sms_pending;
+          document.getElementById('todaySMSFailed').textContent = data.today_sms_failed;
+
+          // O'sish ko'rsatkichlari
+          const phoneGrowthEl = document.getElementById('phoneGrowth');
+          const smsGrowthEl = document.getElementById('smsGrowth');
+
+          phoneGrowthEl.textContent = (data.phoneGrowth >= 0 ? '+' : '') + data.phoneGrowth + '%';
+          phoneGrowthEl.className = 'growth-badge ms-2 ' + (data.phoneGrowth >= 0 ? 'growth-up' : 'growth-down');
+
+          smsGrowthEl.textContent = (data.smsGrowth >= 0 ? '+' : '') + data.smsGrowth + '%';
+          smsGrowthEl.className = 'growth-badge ms-1 ' + (data.smsGrowth >= 0 ? 'growth-up' : 'growth-down');
+        })
+        .catch(err => console.error('Live stats error:', err));
+    }
+
+    // Initial load
+    updateLiveStats();
+
+    // Update every 30 seconds
+    setInterval(updateLiveStats, 30000);
   </script>
 </body>
 </html>

@@ -43,29 +43,32 @@ router.get('/', async (req, res) => {
       ORDER BY hour ASC
     `);
 
-    // 4. ENG FAOL GURUHLAR (Top 10)
-    const topGroups = await query(`
+    // 4. BARCHA GURUHLAR STATISTIKA
+    const allGroups = await query(`
       SELECT
+        g.id,
         g.name,
         COUNT(DISTINCT p.phone) as unique_phones,
         COUNT(*) as total_records,
-        SUM(p.repeat_count) as total_appearances
-      FROM phones p
-      LEFT JOIN groups g ON p.group_id = g.id
+        SUM(p.repeat_count) as total_appearances,
+        (SELECT COUNT(DISTINCT phone) FROM phones WHERE group_id = g.id AND DATE(first_date) = DATE('now')) as today_phones,
+        (SELECT COUNT(*) FROM phones WHERE group_id = g.id AND DATE(first_date) = DATE('now')) as today_messages
+      FROM groups g
+      LEFT JOIN phones p ON g.id = p.group_id
       WHERE DATE(p.first_date) >= DATE('now', '-${periodDays} days')
       GROUP BY g.id, g.name
       ORDER BY total_appearances DESC
-      LIMIT 10
     `);
 
-    // 5. SMS CONVERSION RATE (Haftalik)
+    // 5. SMS STATISTIKA (Status bo'yicha)
     const smsConversion = await query(`
       SELECT
         DATE(sent_at) as date,
-        COUNT(*) as total_sent,
         SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful,
+        SUM(CASE WHEN status = 'cooldown' THEN 1 ELSE 0 END) as cooldown,
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-        ROUND(SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        COUNT(*) as total
       FROM sms_logs
       WHERE DATE(sent_at) >= DATE('now', '-${periodDays} days')
       GROUP BY DATE(sent_at)
@@ -90,8 +93,10 @@ router.get('/', async (req, res) => {
     const weeklySmsStats = await query(`
       SELECT
         strftime('%w', sent_at) as day_of_week,
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success,
+        SUM(CASE WHEN status = 'cooldown' THEN 1 ELSE 0 END) as cooldown,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+        COUNT(*) as total
       FROM sms_logs
       WHERE DATE(sent_at) >= DATE('now', '-7 days')
       GROUP BY day_of_week
@@ -121,7 +126,7 @@ router.get('/', async (req, res) => {
       overview: overview[0],
       dailyTrend,
       hourlyActivity,
-      topGroups,
+      allGroups,
       smsConversion,
       topRepeatedPhones,
       weeklySmsStats,
@@ -140,11 +145,88 @@ router.get('/api/live-stats', async (req, res) => {
     const stats = await query(`
       SELECT
         (SELECT COUNT(*) FROM phones WHERE DATE(first_date) = DATE('now')) as today_phones,
-        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now')) as today_sms,
-        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now') AND status = 'success') as today_sms_success
+        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now') AND status = 'success') as today_sms_sent,
+        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now') AND status = 'cooldown') as today_sms_cooldown,
+        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now') AND status = 'pending') as today_sms_pending,
+        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now') AND status = 'failed') as today_sms_failed,
+        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now')) as today_sms_total,
+        (SELECT COUNT(*) FROM phones WHERE DATE(first_date) = DATE('now', '-1 day')) as yesterday_phones,
+        (SELECT COUNT(*) FROM sms_logs WHERE DATE(sent_at) = DATE('now', '-1 day') AND status = 'success') as yesterday_sms_sent
     `);
 
-    res.json(stats[0]);
+    // Calculate growth rates
+    const phoneGrowth = stats[0].yesterday_phones > 0
+      ? ((stats[0].today_phones - stats[0].yesterday_phones) / stats[0].yesterday_phones * 100).toFixed(1)
+      : 0;
+
+    const smsGrowth = stats[0].yesterday_sms_sent > 0
+      ? ((stats[0].today_sms_sent - stats[0].yesterday_sms_sent) / stats[0].yesterday_sms_sent * 100).toFixed(1)
+      : 0;
+
+    res.json({
+      ...stats[0],
+      phoneGrowth: parseFloat(phoneGrowth),
+      smsGrowth: parseFloat(smsGrowth)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// API endpoint for geographic distribution
+router.get('/api/geographic', async (req, res) => {
+  try {
+    // Extract region from group name
+    const geoData = await query(`
+      SELECT
+        CASE
+          WHEN g.name LIKE '%Toshkent%' THEN 'Toshkent'
+          WHEN g.name LIKE '%Qashqadaryo%' OR g.name LIKE '%Qarshi%' OR g.name LIKE '%Shahrisabz%'
+            OR g.name LIKE '%Yakkabog%' OR g.name LIKE '%Koson%' OR g.name LIKE '%Kitob%'
+            OR g.name LIKE '%Chiroqchi%' OR g.name LIKE '%Guzor%' OR g.name LIKE '%G''uzor%'
+            OR g.name LIKE '%Mirishkor%' OR g.name LIKE '%Dehqonobod%' THEN 'Qashqadaryo'
+          WHEN g.name LIKE '%Samarqand%' THEN 'Samarqand'
+          WHEN g.name LIKE '%Buxoro%' OR g.name LIKE '%Bukhara%' THEN 'Buxoro'
+          WHEN g.name LIKE '%Andijon%' OR g.name LIKE '%Andijan%' THEN 'Andijon'
+          WHEN g.name LIKE '%Farg''ona%' OR g.name LIKE '%Fergana%' THEN 'Farg''ona'
+          WHEN g.name LIKE '%Namangan%' THEN 'Namangan'
+          WHEN g.name LIKE '%Sirdaryo%' THEN 'Sirdaryo'
+          WHEN g.name LIKE '%Jizzax%' OR g.name LIKE '%Jizzakh%' THEN 'Jizzax'
+          WHEN g.name LIKE '%Xorazm%' OR g.name LIKE '%Khorezm%' THEN 'Xorazm'
+          WHEN g.name LIKE '%Navoiy%' THEN 'Navoiy'
+          WHEN g.name LIKE '%Qoraqalpog''iston%' OR g.name LIKE '%Karakalpak%' THEN 'Qoraqalpog''iston'
+          WHEN g.name LIKE '%Surxondaryo%' OR g.name LIKE '%Surkhan%' THEN 'Surxondaryo'
+          ELSE 'Boshqa'
+        END as region,
+        COUNT(DISTINCT p.phone) as phone_count,
+        COUNT(*) as total_records
+      FROM phones p
+      LEFT JOIN groups g ON p.group_id = g.id
+      GROUP BY region
+      ORDER BY phone_count DESC
+    `);
+
+    res.json(geoData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// API endpoint for calendar heatmap data
+router.get('/api/heatmap', async (req, res) => {
+  try {
+    // Last 90 days activity
+    const heatmapData = await query(`
+      SELECT
+        DATE(first_date) as date,
+        COUNT(DISTINCT phone) as count
+      FROM phones
+      WHERE DATE(first_date) >= DATE('now', '-90 days')
+      GROUP BY DATE(first_date)
+      ORDER BY date ASC
+    `);
+
+    res.json(heatmapData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

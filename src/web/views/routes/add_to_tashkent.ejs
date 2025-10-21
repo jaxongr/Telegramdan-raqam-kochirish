@@ -128,6 +128,9 @@
             <i class="bi bi-arrow-left-circle text-success"></i>
             Viloyatlardan Toshkentga
           </h1>
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRegionModal">
+            <i class="bi bi-plus-circle"></i> Yangi viloyat qo'shish
+          </button>
         </div>
 
         <div class="alert alert-success mb-4">
@@ -227,6 +230,141 @@
     </div>
   </div>
 
+  <!-- Modal: Yangi viloyat qo'shish -->
+  <div class="modal fade" id="addRegionModal" tabindex="-1" aria-labelledby="addRegionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="addRegionModalLabel">
+            <i class="bi bi-geo-alt-fill"></i> Yangi viloyat qo'shish
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            Yangi viloyat nomini kiriting va unga tegishli yo'nalishlarni qo'shing
+          </div>
+
+          <form id="newRegionForm">
+            <!-- Viloyat nomi -->
+            <div class="mb-3">
+              <label for="regionName" class="form-label fw-bold">
+                <i class="bi bi-geo-alt"></i> Viloyat nomi:
+              </label>
+              <input
+                type="text"
+                class="form-control form-control-lg"
+                id="regionName"
+                name="regionName"
+                placeholder="Masalan: Sirdaryo viloyati"
+                required
+              >
+              <small class="text-muted">To'liq nom kiriting (viloyati so'zi bilan)</small>
+            </div>
+
+            <!-- Kalit so'zlar -->
+            <div class="mb-3">
+              <label for="keywords" class="form-label fw-bold">
+                <i class="bi bi-tags-fill"></i> Kalit so'zlar (keywords):
+              </label>
+              <textarea
+                class="form-control"
+                id="keywords"
+                name="keywords"
+                rows="4"
+                placeholder="Har bir kalit so'zni yangi qatorga kiriting, masalan:
+Sirdaryo
+sirdaryo
+Sirdaryo viloyati
+SIRDARYO"
+                required
+              ></textarea>
+              <small class="text-muted">Har bir kalit so'z alohida qatordan boshlanishi kerak</small>
+            </div>
+
+            <!-- SMS template -->
+            <div class="mb-3">
+              <label for="smsTemplate" class="form-label fw-bold">
+                <i class="bi bi-chat-dots-fill"></i> SMS xabar shabloni:
+              </label>
+              <textarea
+                class="form-control"
+                id="smsTemplate"
+                name="smsTemplate"
+                rows="3"
+                placeholder="Masalan: Sirdaryo → Toshkent"
+                required
+              ></textarea>
+              <small class="text-muted">Bu xabar SMS da yuboriladi</small>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Bekor qilish
+          </button>
+          <button type="button" class="btn btn-success" onclick="saveNewRegion()">
+            <i class="bi bi-check-circle"></i> Saqlash
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function saveNewRegion() {
+      const regionName = document.getElementById('regionName').value.trim();
+      const keywords = document.getElementById('keywords').value.trim();
+      const smsTemplate = document.getElementById('smsTemplate').value.trim();
+
+      if (!regionName || !keywords || !smsTemplate) {
+        alert('Iltimos, barcha maydonlarni to\'ldiring!');
+        return;
+      }
+
+      // Keywords ni array ga aylantirish
+      const keywordsArray = keywords.split('\n')
+        .map(k => k.trim())
+        .filter(k => k.length > 0);
+
+      if (keywordsArray.length === 0) {
+        alert('Kamida bitta kalit so\'z kiriting!');
+        return;
+      }
+
+      // Ma'lumotlarni serverga yuborish
+      fetch('/routes/add/custom-region', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          regionName: regionName,
+          keywords: keywordsArray,
+          smsTemplate: smsTemplate,
+          direction: 'to-tashkent' // Toshkentga yo'nalish
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Yangi viloyat muvaffaqiyatli qo\'shildi!');
+          // Modalni yopish
+          const modal = bootstrap.Modal.getInstance(document.getElementById('addRegionModal'));
+          modal.hide();
+          // Sahifani yangilash
+          location.reload();
+        } else {
+          alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Serverga ulanishda xatolik!');
+      });
+    }
+  </script>
 </body>
 </html>
