@@ -176,7 +176,7 @@
                   }
                 %>
                 <div class="card h-100 shadow-sm" style="transition: all 0.3s; border-radius: 12px;">
-                  <div class="card-body text-center p-4">
+                  <div class="card-body text-center p-4" data-url="<%= clickUrl %>">
                     <!-- O'chirish tugmasi (faqat admin uchun) -->
                     <div class="position-absolute top-0 end-0 p-2">
                       <button class="btn btn-sm btn-outline-danger"
@@ -188,10 +188,10 @@
                       </button>
                     </div>
 
-                    <div class="mb-3" style="cursor: pointer;" onclick="window.location.href='<%= clickUrl %>'">
+                    <div class="mb-3" style="cursor: pointer;" onclick="window.location.href=this.parentElement.getAttribute('data-url')">
                       <i class="bi bi-geo-alt-fill text-success" style="font-size: 2.5rem;"></i>
                     </div>
-                    <h5 class="card-title fw-bold mb-3" style="cursor: pointer;" onclick="window.location.href='<%= clickUrl %>'">
+                    <h5 class="card-title fw-bold mb-3" style="cursor: pointer;" onclick="window.location.href=this.parentElement.getAttribute('data-url')">
                       <%= region.name %>
                     </h5>
                     <hr>
@@ -209,10 +209,11 @@
                         </span>
                       </div>
                     </div>
-                    <button class="btn btn-sm btn-success w-100" onclick="window.location.href='<%= clickUrl %>'">
+                    <button class="btn btn-sm btn-success w-100" onclick="window.location.href=this.parentElement.getAttribute('data-url')">
                       <i class="bi bi-box-arrow-in-right"></i> Kirish
                     </button>
                   </div>
+                  <!-- data-url atributi kartochka uchun -->
                 </div>
               </div>
             <% }) %>
