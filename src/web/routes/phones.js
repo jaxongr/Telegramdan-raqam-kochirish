@@ -6,18 +6,20 @@ const { getAllPhones, getAllGroups, markPhoneAsLifetimeUnique, getGroupById } = 
 const { query } = require('../../database/sqlite');
 const { Parser } = require('json2csv');
 
-// Ro'yxat with PAGINATION
+// Ro'yxat with PAGINATION + SEARCH + STATISTICS
 router.get('/', async (req, res) => {
   try {
     // Pagination settings
     const page = parseInt(req.query.page) || 1;
-    const limit = 100; // Show 100 phones per page
+    const limit = parseInt(req.query.limit) || 50; // Professional: 50 per page
     const offset = (page - 1) * limit;
 
     // Filters
     const filters = {
       group_id: req.query.group_id,
-      lifetime_unique: req.query.lifetime_unique === 'true'
+      lifetime_unique: req.query.lifetime_unique === 'true',
+      search: req.query.search || '',
+      minRepeat: parseInt(req.query.minRepeat) || 0
     };
 
     // Build WHERE clause
@@ -33,15 +35,44 @@ router.get('/', async (req, res) => {
       whereConditions.push('p.lifetime_unique = 1');
     }
 
+    if (filters.search) {
+      whereConditions.push('p.phone LIKE ?');
+      params.push(`%${filters.search}%`);
+    }
+
+    if (filters.minRepeat > 0) {
+      whereConditions.push('p.repeat_count >= ?');
+      params.push(filters.minRepeat);
+    }
+
     const whereClause = whereConditions.join(' AND ');
 
-    // Get total count
-    const countResult = await query(`
-      SELECT COUNT(*) as total
+    // Get statistics
+    const stats = await query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(DISTINCT p.phone) as unique_phones,
+        COUNT(CASE WHEN p.lifetime_unique = 1 THEN 1 END) as lifetime_unique_count,
+        SUM(p.repeat_count) as total_appearances
       FROM phones p
       WHERE ${whereClause}
     `, params);
-    const totalCount = countResult[0].total;
+
+    // Get group statistics
+    const groupStats = await query(`
+      SELECT
+        g.name,
+        COUNT(*) as count
+      FROM phones p
+      LEFT JOIN groups g ON p.group_id = g.id
+      WHERE ${whereClause}
+      GROUP BY g.name
+      ORDER BY count DESC
+      LIMIT 10
+    `, params);
+
+    // Get total count
+    const totalCount = stats[0].total;
     const totalPages = Math.ceil(totalCount / limit);
 
     // Get paginated phones
@@ -62,6 +93,8 @@ router.get('/', async (req, res) => {
       phones,
       groups,
       filters,
+      statistics: stats[0],
+      groupStats,
       username: req.session.username,
       pagination: {
         page,

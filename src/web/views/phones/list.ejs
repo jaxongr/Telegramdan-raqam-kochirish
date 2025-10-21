@@ -19,6 +19,35 @@
       color: #fff;
       background: #343a40;
     }
+    .stat-card {
+      border-left: 4px solid;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .stat-card .stat-icon {
+      font-size: 2.5rem;
+      opacity: 0.3;
+    }
+    .stat-card.total { border-color: #0d6efd; }
+    .stat-card.unique { border-color: #198754; }
+    .stat-card.lifetime { border-color: #ffc107; }
+    .stat-card.appearances { border-color: #dc3545; }
+    .search-box {
+      position: relative;
+    }
+    .search-box .bi-search {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6c757d;
+    }
+    .search-box input {
+      padding-left: 38px;
+    }
   </style>
 </head>
 <body>
@@ -78,47 +107,14 @@
             <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
               <i class="bi bi-box-arrow-right"></i> Chiqish
             </a>
-
           </div>
-
-          <% if (typeof pagination !== 'undefined' && pagination.totalPages > 1) { %>
-          <!-- Pagination -->
-          <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center">
-              <li class="page-item <%= !pagination.hasPrev ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= pagination.prevPage %>&group_id=<%= filters.group_id || '' %>&lifetime_unique=<%= filters.lifetime_unique || '' %>">
-                  <i class="bi bi-chevron-left"></i> Oldingi
-                </a>
-              </li>
-
-              <% for(let i = Math.max(1, pagination.page - 2); i <= Math.min(pagination.totalPages, pagination.page + 2); i++) { %>
-              <li class="page-item <%= i === pagination.page ? 'active' : '' %>">
-                <a class="page-link" href="?page=<%= i %>&group_id=<%= filters.group_id || '' %>&lifetime_unique=<%= filters.lifetime_unique || '' %>">
-                  <%= i %>
-                </a>
-              </li>
-              <% } %>
-
-              <li class="page-item <%= !pagination.hasNext ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= pagination.nextPage %>&group_id=<%= filters.group_id || '' %>&lifetime_unique=<%= filters.lifetime_unique || '' %>">
-                  Keyingi <i class="bi bi-chevron-right"></i>
-                </a>
-              </li>
-            </ul>
-          </nav>
-
-          <div class="text-center text-muted mb-3">
-            Sahifa <%= pagination.page %> / <%= pagination.totalPages %>
-            (Jami: <%= pagination.totalCount %> ta raqam)
-          </div>
-          <% } %>
         </div>
       </nav>
 
       <!-- Main content -->
       <main class="col-md-10 ms-sm-auto px-md-4">
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-          <h1 class="h2">Telefon raqamlar</h1>
+          <h1 class="h2"><i class="bi bi-telephone"></i> Telefon raqamlar</h1>
           <div class="btn-group">
             <a href="/phones/export" class="btn btn-success">
               <i class="bi bi-file-earmark-spreadsheet"></i> CSV Export
@@ -132,12 +128,108 @@
           </div>
         </div>
 
-        <!-- Filtrlar -->
+        <!-- Statistics Cards -->
+        <% if (typeof statistics !== 'undefined') { %>
+        <div class="row mb-4">
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card total h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">Jami raqamlar</p>
+                    <h3 class="mb-0"><%= statistics.total.toLocaleString() %></h3>
+                  </div>
+                  <i class="bi bi-telephone-fill stat-icon text-primary"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card unique h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">Unikal raqamlar</p>
+                    <h3 class="mb-0"><%= statistics.unique_phones.toLocaleString() %></h3>
+                  </div>
+                  <i class="bi bi-check-circle-fill stat-icon text-success"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card lifetime h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">Umrbod unikal</p>
+                    <h3 class="mb-0"><%= statistics.lifetime_unique_count.toLocaleString() %></h3>
+                  </div>
+                  <i class="bi bi-star-fill stat-icon text-warning"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card stat-card appearances h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted mb-1">Jami ko'rinishlar</p>
+                    <h3 class="mb-0"><%= statistics.total_appearances.toLocaleString() %></h3>
+                  </div>
+                  <i class="bi bi-graph-up stat-icon text-danger"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <% } %>
+
+        <!-- Qidiruv va Filtrlar -->
         <div class="card mb-3">
+          <div class="card-header">
+            <i class="bi bi-funnel"></i> Qidiruv va Filtrlar
+          </div>
           <div class="card-body">
             <form method="GET" action="/phones" class="row g-3">
+              <!-- Qidiruv -->
+              <div class="col-md-6">
+                <label class="form-label">
+                  <i class="bi bi-search"></i> Telefon raqam qidirish
+                </label>
+                <div class="search-box">
+                  <i class="bi bi-search"></i>
+                  <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    placeholder="Masalan: +998901234567"
+                    value="<%= filters.search || '' %>"
+                  >
+                </div>
+              </div>
+
+              <!-- Minimum takror -->
+              <div class="col-md-6">
+                <label class="form-label">
+                  <i class="bi bi-arrow-repeat"></i> Minimum takror soni
+                </label>
+                <input
+                  type="number"
+                  name="minRepeat"
+                  class="form-control"
+                  placeholder="0"
+                  min="0"
+                  value="<%= filters.minRepeat || '' %>"
+                >
+              </div>
+
+              <!-- Guruh -->
               <div class="col-md-4">
-                <label class="form-label">Guruh</label>
+                <label class="form-label">
+                  <i class="bi bi-collection"></i> Guruh
+                </label>
                 <select name="group_id" class="form-select" id="groupFilter">
                   <option value="">Barcha guruhlar</option>
                   <% groups.forEach(group => { %>
@@ -147,18 +239,29 @@
                   <% }) %>
                 </select>
               </div>
+
+              <!-- Unikal -->
               <div class="col-md-4">
-                <label class="form-label">Umrbod unikal</label>
+                <label class="form-label">
+                  <i class="bi bi-star"></i> Umrbod unikal
+                </label>
                 <select name="lifetime_unique" class="form-select">
                   <option value="">Hammasi</option>
                   <option value="true" <%= filters.lifetime_unique ? 'selected' : '' %>>Faqat unikal</option>
                 </select>
               </div>
+
+              <!-- Tugmalar -->
               <div class="col-md-4">
                 <label class="form-label">&nbsp;</label>
-                <button type="submit" class="btn btn-primary d-block w-100">
-                  <i class="bi bi-filter"></i> Filtr qo'llash
-                </button>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-funnel-fill"></i> Filtr
+                  </button>
+                  <a href="/phones" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> Tozalash
+                  </a>
+                </div>
               </div>
             </form>
           </div>
@@ -166,18 +269,9 @@
 
         <% if (phones.length === 0) { %>
           <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Hozircha telefon raqamlar yo'q.
+            <i class="bi bi-info-circle"></i> Hozircha telefon raqamlar yo'q yoki filtrga mos keluvchi raqam topilmadi.
           </div>
         <% } else { %>
-
-          <% if (typeof pagination !== 'undefined') { %>
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            Ko'rsatilmoqda: <%= ((pagination.page - 1) * pagination.limit) + 1 %> -
-            <%= Math.min(pagination.page * pagination.limit, pagination.totalCount) %>
-            (Jami <%= pagination.totalCount %> ta raqamdan)
-          </div>
-          <% } %>
           <div class="table-responsive">
             <table class="table table-striped">
               <thead>
@@ -195,9 +289,20 @@
                   <tr>
                     <td><strong><%= phone.phone %></strong></td>
                     <td><%= phone.group_name || 'N/A' %></td>
-                    <td><%= new Date(phone.first_date).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></td>
-                    <td><%= new Date(phone.last_date).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></td>
-                    <td><span class="badge bg-secondary"><%= phone.repeat_count %></span></td>
+                    <td><small class="text-muted"><%= new Date(phone.first_date).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></small></td>
+                    <td><small class="text-muted"><%= new Date(phone.last_date).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) %></small></td>
+                    <td>
+                      <%
+                        let badgeClass = 'bg-secondary';
+                        if (phone.repeat_count >= 100) badgeClass = 'bg-danger';
+                        else if (phone.repeat_count >= 50) badgeClass = 'bg-warning';
+                        else if (phone.repeat_count >= 10) badgeClass = 'bg-info';
+                        else if (phone.repeat_count > 1) badgeClass = 'bg-success';
+                      %>
+                      <span class="badge <%= badgeClass %>">
+                        <i class="bi bi-arrow-repeat"></i> <%= phone.repeat_count %> marta
+                      </span>
+                    </td>
                     <td>
                       <% if (phone.first_message || phone.last_message) { %>
                         <button type="button" class="btn btn-sm btn-info" onclick="showMessage('<%= (phone.last_message || phone.first_message || '').replace(/'/g, "\\'").replace(/\n/g, "\\n") %>')">
@@ -220,6 +325,104 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Pagination Bottom -->
+          <% if (typeof pagination !== 'undefined' && pagination.totalPages > 1) { %>
+          <%
+            // Build filter query string
+            const filterParams = [];
+            if (filters.group_id) filterParams.push(`group_id=${filters.group_id}`);
+            if (filters.lifetime_unique) filterParams.push(`lifetime_unique=${filters.lifetime_unique}`);
+            if (filters.search) filterParams.push(`search=${encodeURIComponent(filters.search)}`);
+            if (filters.minRepeat) filterParams.push(`minRepeat=${filters.minRepeat}`);
+            const filterQuery = filterParams.length > 0 ? '&' + filterParams.join('&') : '';
+          %>
+          <div class="card mt-3">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <!-- Pagination Info -->
+                <div class="col-md-4">
+                  <p class="mb-0 text-muted">
+                    <i class="bi bi-info-circle"></i>
+                    Sahifa <strong><%= pagination.page %></strong> / <strong><%= pagination.totalPages %></strong>
+                    <br>
+                    <small>Ko'rsatilmoqda: <%= ((pagination.page - 1) * pagination.limit) + 1 %>-<%= Math.min(pagination.page * pagination.limit, pagination.totalCount) %> (Jami: <%= pagination.totalCount %>)</small>
+                  </p>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="col-md-8">
+                  <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-end mb-0">
+                      <!-- First Page -->
+                      <li class="page-item <%= pagination.page === 1 ? 'disabled' : '' %>">
+                        <a class="page-link" href="?page=1<%= filterQuery %>" title="Birinchi sahifa">
+                          <i class="bi bi-chevron-bar-left"></i>
+                        </a>
+                      </li>
+
+                      <!-- Previous Page -->
+                      <li class="page-item <%= !pagination.hasPrev ? 'disabled' : '' %>">
+                        <a class="page-link" href="?page=<%= pagination.prevPage %><%= filterQuery %>">
+                          <i class="bi bi-chevron-left"></i> Oldingi
+                        </a>
+                      </li>
+
+                      <!-- Page Numbers -->
+                      <%
+                        const startPage = Math.max(1, pagination.page - 2);
+                        const endPage = Math.min(pagination.totalPages, pagination.page + 2);
+
+                        // Show first page if not in range
+                        if (startPage > 1) { %>
+                          <li class="page-item">
+                            <a class="page-link" href="?page=1<%= filterQuery %>">1</a>
+                          </li>
+                          <% if (startPage > 2) { %>
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                          <% } %>
+                        <% }
+
+                        // Show page numbers
+                        for(let i = startPage; i <= endPage; i++) { %>
+                          <li class="page-item <%= i === pagination.page ? 'active' : '' %>">
+                            <a class="page-link" href="?page=<%= i %><%= filterQuery %>">
+                              <%= i %>
+                            </a>
+                          </li>
+                        <% }
+
+                        // Show last page if not in range
+                        if (endPage < pagination.totalPages) {
+                          if (endPage < pagination.totalPages - 1) { %>
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                          <% } %>
+                          <li class="page-item">
+                            <a class="page-link" href="?page=<%= pagination.totalPages %><%= filterQuery %>"><%= pagination.totalPages %></a>
+                          </li>
+                        <% } %>
+
+                      <!-- Next Page -->
+                      <li class="page-item <%= !pagination.hasNext ? 'disabled' : '' %>">
+                        <a class="page-link" href="?page=<%= pagination.nextPage %><%= filterQuery %>">
+                          Keyingi <i class="bi bi-chevron-right"></i>
+                        </a>
+                      </li>
+
+                      <!-- Last Page -->
+                      <li class="page-item <%= pagination.page === pagination.totalPages ? 'disabled' : '' %>">
+                        <a class="page-link" href="?page=<%= pagination.totalPages %><%= filterQuery %>" title="Oxirgi sahifa">
+                          <i class="bi bi-chevron-bar-right"></i>
+                        </a>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+          <% } %>
+
         <% } %>
       </main>
     </div>
