@@ -540,4 +540,54 @@ router.post('/bulk-sms', async (req, res) => {
   }
 });
 
+// Viloyat yo'nalishlarini o'chirish
+router.delete('/delete-region/:regionName', async (req, res) => {
+  try {
+    const regionName = decodeURIComponent(req.params.regionName);
+    const direction = req.query.direction || 'to-tashkent';
+
+    const { query } = require('../../database/sqlite');
+
+    let deletedCount = 0;
+
+    if (direction === 'from-tashkent') {
+      // Toshkentdan viloyatga: "Toshkent → Qashqadaryo (Tuman)" formatidagi barcha yo'nalishlarni o'chirish
+      const routes = await query(
+        `SELECT id, name FROM routes
+         WHERE name LIKE ? AND active = 1`,
+        [`Toshkent → ${regionName}%`]
+      );
+
+      for (const route of routes) {
+        await query('UPDATE routes SET active = 0 WHERE id = ?', [route.id]);
+        deletedCount++;
+      }
+    } else {
+      // Viloyatdan Toshkentga: "Qashqadaryo (Tuman) → Toshkent" formatidagi barcha yo'nalishlarni o'chirish
+      const routes = await query(
+        `SELECT id, name FROM routes
+         WHERE name LIKE ? AND active = 1`,
+        [`${regionName}%→ Toshkent`]
+      );
+
+      for (const route of routes) {
+        await query('UPDATE routes SET active = 0 WHERE id = ?', [route.id]);
+        deletedCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${regionName} viloyatining ${deletedCount} ta yo'nalishi o'chirildi`,
+      deletedCount: deletedCount
+    });
+  } catch (error) {
+    console.error('Delete region error:', error);
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
