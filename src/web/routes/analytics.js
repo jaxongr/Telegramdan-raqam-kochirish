@@ -52,7 +52,11 @@ router.get('/', async (req, res) => {
         COUNT(*) as total_records,
         SUM(p.repeat_count) as total_appearances,
         (SELECT COUNT(DISTINCT phone) FROM phones WHERE group_id = g.id AND DATE(first_date) = DATE('now')) as today_phones,
-        (SELECT COUNT(*) FROM phones WHERE group_id = g.id AND DATE(first_date) = DATE('now')) as today_messages
+        (SELECT COUNT(*) FROM phones WHERE group_id = g.id AND DATE(first_date) = DATE('now')) as today_messages,
+        (SELECT COUNT(*) FROM sms_logs WHERE group_id = g.id AND status = 'success') as sms_sent,
+        (SELECT COUNT(*) FROM sms_logs WHERE group_id = g.id AND status = 'cooldown') as sms_cooldown,
+        (SELECT COUNT(*) FROM sms_logs WHERE group_id = g.id AND status = 'failed') as sms_failed,
+        (SELECT COUNT(*) FROM sms_logs WHERE group_id = g.id) as sms_total
       FROM groups g
       LEFT JOIN phones p ON g.id = p.group_id
       WHERE DATE(p.first_date) >= DATE('now', '-${periodDays} days')

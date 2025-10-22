@@ -679,6 +679,10 @@
                         <th class="text-center" style="width: 120px;">
                           <i class="bi bi-arrow-repeat text-success"></i> Jami Ko'rinish
                         </th>
+                        <th class="text-center" style="width: 100px;">
+                          <i class="bi bi-chat-dots text-success"></i> SMS<br>
+                          <small class="text-muted" style="font-size: 0.7rem;">yuborilgan</small>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -716,6 +720,17 @@
                           </td>
                           <td class="text-center">
                             <span class="badge badge-custom-success fs-6"><%= group.total_appearances.toLocaleString() %></span>
+                          </td>
+                          <td class="text-center">
+                            <div class="sms-stats">
+                              <span class="badge bg-success" title="Yuborilgan"><%= group.sms_sent || 0 %></span>
+                              <% if ((group.sms_cooldown || 0) > 0) { %>
+                                <br><small class="text-warning">⏸ <%= group.sms_cooldown %></small>
+                              <% } %>
+                              <% if ((group.sms_failed || 0) > 0) { %>
+                                <br><small class="text-danger">✗ <%= group.sms_failed %></small>
+                              <% } %>
+                            </div>
                           </td>
                         </tr>
                       <% }) %>
