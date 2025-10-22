@@ -6,9 +6,13 @@ const logger = require('../utils/logger');
 const SEMYSMS_API_URL = 'https://semysms.net/api/3';
 const DAILY_LIMIT = parseInt(process.env.SMS_DAILY_LIMIT_PER_NUMBER) || 1000000;
 const SMS_DELAY = parseInt(process.env.SMS_DELAY_SECONDS) || 1;
-const SMS_COOLDOWN_HOURS = parseInt(process.env.SMS_COOLDOWN_HOURS) || 5; // 5 soat cooldown
+const SMS_COOLDOWN_HOURS = parseInt(process.env.SMS_COOLDOWN_HOURS) || 2; // 2 soat cooldown
 
 let currentPhoneIndex = 0; // Round-robin uchun
+
+// CRITICAL FIX: Global lock - bir raqamga bir vaqtda faqat 1 ta SMS
+// Bu Map da raqam bo'yicha lock saqlanadi
+const smsLocks = new Map(); // key: phone, value: Promise
 
 /**
  * SMS yuborish (round-robin bilan)
@@ -20,6 +24,18 @@ let currentPhoneIndex = 0; // Round-robin uchun
  * @param {number} retryCount - Retry counter (internal use)
  */
 async function sendSMS(toPhone, groupId, messageText, templateVars = null, retryCount = 0) {
+  // CRITICAL FIX: Global lock - agar bu raqam uchun allaqachon SMS yuborilayotgan bo'lsa, kutish
+  if (smsLocks.has(toPhone)) {
+    logger.warn(`🔒 Lock aktiv: ${toPhone} - boshqa guruh allaqachon SMS yubormoqda, skip qilinadi`);
+    return { success: false, error: 'locked', message: 'SMS already being sent to this number' };
+  }
+
+  // Lock qo'yish - bu raqam uchun hozir SMS yuborilmoqda
+  let lockResolve;
+  const lockPromise = new Promise(resolve => { lockResolve = resolve; });
+  smsLocks.set(toPhone, lockPromise);
+  logger.info(`🔐 Lock qo'yildi: ${toPhone}`);
+
   try {
     // Retry limit (cheksiz rekursiya oldini olish)
     if (retryCount >= 4) {
@@ -68,12 +84,6 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null, retry
       }
     }
 
-    // Birinchi urinishda "pending" log qilish (cooldown uchun)
-    if (retryCount === 0) {
-      await logSMS(toPhone, groupId, renderedText, null, 'pending', 'SMS yuborilmoqda...');
-      logger.info(`📝 Pending log qilindi: ${toPhone}`);
-    }
-
     // Kunlik limit tekshirish (faqat backup)
     const todayCount = await getSMSCountToday(toPhone);
     if (todayCount >= DAILY_LIMIT) {
@@ -107,6 +117,13 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null, retry
 
     // SMS matnini tayyorlash (rendered text ishlatamiz)
     const smsText = prepareSMSText(renderedText);
+
+    // CRITICAL: Pending log qilish - FAQAT SMS yuborilishidan oldin!
+    // Bu joyda barcha tekshiruvlar o'tgan va SMS yuborilishi aniq
+    if (retryCount === 0) {
+      await logSMS(toPhone, groupId, smsText, null, 'pending', 'SMS yuborilmoqda...');
+      logger.info(`📝 Pending log qilindi: ${toPhone}`);
+    }
 
     // SMS yuborish
     const result = await sendViaSemySMS(senderPhone.phone, toPhone, smsText);
@@ -143,8 +160,13 @@ async function sendSMS(toPhone, groupId, messageText, templateVars = null, retry
 
   } catch (error) {
     logger.error('SMS yuborishda xato:', error);
-    await logSMS(toPhone, groupId, renderedText, null, 'failed', error.message);
+    await logSMS(toPhone, groupId, messageText, null, 'failed', error.message);
     return { success: false, error: error.message };
+  } finally {
+    // CRITICAL: Lock ni ochish - har qanday holatda ham (success, error, cooldown)
+    smsLocks.delete(toPhone);
+    lockResolve && lockResolve();
+    logger.info(`🔓 Lock ochildi: ${toPhone}`);
   }
 }
 
@@ -395,14 +417,15 @@ async function updateAllBalances() {
 }
 
 /**
- * Oxirgi SMS yuborilgan vaqtni olish (success yoki pending)
+ * Oxirgi SMS yuborilgan vaqtni olish (success, pending, yoki cooldown)
+ * CRITICAL FIX: cooldown statusini ham qidirish kerak!
  */
 async function getLastSMSTime(toPhone) {
   try {
     const { query } = require('../database/index');
     const logs = await query(
-      'SELECT sent_at, status FROM sms_logs WHERE to_phone = ? AND (status = ? OR status = ?) ORDER BY sent_at DESC LIMIT 1',
-      [toPhone, 'success', 'pending']
+      'SELECT sent_at, status FROM sms_logs WHERE to_phone = ? AND (status = ? OR status = ? OR status = ?) ORDER BY sent_at DESC LIMIT 1',
+      [toPhone, 'success', 'pending', 'cooldown']
     );
 
     logger.info(`📊 getLastSMSTime query for ${toPhone}: found ${logs?.length || 0} records`);

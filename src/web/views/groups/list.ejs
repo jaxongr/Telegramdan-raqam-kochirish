@@ -151,17 +151,20 @@
             <table class="table table-striped">
               <thead>
                 <tr>
-                  <th style="width: 25%">Nom</th>
-                  <th style="width: 15%">Telegram ID</th>
-                  <th style="width: 10%">A'zolar</th>
-                  <th style="width: 20%">Kalit so'zlar</th>
-                  <th style="width: 10%">Holat</th>
-                  <th style="width: 20%">Amallar</th>
+                  <th style="width: 3%">#</th>
+                  <th style="width: 18%">Nom</th>
+                  <th style="width: 10%">Telegram ID</th>
+                  <th style="width: 7%">A'zolar</th>
+                  <th style="width: 16%">Kalit so'zlar</th>
+                  <th style="width: 7%">Holat</th>
+                  <th style="width: 10%">SMS</th>
+                  <th style="width: 29%">Amallar</th>
                 </tr>
               </thead>
               <tbody>
-                <% groups.forEach(group => { %>
+                <% groups.forEach((group, index) => { %>
                   <tr>
+                    <td><strong><%= index + 1 %></strong></td>
                     <td><strong><%= group.name %></strong></td>
                     <td><code><%= group.telegram_id %></code></td>
                     <td>
@@ -184,6 +187,13 @@
                       <% } else { %>
                         <span class="badge bg-secondary">O'chiq</span>
                       <% } %>
+                    </td>
+                    <td>
+                      <button onclick="toggleSMS(<%= group.id %>, <%= group.sms_enabled ? 'true' : 'false' %>, '<%= group.name %>')"
+                              class="btn btn-sm <%= group.sms_enabled ? 'btn-success' : 'btn-danger' %> w-100">
+                        <i class="bi <%= group.sms_enabled ? 'bi-toggle-on' : 'bi-toggle-off' %>"></i>
+                        <%= group.sms_enabled ? 'Yoqiq' : 'O\'chiq' %>
+                      </button>
                     </td>
                     <td>
                       <button onclick="joinGroup(<%= group.id %>, '<%= group.name %>')" class="btn btn-sm btn-outline-success me-1">
@@ -306,6 +316,36 @@
           window.location.reload();
         } else {
           alert('❌ Xato: ' + result.error);
+        }
+      } catch (error) {
+        alert('❌ Xato: ' + error.message);
+      }
+    }
+
+    // SMS ni yoqish/o'chirish
+    async function toggleSMS(groupId, currentState, groupName) {
+      const newState = !currentState;
+      const action = newState ? 'yoqiladi' : 'o\'chiriladi';
+
+      if (!confirm(`"${groupName}" guruhida SMS ${action}. Davom etasizmi?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/groups/edit/${groupId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            sms_enabled: newState ? '1' : '0',
+            _action: 'toggle_sms'
+          })
+        });
+
+        if (response.ok) {
+          alert(`✅ SMS ${newState ? 'yoqildi' : 'o\'chirildi'}`);
+          window.location.reload();
+        } else {
+          alert('❌ Xato: SMS holatini o\'zgartirib bo\'lmadi');
         }
       } catch (error) {
         alert('❌ Xato: ' + error.message);

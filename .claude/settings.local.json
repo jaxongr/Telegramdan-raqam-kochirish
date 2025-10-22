@@ -71,7 +71,8 @@
       "Bash(done)",
       "Bash(pm2 restart:*)",
       "Read(//c/Users/Pro/Downloads/**)",
-      "Bash(Select-String -Pattern \"SMS|semysms|phone|template\" -CaseSensitive:$false)"
+      "Bash(Select-String -Pattern \"SMS|semysms|phone|template\" -CaseSensitive:$false)",
+      "Read(//c/Users/Pro/Desktop/**)"
     ],
     "deny": [],
     "ask": []

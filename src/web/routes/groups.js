@@ -101,7 +101,18 @@ router.get('/edit/:id', async (req, res) => {
 // Tahrirlash
 router.post('/edit/:id', async (req, res) => {
   try {
-    const { name, keywords, sms_template, active, sms_enabled } = req.body;
+    const { name, keywords, sms_template, active, sms_enabled, _action } = req.body;
+
+    // Agar faqat SMS toggle bo'lsa
+    if (_action === 'toggle_sms') {
+      await updateGroup(req.params.id, {
+        sms_enabled: sms_enabled === '1'
+      });
+      res.status(200).send('OK');
+      return;
+    }
+
+    // To'liq tahrirlash
     await updateGroup(req.params.id, {
       name,
       keywords,

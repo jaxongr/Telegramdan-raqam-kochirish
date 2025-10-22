@@ -19,6 +19,18 @@
       color: #fff;
       background: #343a40;
     }
+    .filter-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-badge {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      display: inline-block;
+      margin: 0.25rem;
+    }
   </style>
 </head>
 <body>
@@ -86,29 +98,99 @@
       <main class="col-md-10 ms-sm-auto px-md-4">
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           <h1 class="h2">
-            <i class="bi bi-chat-dots"></i> Monitoring SMS loglar
+            <i class="bi bi-chat-dots"></i> SMS Loglar
           </h1>
           <div class="btn-toolbar mb-2 mb-md-0">
             <a href="/sms/routes" class="btn btn-sm btn-outline-primary">
-              <i class="bi bi-envelope-check"></i> Yo'nalish SMS loglar
+              <i class="bi bi-signpost"></i> Yo'nalish SMS loglar
             </a>
           </div>
         </div>
 
+        <!-- Statistics -->
+        <% if (stats) { %>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <div class="stat-badge bg-primary text-white">
+                <i class="bi bi-bar-chart"></i> Jami: <strong><%= stats.total %></strong>
+              </div>
+              <div class="stat-badge bg-success text-white">
+                <i class="bi bi-check-circle"></i> Yuborildi: <strong><%= stats.success %></strong>
+              </div>
+              <div class="stat-badge bg-warning text-dark">
+                <i class="bi bi-clock"></i> Kutilmoqda: <strong><%= stats.cooldown %></strong>
+              </div>
+              <div class="stat-badge bg-info text-white">
+                <i class="bi bi-hourglass"></i> Pending: <strong><%= stats.pending %></strong>
+              </div>
+              <div class="stat-badge bg-danger text-white">
+                <i class="bi bi-x-circle"></i> Xato: <strong><%= stats.failed %></strong>
+              </div>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Filter Form -->
+        <div class="filter-card">
+          <form method="GET" action="/sms" class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label"><i class="bi bi-funnel"></i> Holat</label>
+              <select name="status" class="form-select">
+                <option value="">Barchasi</option>
+                <option value="success" <%= filters.status === 'success' ? 'selected' : '' %>>Yuborildi</option>
+                <option value="cooldown" <%= filters.status === 'cooldown' ? 'selected' : '' %>>Kutilmoqda</option>
+                <option value="pending" <%= filters.status === 'pending' ? 'selected' : '' %>>Pending</option>
+                <option value="failed" <%= filters.status === 'failed' ? 'selected' : '' %>>Xato</option>
+                <option value="blocked" <%= filters.status === 'blocked' ? 'selected' : '' %>>Bloklangan</option>
+              </select>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label"><i class="bi bi-telephone"></i> Telefon raqam</label>
+              <input type="text" name="phone" class="form-control" placeholder="+998..." value="<%= filters.phone || '' %>">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label"><i class="bi bi-list-ol"></i> Limit</label>
+              <select name="limit" class="form-select">
+                <option value="50" <%= filters.limit === 50 ? 'selected' : '' %>>50</option>
+                <option value="100" <%= filters.limit === 100 ? 'selected' : '' %>>100</option>
+                <option value="200" <%= filters.limit === 200 ? 'selected' : '' %>>200</option>
+                <option value="500" <%= filters.limit === 500 ? 'selected' : '' %>>500</option>
+              </select>
+            </div>
+
+            <div class="col-md-4 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary me-2">
+                <i class="bi bi-search"></i> Qidirish
+              </button>
+              <a href="/sms" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Tozalash
+              </a>
+            </div>
+          </form>
+        </div>
+
         <% if (logs.length === 0) { %>
           <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Hozircha SMS yuborilmagan.
+            <i class="bi bi-info-circle"></i> Hech qanday SMS topilmadi.
           </div>
         <% } else { %>
+          <!-- Pagination Info -->
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-muted">
+              Jami <strong><%= pagination.total %></strong> ta yozuv (<strong><%= pagination.page %></strong> / <strong><%= pagination.totalPages %></strong> sahifa)
+            </div>
+          </div>
+
           <div class="table-responsive">
-            <table class="table table-striped">
-              <thead>
+            <table class="table table-striped table-hover">
+              <thead class="table-dark">
                 <tr>
                   <th>Vaqt</th>
-                  <th>Qayerga</th>
+                  <th>Telefon</th>
                   <th>Guruh</th>
                   <th>Xabar</th>
-                  <th>Qayerdan</th>
                   <th>Holat</th>
                 </tr>
               </thead>
@@ -119,39 +201,22 @@
                     <td><strong><%= log.to_phone %></strong></td>
                     <td><%= log.group_name || 'N/A' %></td>
                     <td><%= (log.message || '').substring(0, 50) %>...</td>
-                    <td><%= log.semysms_phone || 'N/A' %></td>
                     <td>
                       <% if (log.status === 'success') { %>
                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Yuborildi</span>
                       <% } else if (log.status === 'cooldown') { %>
-                        <%
-                          // Cooldown vaqtini parse qilish
-                          let remainingTime = '';
-                          if (log.error && log.error.includes('minutes remaining')) {
-                            const match = log.error.match(/(\d+) minutes remaining/);
-                            if (match) {
-                              const minutes = parseInt(match[1]);
-                              const hours = Math.floor(minutes / 60);
-                              const mins = minutes % 60;
-
-                              if (hours > 0) {
-                                remainingTime = `${hours} soat ${mins} daqiqa qoldi`;
-                              } else {
-                                remainingTime = `${mins} daqiqa qoldi`;
-                              }
-                            }
-                          }
-                        %>
-                        <span class="badge bg-warning text-dark" title="2 soatlik limitda kutish">
+                        <span class="badge bg-warning text-dark" title="5 soatlik limitda kutish">
                           <i class="bi bi-clock"></i> Kutilmoqda
-                          <% if (remainingTime) { %>
-                            <br><small><%= remainingTime %></small>
+                          <% if (log.remaining_minutes !== null && log.remaining_minutes !== undefined) { %>
+                            (<%= log.remaining_minutes %> daq)
                           <% } %>
                         </span>
+                      <% } else if (log.status === 'pending') { %>
+                        <span class="badge bg-info"><i class="bi bi-hourglass"></i> Pending</span>
                       <% } else if (log.status === 'blocked') { %>
-                        <span class="badge bg-secondary" title="<%= log.error %>"><i class="bi bi-ban"></i> Bloklangan</span>
+                        <span class="badge bg-secondary"><i class="bi bi-ban"></i> Bloklangan</span>
                       <% } else { %>
-                        <span class="badge bg-danger" title="<%= log.error %>"><i class="bi bi-x-circle"></i> Xato</span>
+                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Xato</span>
                       <% } %>
                     </td>
                   </tr>
@@ -159,6 +224,37 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Pagination -->
+          <% if (pagination.totalPages > 1) { %>
+            <nav>
+              <ul class="pagination">
+                <li class="page-item <%= pagination.page === 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="/sms?page=<%= pagination.page - 1 %>&status=<%= filters.status || '' %>&phone=<%= filters.phone || '' %>&limit=<%= filters.limit %>">
+                    Oldingi
+                  </a>
+                </li>
+
+                <% for (let i = 1; i <= pagination.totalPages; i++) { %>
+                  <% if (i === 1 || i === pagination.totalPages || (i >= pagination.page - 2 && i <= pagination.page + 2)) { %>
+                    <li class="page-item <%= i === pagination.page ? 'active' : '' %>">
+                      <a class="page-link" href="/sms?page=<%= i %>&status=<%= filters.status || '' %>&phone=<%= filters.phone || '' %>&limit=<%= filters.limit %>">
+                        <%= i %>
+                      </a>
+                    </li>
+                  <% } else if (i === pagination.page - 3 || i === pagination.page + 3) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+
+                <li class="page-item <%= pagination.page === pagination.totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="/sms?page=<%= pagination.page + 1 %>&status=<%= filters.status || '' %>&phone=<%= filters.phone || '' %>&limit=<%= filters.limit %>">
+                    Keyingi
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          <% } %>
         <% } %>
       </main>
     </div>
