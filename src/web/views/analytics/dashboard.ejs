@@ -783,6 +783,118 @@
           </div>
         </div>
 
+        <!-- SMS ANALYTICS SECTION -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <h4 class="mb-3"><i class="bi bi-chat-dots-fill text-success"></i> SMS Analitikasi</h4>
+          </div>
+
+          <!-- Hourly SMS Activity Chart -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-clock-history"></i> Soatlik SMS Faollik (Bugun)
+              </div>
+              <div class="card-body">
+                <canvas id="hourlySmsChart" height="200"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Daily SMS Calendar -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-calendar3"></i> Kunlik SMS Kalendari (30 kun)
+              </div>
+              <div class="card-body">
+                <canvas id="dailySmsChart" height="200"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Real-time SMS Monitor -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header bg-success text-white">
+                <i class="bi bi-broadcast"></i> Real-Time SMS Monitor (Oxirgi 10 daqiqa)
+              </div>
+              <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <% if (realtimeSms && realtimeSms.length > 0) { %>
+                  <div class="list-group">
+                    <% realtimeSms.forEach((sms) => { %>
+                      <div class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                          <h6 class="mb-1">
+                            <strong><%= sms.to_phone %></strong>
+                            <%
+                              let statusBadge = 'secondary';
+                              let statusText = sms.status;
+                              if (sms.status === 'success') { statusBadge = 'success'; statusText = 'Yuborildi'; }
+                              else if (sms.status === 'cooldown') { statusBadge = 'warning'; statusText = 'Cooldown'; }
+                              else if (sms.status === 'failed') { statusBadge = 'danger'; statusText = 'Xato'; }
+                            %>
+                            <span class="badge bg-<%= statusBadge %> ms-2"><%= statusText %></span>
+                          </h6>
+                          <small class="text-muted"><%= new Date(sms.sent_at).toLocaleTimeString('uz-UZ') %></small>
+                        </div>
+                        <p class="mb-1"><small class="text-muted"><%= sms.group_name || 'N/A' %></small></p>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } else { %>
+                  <p class="text-muted text-center">Oxirgi 10 daqiqada SMS yo'q</p>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Routes SMS Stats -->
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-header">
+                <i class="bi bi-signpost-split"></i> Yo'nalishlar bo'yicha SMS (Top 10)
+              </div>
+              <div class="card-body">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                  <table class="table table-sm table-hover">
+                    <thead class="sticky-top bg-white">
+                      <tr>
+                        <th>#</th>
+                        <th>Yo'nalish</th>
+                        <th class="text-center">Jami</th>
+                        <th class="text-center">✓</th>
+                        <th class="text-center">⏸</th>
+                        <th class="text-center">✗</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% if (routesSmsStats && routesSmsStats.length > 0) { %>
+                        <% routesSmsStats.forEach((route, idx) => { %>
+                          <tr>
+                            <td><span class="badge bg-secondary"><%= idx + 1 %></span></td>
+                            <td>
+                              <small><strong><%= route.from_region %></strong> → <strong><%= route.to_region %></strong></small>
+                            </td>
+                            <td class="text-center"><span class="badge bg-primary"><%= route.sms_count %></span></td>
+                            <td class="text-center"><span class="badge bg-success"><%= route.sms_success || 0 %></span></td>
+                            <td class="text-center"><span class="badge bg-warning"><%= route.sms_cooldown || 0 %></span></td>
+                            <td class="text-center"><span class="badge bg-danger"><%= route.sms_failed || 0 %></span></td>
+                          </tr>
+                        <% }) %>
+                      <% } else { %>
+                        <tr>
+                          <td colspan="6" class="text-center text-muted">Yo'nalishlar bo'yicha SMS ma'lumotlari yo'q</td>
+                        </tr>
+                      <% } %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </main>
     </div>
   </div>
@@ -794,6 +906,8 @@
     const hourlyActivityData = <%- JSON.stringify(hourlyActivity) %>;
     const smsConversionData = <%- JSON.stringify(smsConversion) %>;
     const repeatDistData = <%- JSON.stringify(repeatDistribution) %>;
+    const hourlySmsData = <%- JSON.stringify(hourlySmsActivity) %>;
+    const dailySmsData = <%- JSON.stringify(dailySmsCalendar) %>;
 
     // 1. Daily Trend Chart
     const dailyCtx = document.getElementById('dailyTrendChart').getContext('2d');
@@ -1111,6 +1225,123 @@
 
     // Update every 30 seconds
     setInterval(updateLiveStats, 30000);
+
+    // 5. Hourly SMS Activity Chart
+    const hourlySmsCtx = document.getElementById('hourlySmsChart').getContext('2d');
+    const hours = Array.from({length: 24}, (_, i) => i);
+    const hourlySmsMap = {};
+    hourlySmsData.forEach(d => {
+      hourlySmsMap[d.hour] = d;
+    });
+
+    new Chart(hourlySmsCtx, {
+      type: 'bar',
+      data: {
+        labels: hours.map(h => h + ':00'),
+        datasets: [{
+          label: 'Yuborildi',
+          data: hours.map(h => hourlySmsMap[h] ? hourlySmsMap[h].success : 0),
+          backgroundColor: 'rgba(40, 167, 69, 0.8)',
+          borderColor: 'rgba(40, 167, 69, 1)',
+          borderWidth: 1
+        }, {
+          label: 'Cooldown',
+          data: hours.map(h => hourlySmsMap[h] ? hourlySmsMap[h].cooldown : 0),
+          backgroundColor: 'rgba(255, 193, 7, 0.8)',
+          borderColor: 'rgba(255, 193, 7, 1)',
+          borderWidth: 1
+        }, {
+          label: 'Xato',
+          data: hours.map(h => hourlySmsMap[h] ? hourlySmsMap[h].failed : 0),
+          backgroundColor: 'rgba(220, 53, 69, 0.8)',
+          borderColor: 'rgba(220, 53, 69, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false }
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          tooltip: {
+            callbacks: {
+              footer: function(tooltipItems) {
+                let sum = 0;
+                tooltipItems.forEach(function(tooltipItem) {
+                  sum += tooltipItem.parsed.y;
+                });
+                return 'Jami: ' + sum;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 6. Daily SMS Calendar Chart
+    const dailySmsCtx = document.getElementById('dailySmsChart').getContext('2d');
+    new Chart(dailySmsCtx, {
+      type: 'line',
+      data: {
+        labels: dailySmsData.map(d => d.date),
+        datasets: [{
+          label: 'Yuborildi',
+          data: dailySmsData.map(d => d.success),
+          borderColor: '#28a745',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true
+        }, {
+          label: 'Cooldown',
+          data: dailySmsData.map(d => d.cooldown),
+          borderColor: '#ffc107',
+          backgroundColor: 'rgba(255, 193, 7, 0.1)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true
+        }, {
+          label: 'Xato',
+          data: dailySmsData.map(d => d.failed),
+          borderColor: '#dc3545',
+          backgroundColor: 'rgba(220, 53, 69, 0.1)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+          }
+        }
+      }
+    });
   </script>
 </body>
 </html>

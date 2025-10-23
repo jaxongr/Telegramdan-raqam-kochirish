@@ -124,6 +124,68 @@ router.get('/', async (req, res) => {
       ORDER BY MIN(repeat_count)
     `);
 
+    // 9. SOATLIK SMS STATISTIKA (bugun 24 soat)
+    const hourlySmsActivity = await query(`
+      SELECT
+        CAST(strftime('%H', sent_at) AS INTEGER) as hour,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success,
+        SUM(CASE WHEN status = 'cooldown' THEN 1 ELSE 0 END) as cooldown,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+        COUNT(*) as total
+      FROM sms_logs
+      WHERE DATE(sent_at) = DATE('now')
+      GROUP BY hour
+      ORDER BY hour ASC
+    `);
+
+    // 10. KUNLIK SMS KALENDAR (oxirgi 30 kun)
+    const dailySmsCalendar = await query(`
+      SELECT
+        DATE(sent_at) as date,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success,
+        SUM(CASE WHEN status = 'cooldown' THEN 1 ELSE 0 END) as cooldown,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+        COUNT(*) as total
+      FROM sms_logs
+      WHERE DATE(sent_at) >= DATE('now', '-30 days')
+      GROUP BY DATE(sent_at)
+      ORDER BY date ASC
+    `);
+
+    // 11. REAL-TIME SMS MONITOR (oxirgi 10 daqiqa)
+    const realtimeSms = await query(`
+      SELECT
+        to_phone,
+        g.name as group_name,
+        status,
+        sent_at,
+        message
+      FROM sms_logs
+      LEFT JOIN groups g ON sms_logs.group_id = g.id
+      WHERE datetime(sent_at) >= datetime('now', '-10 minutes')
+      ORDER BY sent_at DESC
+      LIMIT 20
+    `);
+
+    // 12. YO'NALISHLAR BO'YICHA SMS (top 10 routes)
+    const routesSmsStats = await query(`
+      SELECT
+        r.id,
+        r.from_region,
+        r.to_region,
+        COUNT(DISTINCT sms_logs.id) as sms_count,
+        SUM(CASE WHEN sms_logs.status = 'success' THEN 1 ELSE 0 END) as sms_success,
+        SUM(CASE WHEN sms_logs.status = 'cooldown' THEN 1 ELSE 0 END) as sms_cooldown,
+        SUM(CASE WHEN sms_logs.status = 'failed' THEN 1 ELSE 0 END) as sms_failed
+      FROM routes r
+      LEFT JOIN phones p ON r.id = p.route_id
+      LEFT JOIN sms_logs ON p.phone = sms_logs.to_phone
+      WHERE sms_logs.id IS NOT NULL
+      GROUP BY r.id, r.from_region, r.to_region
+      ORDER BY sms_count DESC
+      LIMIT 10
+    `);
+
     res.render('analytics/dashboard', {
       username: req.session.username,
       period: periodDays,
@@ -134,7 +196,11 @@ router.get('/', async (req, res) => {
       smsConversion,
       topRepeatedPhones,
       weeklySmsStats,
-      repeatDistribution
+      repeatDistribution,
+      hourlySmsActivity,
+      dailySmsCalendar,
+      realtimeSms,
+      routesSmsStats
     });
 
   } catch (error) {
