@@ -96,18 +96,39 @@
         <% } %>
 
         <div class="row mb-4">
-          <div class="col-md-6">
+          <div class="col-md-8">
             <div class="card">
               <div class="card-body">
-                <h5>Raqam qo'shish</h5>
+                <h5 class="mb-3">
+                  <i class="bi bi-plus-circle"></i> Yangi qurilma qo'shish
+                </h5>
                 <form method="POST" action="/semysms/add">
-                  <div class="input-group">
-                    <input type="text" name="phone" class="form-control" placeholder="+998901234567" required>
-                    <button type="submit" class="btn btn-primary">
-                      <i class="bi bi-plus-circle"></i> Qo'shish
-                    </button>
+                  <div class="row g-3">
+                    <div class="col-md-5">
+                      <label for="phone" class="form-label">Telefon raqam</label>
+                      <input type="text" name="phone" id="phone" class="form-control" placeholder="+998901234567" required>
+                      <small class="text-muted">SemySMS'dagi telefon raqam</small>
+                    </div>
+                    <div class="col-md-5">
+                      <label for="device_id" class="form-label">Device ID</label>
+                      <input type="text" name="device_id" id="device_id" class="form-control" placeholder="12345" required>
+                      <small class="text-muted">SemySMS platformadagi qurilma ID raqami</small>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                      <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> Qo'shish
+                      </button>
+                    </div>
                   </div>
                 </form>
+                <div class="alert alert-info mt-3 mb-0">
+                  <i class="bi bi-info-circle"></i> <strong>Qanday topish kerak?</strong>
+                  <ol class="mb-0 mt-2">
+                    <li>SemySMS.net saytiga kiring</li>
+                    <li>"Qurilmalar" (Devices) bo'limiga o'ting</li>
+                    <li>Qo'shgan qurilmangizni toping va uning <strong>ID raqamini</strong> ko'chirib oling</li>
+                  </ol>
+                </div>
               </div>
             </div>
           </div>
@@ -123,6 +144,7 @@
               <thead>
                 <tr>
                   <th>Telefon</th>
+                  <th>Device ID</th>
                   <th>Balans</th>
                   <th>Holat</th>
                   <th>Yuborilgan</th>
@@ -134,6 +156,13 @@
                 <% phones.forEach(phone => { %>
                   <tr>
                     <td><strong><%= phone.phone %></strong></td>
+                    <td>
+                      <% if (phone.device_id) { %>
+                        <code><%= phone.device_id %></code>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td><%= (phone.balance || 0).toFixed(2) %> so'm</td>
                     <td>
                       <% if (phone.status === 'active') { %>
