@@ -167,21 +167,29 @@ router.get('/', async (req, res) => {
       LIMIT 20
     `);
 
-    // 12. YO'NALISHLAR BO'YICHA SMS (top 10 routes)
+    // 12. GURUHLAR BO'YICHA SMS TOP (top 10 groups by SMS count)
     const routesSmsStats = await query(`
       SELECT
-        r.id,
-        r.from_region,
-        r.to_region,
-        COUNT(DISTINCT sms_logs.id) as sms_count,
-        SUM(CASE WHEN sms_logs.status = 'success' THEN 1 ELSE 0 END) as sms_success,
-        SUM(CASE WHEN sms_logs.status = 'cooldown' THEN 1 ELSE 0 END) as sms_cooldown,
-        SUM(CASE WHEN sms_logs.status = 'failed' THEN 1 ELSE 0 END) as sms_failed
-      FROM routes r
-      LEFT JOIN phones p ON r.id = p.route_id
-      LEFT JOIN sms_logs ON p.phone = sms_logs.to_phone
-      WHERE sms_logs.id IS NOT NULL
-      GROUP BY r.id, r.from_region, r.to_region
+        g.id,
+        g.name,
+        CASE
+          WHEN g.name LIKE '%→%' THEN
+            TRIM(SUBSTR(g.name, 1, INSTR(g.name, '→') - 1))
+          ELSE 'N/A'
+        END as from_region,
+        CASE
+          WHEN g.name LIKE '%→%' THEN
+            TRIM(SUBSTR(g.name, INSTR(g.name, '→') + 1))
+          ELSE g.name
+        END as to_region,
+        COUNT(sms.id) as sms_count,
+        SUM(CASE WHEN sms.status = 'success' THEN 1 ELSE 0 END) as sms_success,
+        SUM(CASE WHEN sms.status = 'cooldown' THEN 1 ELSE 0 END) as sms_cooldown,
+        SUM(CASE WHEN sms.status = 'failed' THEN 1 ELSE 0 END) as sms_failed
+      FROM groups g
+      LEFT JOIN sms_logs sms ON g.id = sms.group_id
+      WHERE sms.id IS NOT NULL
+      GROUP BY g.id, g.name
       ORDER BY sms_count DESC
       LIMIT 10
     `);
