@@ -436,6 +436,93 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * SemySMS qurilmalarni avtomatik yuklash
+ */
+async function syncDevicesFromSemySMS() {
+  try {
+    const apiKey = process.env.SEMYSMS_API_KEY;
+    if (!apiKey) {
+      throw new Error('SEMYSMS_API_KEY sozlanmagan');
+    }
+
+    logger.info('📱 SemySMS qurilmalarni yuklash boshlandi...');
+
+    // Qurilmalarni olish - to'g'ri endpoint: devices.php
+    const response = await axios.get(`${SEMYSMS_API_URL}/devices.php`, {
+      params: {
+        token: apiKey,
+        is_arhive: 0  // Faqat aktiv qurilmalar
+      },
+      timeout: 10000
+    });
+
+    // SemySMS API response struktura: { count: 0, code: 0, data: [...] }
+    if (!response.data || !response.data.data || !Array.isArray(response.data.data)) {
+      throw new Error('Qurilmalar yuklanmadi yoki format noto\'g\'ri');
+    }
+
+    const devices = response.data.data;
+    logger.info(`✅ ${devices.length} ta qurilma topildi`);
+
+    if (devices.length === 0) {
+      logger.warn('⚠️ SemySMS akkauntingizda qurilmalar yo\'q');
+      return {
+        success: true,
+        total: 0,
+        added: 0,
+        skipped: 0
+      };
+    }
+
+    const { createSemySMSPhone, getAllSemySMSPhones } = require('../database/models');
+    const existingPhones = await getAllSemySMSPhones();
+    const existingSet = new Set(existingPhones.map(p => p.phone));
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const device of devices) {
+      const phone = device.phone || device.phone_number || device.number;
+      const deviceId = device.device_id || device.id || device.code;
+
+      if (!phone || !deviceId) {
+        logger.warn('⚠️ Qurilma malumotlari toliq emas:', device);
+        skipped++;
+        continue;
+      }
+
+      // Agar mavjud bo'lsa, skip
+      if (existingSet.has(phone)) {
+        logger.info(`⏭️ Mavjud: ${phone}`);
+        skipped++;
+        continue;
+      }
+
+      // Yangi qurilma qo'shish
+      const balance = await checkBalance(phone);
+      await createSemySMSPhone(phone, balance || 0, deviceId);
+      logger.info(`✅ Qoshildi: ${phone} (ID: ${deviceId})`);
+      added++;
+    }
+
+    logger.info(`\n📊 Natija: ${added} qoshildi, ${skipped} skip`);
+
+    return {
+      success: true,
+      total: devices.length,
+      added,
+      skipped
+    };
+  } catch (error) {
+    logger.error('❌ Qurilmalarni yuklashda xato:', error.message);
+    if (error.response) {
+      logger.error('API javobi:', error.response.data);
+    }
+    throw error;
+  }
+}
+
 module.exports = {
   sendSMS,
   sendTestSMS,
@@ -443,5 +530,6 @@ module.exports = {
   updateAllBalances,
   prepareSMSText,
   renderSMSTemplate,
-  getLastSMSTime
+  getLastSMSTime,
+  syncDevicesFromSemySMS
 };

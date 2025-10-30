@@ -6,7 +6,7 @@ const {
   deleteSemySMSPhone,
   updateSemySMSPhone
 } = require('../../database/models');
-const { checkBalance, sendTestSMS, updateAllBalances } = require('../../services/smsService');
+const { checkBalance, sendTestSMS, updateAllBalances, syncDevicesFromSemySMS } = require('../../services/smsService');
 
 // Ro'yxat
 router.get('/', async (req, res) => {
@@ -96,6 +96,29 @@ router.post('/update-balances', async (req, res) => {
   } catch (error) {
     const phones = await getAllSemySMSPhones();
     res.render('semysms/list', { phones, error: error.message, success: null, username: req.session.username });
+  }
+});
+
+// Qurilmalarni avtomatik yuklash
+router.post('/sync-devices', async (req, res) => {
+  try {
+    const result = await syncDevicesFromSemySMS();
+
+    const phones = await getAllSemySMSPhones();
+    res.render('semysms/list', {
+      phones,
+      error: null,
+      success: `${result.added} ta qurilma qo'shildi, ${result.skipped} ta mavjud edi (Jami: ${result.total})`,
+      username: req.session.username
+    });
+  } catch (error) {
+    const phones = await getAllSemySMSPhones();
+    res.render('semysms/list', {
+      phones,
+      error: 'Qurilmalarni yuklashda xato: ' + error.message,
+      success: null,
+      username: req.session.username
+    });
   }
 });
 

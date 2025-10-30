@@ -72,7 +72,14 @@
       "Bash(pm2 restart:*)",
       "Read(//c/Users/Pro/Downloads/**)",
       "Bash(Select-String -Pattern \"SMS|semysms|phone|template\" -CaseSensitive:$false)",
-      "Read(//c/Users/Pro/Desktop/**)"
+      "Read(//c/Users/Pro/Desktop/**)",
+      "Bash(copy:*)",
+      "Bash(git log:*)",
+      "Bash(mkdir:*)",
+      "Bash(git clone:*)",
+      "Bash(tar:*)",
+      "Bash(Select-Object -First 25)",
+      "Bash(move \"C:\\Users\\Pro\\Desktop\\test_semysms_fixed.js\" \"C:\\Users\\Pro\\Desktop\\Telegramda raqam yigish va sms yuborish\\test_semysms_fixed.js\")"
     ],
     "deny": [],
     "ask": []

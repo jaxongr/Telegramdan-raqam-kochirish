@@ -342,10 +342,105 @@ async function scrapeGroupHistoryByDate(groupId, startDate, endDate = new Date()
         retryCount = 0; // Reset - davom etish
       }
 
+      // MUHIM: Agar xabarlar yo'q bo'lsa - bu oxiriga yetilgan demak
       if (messages.length === 0) {
         console.log(`📭 Xabarlar tugadi! batchCount=${batchCount}, offsetId=${offsetId}, offsetDate=${offsetDate}`);
         logger.info('📭 Xabarlar tugadi yoki oxiriga yetildi');
         break;
+      }
+
+      // YANGI: Agar startDate dan eski xabar bo'lsa, to'xtatish
+      const oldestMessageInBatch = messages[messages.length - 1];
+      if (oldestMessageInBatch && oldestMessageInBatch.date) {
+        const oldestMsgDate = new Date(oldestMessageInBatch.date * 1000);
+        if (oldestMsgDate < startDate) {
+          console.log(`🛑 SANA YETDI: ${oldestMsgDate.toISOString()} < ${startDate.toISOString()}`);
+          logger.info(`🛑 Start date'ga yetildi - skanerlash tugadi`);
+
+          // Agar batch ichida startDate dan yangi xabarlar bo'lsa, ularni qayta ishlash
+          const validMessages = messages.filter(m => {
+            if (!m || !m.date) return false;
+            const msgDate = new Date(m.date * 1000);
+            return msgDate >= startDate && msgDate <= endDate;
+          });
+
+          if (validMessages.length > 0) {
+            console.log(`✅ Oxirgi batch: ${validMessages.length} ta valid xabar qayta ishlanmoqda`);
+            // Ushbu xabarlarni qayta ishlash
+            for (const message of validMessages) {
+              try {
+                if (!message || !message.date) continue;
+
+                offsetId = message.id;
+                offsetDate = message.date;
+
+                const msgDate = new Date(message.date * 1000);
+                const daysProcessed = Math.ceil((endDate - msgDate) / (1000 * 60 * 60 * 24));
+
+                let uniqueCount = currentProgress.uniquePhones;
+                if (currentProgress.processedMessages % 100 === 0) {
+                  uniqueCount = [...new Set(results.phonesFound.map(p => p.phone))].length;
+                }
+
+                updateProgress({
+                  processedMessages: currentProgress.processedMessages + 1,
+                  phonesFound: results.phonesFound.length,
+                  uniquePhones: uniqueCount,
+                  processedDays: daysProcessed,
+                  currentDate: msgDate.toISOString()
+                });
+
+                if (!message.text) continue;
+
+                const phones = extractPhones(message.text);
+                if (phones.length > 0) {
+                  results.messagesWithPhones++;
+                  for (const phone of phones) {
+                    results.phonesFound.push({
+                      phone,
+                      message: message.text.substring(0, 100),
+                      date: msgDate.toISOString()
+                    });
+                  }
+                }
+              } catch (msgError) {
+                results.errors.push({
+                  message: msgError.message,
+                  messageId: message.id
+                });
+              }
+            }
+          }
+
+          // Oxirgi backup
+          if (results.phonesFound.length > 0) {
+            logger.info(`💾 OXIRGI BACKUP: ${results.phonesFound.length} ta raqam saqlash...`);
+            try {
+              const allPhonesMap = new Map();
+              for (const phoneData of results.phonesFound) {
+                if (!allPhonesMap.has(phoneData.phone)) {
+                  allPhonesMap.set(phoneData.phone, phoneData);
+                }
+              }
+              const uniquePhones = Array.from(allPhonesMap.values());
+              const BATCH_SIZE = 1000;
+              for (let i = 0; i < uniquePhones.length; i += BATCH_SIZE) {
+                const batch = uniquePhones.slice(i, i + BATCH_SIZE);
+                await savePhonesInBatch(batch.map(p => ({
+                  phone: p.phone,
+                  group_id: groupId,
+                  message: p.message,
+                  date: p.date
+                })));
+              }
+              logger.info(`✅ OXIRGI BACKUP saqlandi: ${uniquePhones.length} unikal`);
+            } catch (dbError) {
+              logger.error(`❌ OXIRGI BACKUP error: ${dbError.message}`);
+            }
+          }
+
+          break; // Loop'dan chiqish
+        }
       }
 
       batchCount++;

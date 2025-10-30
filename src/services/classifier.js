@@ -76,41 +76,52 @@ function hasMultipleRoutes(text) {
   return false;
 }
 
+// User ma'lumotlari uchun cache (30 daqiqa)
+const userInfoCache = new Map();
+const USER_CACHE_DURATION = 30 * 60 * 1000; // 30 daqiqa
+
 /**
- * User haqida ma'lumot to'plash
+ * User haqida ma'lumot to'plash (OPTIMIZED - cache bilan, guruh tekshiruvsiz)
  */
 async function getUserInfo(telegramClient, userId, groupsList) {
   try {
-    // User ma'lumotlarini olish
-    const userEntity = await telegramClient.getEntity(userId);
+    const cacheKey = `user_${userId}`;
+    const now = Date.now();
 
-    let groupsCount = 0;
-    const logisticsGroups = [];
-
-    // Faqat logistics guruhlar sonini sanash
-    for (const group of groupsList) {
-      try {
-        const participants = await telegramClient.getParticipants(group.id, { limit: 100 });
-        const isMember = participants.some(p => p.id.toString() === userId.toString());
-
-        if (isMember) {
-          groupsCount++;
-          logisticsGroups.push(group.name);
-        }
-      } catch (err) {
-        // Guruhga kirish huquqi yo'q bo'lishi mumkin
-        continue;
+    // Cache tekshirish
+    if (userInfoCache.has(cacheKey)) {
+      const cached = userInfoCache.get(cacheKey);
+      if (now - cached.timestamp < USER_CACHE_DURATION) {
+        return cached.data;
       }
     }
 
-    return {
+    // User ma'lumotlarini olish
+    const userEntity = await telegramClient.getEntity(userId);
+
+    const userInfo = {
       firstName: userEntity.firstName || '',
       lastName: userEntity.lastName || '',
       username: userEntity.username || '',
       bio: userEntity.about || '',
-      groupsCount,
-      logisticsGroups
+      groupsCount: 0, // Default 0 - eski tekshiruv o'chirildi
+      logisticsGroups: []
     };
+
+    // Cache'ga saqlash
+    userInfoCache.set(cacheKey, {
+      data: userInfo,
+      timestamp: now
+    });
+
+    // Eski cache'larni tozalash (1 soatdan eski)
+    for (const [key, value] of userInfoCache.entries()) {
+      if (now - value.timestamp > 60 * 60 * 1000) {
+        userInfoCache.delete(key);
+      }
+    }
+
+    return userInfo;
   } catch (error) {
     console.error('getUserInfo xatosi:', error.message);
     return null;
@@ -157,18 +168,16 @@ async function classifyUser(telegramId, username, firstName, messageText, telegr
   // ADMIN TO'G'RILASH KLASSIFIKATSIYAGA ARALASHMAYDI!
   // Faqat ball tizimi ishlaydi
 
-  // 1. Guruhlar soni (faqat logistics guruhlar)
-  if (telegramClient && groupsList.length > 0) {
+  // 1. User ma'lumotlarini olish (faqat ism/username/bio uchun - GURUH TEKSHIRUVSIZ)
+  if (telegramClient) {
     const userInfo = await getUserInfo(telegramClient, telegramId, groupsList);
     if (userInfo) {
-      details.groupsCount = userInfo.groupsCount;
+      details.groupsCount = 0; // Guruh tekshiruv o'chirildi - sekin ishladi
       firstName = firstName || userInfo.firstName;
       username = username || userInfo.username;
 
-      // ≤15 logistics guruh = +30 ball (YUKCHI)
-      if (userInfo.groupsCount <= 15) {
-        score += 30;
-      }
+      // OPTIMIZATSIYA: Guruh tekshiruv o'chirildi - default +30 ball (YUKCHI)
+      score += 30;
 
       // Username/bio'da logistika so'zlari yo'q = +20 ball (YUKCHI)
       const hasKeywords = hasLogisticsKeywords(userInfo.username + ' ' + userInfo.bio);
@@ -177,6 +186,9 @@ async function classifyUser(telegramId, username, firstName, messageText, telegr
         score += 20;
       }
     }
+  } else {
+    // Client yo'q bo'lsa ham default ball berish
+    score += 30; // Default YUKCHI
   }
 
   // 3. Kunlik e'lonlar (≤2 = +25 ball) - kalendar kun
