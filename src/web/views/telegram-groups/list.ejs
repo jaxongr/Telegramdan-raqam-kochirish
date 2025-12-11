@@ -3,12 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Telegram Guruhlar</title>
+  <title>Telegram Guruhlar - Telegram SMS Tizim</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      min-height: 100vh;
+      background: #212529;
+    }
+    .sidebar .nav-link {
+      color: #adb5bd;
+      padding: 0.8rem 1rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: #343a40;
+    }
+  </style>
 </head>
 <body>
-  <%- include('../layout', { body: `
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-md-block sidebar">
+        <div class="position-sticky pt-3">
+          <h5 class="text-white px-3 mb-3">
+            <i class="bi bi-telegram"></i> Telegram SMS
+          </h5>
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Bosh sahifa
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/groups">
+                <i class="bi bi-collection"></i> Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/phones">
+                <i class="bi bi-telephone"></i> Telefon raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/sms">
+                <i class="bi bi-chat-dots"></i> SMS loglar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/semysms">
+                <i class="bi bi-sim"></i> SemySMS raqamlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history">
+                <i class="bi bi-clock-history"></i> Eski xabarlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/history/results">
+                <i class="bi bi-archive"></i> Arxiv natijalar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/telegram-groups">
+                <i class="bi bi-telegram"></i> Telegram Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> Sozlamalar
+              </a>
+            </li>
+          </ul>
+          <hr class="text-white">
+          <div class="px-3">
+            <small class="text-muted">Foydalanuvchi: <%= username %></small><br>
+            <a href="/logout" class="btn btn-sm btn-outline-light mt-2">
+              <i class="bi bi-box-arrow-right"></i> Chiqish
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
   <div class="py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2><i class="bi bi-telegram text-primary"></i> Telegram Guruhlar</h2>
@@ -23,7 +103,7 @@
         <div class="card text-white bg-primary">
           <div class="card-body">
             <h5 class="card-title"><i class="bi bi-collection"></i> Jami guruhlar</h5>
-            <h2>${stats.total}</h2>
+            <h2><%= stats.total %></h2>
             <small>Session'dagi barcha guruhlar</small>
           </div>
         </div>
@@ -32,7 +112,7 @@
         <div class="card text-white bg-success">
           <div class="card-body">
             <h5 class="card-title"><i class="bi bi-eye"></i> Monitoring</h5>
-            <h2>${stats.monitoring}</h2>
+            <h2><%= stats.monitoring %></h2>
             <small>Faol kuzatilmoqda</small>
           </div>
         </div>
@@ -41,7 +121,7 @@
         <div class="card text-white bg-info">
           <div class="card-body">
             <h5 class="card-title"><i class="bi bi-chat-dots"></i> SMS faol</h5>
-            <h2>${stats.smsEnabled}</h2>
+            <h2><%= stats.smsEnabled %></h2>
             <small>SMS yuborish yoqilgan</small>
           </div>
         </div>
@@ -50,7 +130,7 @@
         <div class="card text-white bg-secondary">
           <div class="card-body">
             <h5 class="card-title"><i class="bi bi-eye-slash"></i> Kuzatilmaydi</h5>
-            <h2>${stats.notInDatabase}</h2>
+            <h2><%= stats.notInDatabase %></h2>
             <small>Database'da yo'q</small>
           </div>
         </div>
@@ -230,6 +310,10 @@
       });
     }
   </script>
-  ` }) %>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
