@@ -64,7 +64,7 @@ router.get('/add', async (req, res) => {
 // Qo'shish
 router.post('/add', async (req, res) => {
   try {
-    const { name, telegram_id, keywords, sms_template } = req.body;
+    const { name, telegram_id, keywords, sms_template, type } = req.body;
 
     // Max 100 ta limit
     const allGroups = await getAllGroups();
@@ -77,7 +77,7 @@ router.post('/add', async (req, res) => {
       });
     }
 
-    await createGroup(name, telegram_id, keywords, sms_template);
+    await createGroup(name, telegram_id, keywords, sms_template, type || 'group');
     res.redirect('/groups');
   } catch (error) {
     const dialogs = await getDialogs();
@@ -101,7 +101,7 @@ router.get('/edit/:id', async (req, res) => {
 // Tahrirlash
 router.post('/edit/:id', async (req, res) => {
   try {
-    const { name, keywords, sms_template, active, sms_enabled, _action } = req.body;
+    const { name, keywords, sms_template, active, sms_enabled, type, _action } = req.body;
 
     // Agar faqat SMS toggle bo'lsa
     if (_action === 'toggle_sms') {
@@ -118,7 +118,8 @@ router.post('/edit/:id', async (req, res) => {
       keywords,
       sms_template,
       active: active === 'on',
-      sms_enabled: sms_enabled === 'on'
+      sms_enabled: sms_enabled === 'on',
+      type: type || 'group'
     });
     res.redirect('/groups');
   } catch (error) {
@@ -470,7 +471,8 @@ router.post('/search', async (req, res) => {
         title: entity.title,
         username: entity.username || null,
         participantsCount: participantsCount,
-        description: entity.about || null
+        description: entity.about || null,
+        isChannel: entity.className === 'Channel'
       }
     });
 

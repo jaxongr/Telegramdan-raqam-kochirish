@@ -19,10 +19,10 @@ async function getGroupByTelegramId(telegramId) {
   return rows[0];
 }
 
-async function createGroup(name, telegramId, keywords = '', smsTemplate = '') {
+async function createGroup(name, telegramId, keywords = '', smsTemplate = '', type = 'group') {
   const result = await query(
-    'INSERT INTO groups (name, telegram_id, keywords, sms_template) VALUES (?, ?, ?, ?)',
-    [name, telegramId, keywords, smsTemplate]
+    'INSERT INTO groups (name, telegram_id, keywords, sms_template, type) VALUES (?, ?, ?, ?, ?)',
+    [name, telegramId, keywords, smsTemplate, type]
   );
   return result.lastID || result.insertId;
 }
@@ -36,6 +36,7 @@ async function updateGroup(id, data) {
   if (data.sms_template !== undefined) { fields.push('sms_template = ?'); values.push(data.sms_template); }
   if (data.active !== undefined) { fields.push('active = ?'); values.push(data.active ? 1 : 0); }
   if (data.sms_enabled !== undefined) { fields.push('sms_enabled = ?'); values.push(data.sms_enabled ? 1 : 0); }
+  if (data.type !== undefined) { fields.push('type = ?'); values.push(data.type); }
 
   values.push(id);
   return await query(`UPDATE groups SET ${fields.join(', ')} WHERE id = ?`, values);

@@ -138,11 +138,12 @@
                       <th style="width: 5%;">
                         <input type="checkbox" class="form-check-input" id="selectAll" onclick="toggleSelectAll()">
                       </th>
-                      <th style="width: 30%;">Guruh nomi</th>
-                      <th style="width: 15%;">ID</th>
-                      <th style="width: 12%;">Username</th>
+                      <th style="width: 26%;">Guruh nomi</th>
+                      <th style="width: 8%;">Turi</th>
+                      <th style="width: 13%;">ID</th>
+                      <th style="width: 11%;">Username</th>
                       <th style="width: 10%;">A'zolar</th>
-                      <th style="width: 13%;">Holat</th>
+                      <th style="width: 12%;">Holat</th>
                       <th style="width: 15%;">Amallar</th>
                     </tr>
                   </thead>
@@ -153,14 +154,22 @@
                           <% if (!group.isMonitored) { %>
                             <input type="checkbox" class="form-check-input group-checkbox"
                                    value="<%= group.id %>"
-                                   data-title="<%= group.title.replace(/"/g, '&quot;') %>">
+                                   data-title="<%= group.title.replace(/"/g, '&quot;') %>"
+                                   data-is-channel="<%= group.isChannel ? 'true' : 'false' %>">
                           <% } %>
                         </td>
                         <td>
                           <div class="d-flex align-items-center">
-                            <i class="bi bi-<%= group.username ? 'megaphone' : 'people' %> me-2 text-primary"></i>
+                            <i class="bi bi-<%= group.isChannel ? 'megaphone' : 'people' %> me-2 text-primary"></i>
                             <strong><%= group.title %></strong>
                           </div>
+                        </td>
+                        <td>
+                          <% if (group.isChannel) { %>
+                            <span class="badge bg-info"><i class="bi bi-megaphone-fill"></i> Kanal</span>
+                          <% } else { %>
+                            <span class="badge bg-primary"><i class="bi bi-people-fill"></i> Guruh</span>
+                          <% } %>
                         </td>
                         <td>
                           <code class="small text-muted"><%= group.id %></code>
@@ -193,7 +202,7 @@
                         <td>
                           <% if (!group.isMonitored) { %>
                             <button class="btn btn-sm btn-outline-primary"
-                                    onclick="addToMonitoring('<%= group.id %>', '<%= group.title.replace(/'/g, "\\'").replace(/"/g, "&quot;") %>')">
+                                    onclick="addToMonitoring('<%= group.id %>', '<%= group.title.replace(/'/g, "\\'").replace(/"/g, "&quot;") %>', <%= group.isChannel %>)">
                               <i class="bi bi-plus-circle"></i> Qo'shish
                             </button>
                           <% } else { %>
@@ -230,8 +239,8 @@
     }
 
     // Bitta guruhni monitoring'ga qo'shish
-    function addToMonitoring(telegramId, title) {
-      if (confirm(`"${title}" guruhini monitoring'ga qo'shilsinmi?`)) {
+    function addToMonitoring(telegramId, title, isChannel = false) {
+      if (confirm(`"${title}" ${isChannel ? 'kanalini' : 'guruhini'} monitoring'ga qo'shilsinmi?`)) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/groups/add';
@@ -240,7 +249,8 @@
           name: title,
           telegram_id: telegramId,
           keywords: '',
-          sms_template: 'Assalomu alaykum! {{group}} guruhida {{phone}} raqamingizni ko\'rdik. Bizning xizmatlarimiz bilan tanishing!'
+          sms_template: 'Assalomu alaykum! {{group}} guruhida {{phone}} raqamingizni ko\'rdik. Bizning xizmatlarimiz bilan tanishing!',
+          type: isChannel ? 'channel' : 'group'
         };
 
         for (const [key, value] of Object.entries(inputs)) {
@@ -272,6 +282,7 @@
           setTimeout(() => {
             const telegramId = checkbox.value;
             const title = checkbox.getAttribute('data-title');
+            const isChannel = checkbox.getAttribute('data-is-channel') === 'true';
 
             // Form yaratish
             const form = document.createElement('form');
@@ -282,7 +293,8 @@
               name: title,
               telegram_id: telegramId,
               keywords: '',
-              sms_template: 'Assalomu alaykum! {{group}} guruhida {{phone}} raqamingizni ko\'rdik.'
+              sms_template: 'Assalomu alaykum! {{group}} guruhida {{phone}} raqamingizni ko\'rdik.',
+              type: isChannel ? 'channel' : 'group'
             };
 
             for (const [key, value] of Object.entries(inputs)) {

@@ -114,6 +114,15 @@
               </div>
 
               <div class="mb-3">
+                <label class="form-label">Turi</label>
+                <select name="type" class="form-control">
+                  <option value="group" <%= group.type === 'group' || !group.type ? 'selected' : '' %>>Guruh</option>
+                  <option value="channel" <%= group.type === 'channel' ? 'selected' : '' %>>Kanal</option>
+                </select>
+                <small class="text-muted">Guruh yoki Kanal</small>
+              </div>
+
+              <div class="mb-3">
                 <label class="form-label">Kalit so'zlar</label>
                 <textarea name="keywords" class="form-control" rows="3"><%= group.keywords || '' %></textarea>
               </div>

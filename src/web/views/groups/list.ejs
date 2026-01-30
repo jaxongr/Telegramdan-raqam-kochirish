@@ -67,6 +67,11 @@
               </a>
             </li>
             <li class="nav-item">
+              <a class="nav-link" href="/telegram-groups">
+                <i class="bi bi-telegram"></i> Telegram Guruhlar
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link" href="/settings">
                 <i class="bi bi-gear"></i> Sozlamalar
               </a>
@@ -152,13 +157,14 @@
               <thead>
                 <tr>
                   <th style="width: 3%">#</th>
-                  <th style="width: 18%">Nom</th>
+                  <th style="width: 16%">Nom</th>
+                  <th style="width: 8%">Turi</th>
                   <th style="width: 10%">Telegram ID</th>
                   <th style="width: 7%">A'zolar</th>
-                  <th style="width: 16%">Kalit so'zlar</th>
+                  <th style="width: 14%">Kalit so'zlar</th>
                   <th style="width: 7%">Holat</th>
                   <th style="width: 10%">SMS</th>
-                  <th style="width: 29%">Amallar</th>
+                  <th style="width: 25%">Amallar</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,6 +172,13 @@
                   <tr>
                     <td><strong><%= index + 1 %></strong></td>
                     <td><strong><%= group.name %></strong></td>
+                    <td>
+                      <% if (group.type === 'channel') { %>
+                        <span class="badge bg-info"><i class="bi bi-megaphone"></i> Kanal</span>
+                      <% } else { %>
+                        <span class="badge bg-primary"><i class="bi bi-people"></i> Guruh</span>
+                      <% } %>
+                    </td>
                     <td><code><%= group.telegram_id %></code></td>
                     <td>
                       <% if (group.member_count !== undefined && group.member_count > 0) { %>
@@ -282,7 +295,8 @@
             name: foundGroup.title,
             telegram_id: foundGroup.id,
             keywords: '',
-            sms_template: ''
+            sms_template: '',
+            type: foundGroup.isChannel ? 'channel' : 'group'
           })
         });
 

@@ -101,6 +101,9 @@ async function startMonitoring() {
         const group = await getGroupByTelegramId(telegramId);
         if (!group || !group.active) return;
 
+        // Turi (kanal yoki guruh)
+        const groupType = group.type === 'channel' ? '📢 Kanal' : '👥 Guruh';
+
         // Kalit so'zlarni tekshirish - MUVAQQAT O'CHIRILGAN!
         // SABAB: Bu filter 99% xabarlarni tashlamoqda!
         // Hamma xabarlardan telefon raqam izlash kerak
@@ -125,7 +128,7 @@ async function startMonitoring() {
         const phones = extractPhones(message.text);
 
         if (phones.length > 0) {
-          logger.info(`📞 ${phones.length} ta raqam topildi: ${group.name} [ID: ${group.id}, TG: ${telegramId}] (${message.text.substring(0, 50)}...)`);
+          logger.info(`📞 ${phones.length} ta raqam topildi: ${groupType} ${group.name} [ID: ${group.id}, TG: ${telegramId}] (${message.text.substring(0, 50)}...)`);
 
           for (const phone of phones) {
             await savePhone(phone, group.id, message.text);
